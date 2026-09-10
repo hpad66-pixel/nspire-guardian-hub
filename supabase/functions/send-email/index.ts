@@ -26,6 +26,7 @@ interface SendEmailRequest {
   attachmentSize?: number;
   dailyInspectionId?: string;
   reportId?: string;
+  clientMeetingPublicationId?: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -81,6 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
       attachmentSize,
       dailyInspectionId,
       reportId,
+      clientMeetingPublicationId,
     } = body;
 
     // Get user's profile for auto-BCC if not provided
@@ -303,6 +305,7 @@ const handler = async (req: Request): Promise<Response> => {
       attachment_size: attachmentSize || primaryAttachment?.size || null,
       daily_inspection_id: dailyInspectionId || null,
       report_id: reportId || null,
+      client_meeting_publication_id: clientMeetingPublicationId || null,
     };
 
     const { error: insertError } = await supabaseAdmin

@@ -1,5 +1,5 @@
 BEGIN;
-SELECT plan(33);
+SELECT plan(51);
 INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES
 ('97000000-0000-4000-8000-000000000001','meeting-staff@example.com','{"full_name":"Meeting staff","company_name":"Meeting tests"}'),
 ('97000000-0000-4000-8000-000000000002','meeting-owner@example.com','{"full_name":"Meeting owner","company_name":"Temporary test"}');
@@ -56,6 +56,31 @@ SELECT lives_ok($$SELECT client_meeting_command('97000000-0000-4000-8000-0000000
 SELECT is(client_meeting_bundle('97000000-0000-4000-8000-000000000011')->'actions'->0->>'state','closed','confirmed status persisted');
 SELECT lives_ok($$SELECT client_meeting_command('97000000-0000-4000-8000-000000000011','action',(client_meeting_bundle('97000000-0000-4000-8000-000000000011')->'actions'->0)||'{"title":"Revised access instructions"}'::jsonb)$$,'staff can edit existing action with its project and revision');
 SELECT lives_ok($$SELECT client_meeting_command('97000000-0000-4000-8000-000000000011','save',(client_meeting_bundle('97000000-0000-4000-8000-000000000011')->'meetings'->0)||'{"title":"Internal amendment"}'::jsonb); SELECT 1 / CASE WHEN (SELECT snapshot->>'title' FROM client_meeting_publications LIMIT 1)='Review' THEN 1 ELSE 0 END$$,'draft edits do not overwrite released report');
+RESET ROLE;
+INSERT INTO client_meeting_sources(id,tenant_id,client_id,meeting_id,original_name,mime_type,byte_size,storage_path,sha256,extracted_text,manifest,uploaded_by)
+SELECT '97000000-0000-4000-8000-000000000061',workspace_id,id,'97000000-0000-4000-8000-000000000051','messages.txt','text/plain',128,'test/meeting/messages.txt','test-sha','Exact private transcript text','[{"name":"messages.txt","characters":29}]','97000000-0000-4000-8000-000000000001' FROM clients WHERE id='97000000-0000-4000-8000-000000000011';
+INSERT INTO report_emails(id,recipients,subject,status,source_module,report_type,sent_by,client_meeting_publication_id)
+SELECT '97000000-0000-4000-8000-000000000071',ARRAY['owner@example.com'],'Meeting report','sent','client-meetings','client_meeting','97000000-0000-4000-8000-000000000001',id FROM client_meeting_publications LIMIT 1;
+SELECT set_config('request.jwt.claims','{"sub":"97000000-0000-4000-8000-000000000001","role":"authenticated"}',true);
+SET LOCAL ROLE authenticated;
+SELECT is(jsonb_array_length(client_meeting_manage_bundle('97000000-0000-4000-8000-000000000011')->'sources'),1,'staff journal includes active transcript source');
+SELECT ok(NOT ((client_meeting_manage_bundle('97000000-0000-4000-8000-000000000011')->'sources'->0) ? 'extracted_text'),'transcript body is not returned to browser journal');
+SELECT lives_ok($$SELECT client_meeting_manage_command('97000000-0000-4000-8000-000000000011','archive_source','97000000-0000-4000-8000-000000000061')$$,'staff archives transcript source');
+SELECT is(jsonb_array_length(client_meeting_manage_bundle('97000000-0000-4000-8000-000000000011')->'sources'),0,'archived transcript leaves active analysis list');
+SELECT is(jsonb_array_length(client_meeting_manage_bundle('97000000-0000-4000-8000-000000000011')->'archivedSources'),1,'archived transcript remains recoverable');
+SELECT lives_ok($$SELECT client_meeting_manage_command('97000000-0000-4000-8000-000000000011','restore_source','97000000-0000-4000-8000-000000000061')$$,'staff restores transcript source');
+SELECT is(jsonb_array_length(client_meeting_manage_bundle('97000000-0000-4000-8000-000000000011')->'emails'),1,'sent meeting email appears in journal');
+SELECT lives_ok($$SELECT client_meeting_manage_command('97000000-0000-4000-8000-000000000011','dismiss_email','97000000-0000-4000-8000-000000000071')$$,'staff moves email to Trash');
+SELECT is(jsonb_array_length(client_meeting_manage_bundle('97000000-0000-4000-8000-000000000011')->'emails'),0,'dismissed email leaves active journal');
+SELECT is(jsonb_array_length(client_meeting_manage_bundle('97000000-0000-4000-8000-000000000011')->'dismissedEmails'),1,'dismissed email remains in Trash');
+SELECT lives_ok($$SELECT client_meeting_manage_command('97000000-0000-4000-8000-000000000011','restore_email','97000000-0000-4000-8000-000000000071')$$,'staff restores sent email');
+SELECT is(jsonb_array_length(client_meeting_manage_bundle('97000000-0000-4000-8000-000000000011')->'emails'),1,'restored email returns to journal');
+SELECT lives_ok($$SELECT client_meeting_manage_command('97000000-0000-4000-8000-000000000011','archive_meeting','97000000-0000-4000-8000-000000000051')$$,'staff moves meeting to Trash');
+SELECT is(jsonb_array_length(client_meeting_bundle('97000000-0000-4000-8000-000000000011')->'meetings'),0,'archived meeting leaves active journal');
+SELECT is(jsonb_array_length(client_meeting_bundle('97000000-0000-4000-8000-000000000011')->'publications'),0,'archived report leaves client-visible bundle');
+SELECT is(jsonb_array_length(client_meeting_manage_bundle('97000000-0000-4000-8000-000000000011')->'archivedMeetings'),1,'archived meeting remains recoverable');
+SELECT lives_ok($$SELECT client_meeting_manage_command('97000000-0000-4000-8000-000000000011','restore_meeting','97000000-0000-4000-8000-000000000051')$$,'staff restores meeting and report');
+SELECT is(jsonb_array_length(client_meeting_bundle('97000000-0000-4000-8000-000000000011')->'meetings'),1,'restored meeting returns to active journal');
 RESET ROLE;
 SELECT ok(claim_client_meeting_delivery((SELECT id FROM client_meeting_publications LIMIT 1),'2026-09-11') IS NOT NULL,'first delivery claims approved publication');
 SELECT ok(claim_client_meeting_delivery((SELECT id FROM client_meeting_publications LIMIT 1),'2026-09-11') IS NULL,'concurrent delivery cannot claim twice');

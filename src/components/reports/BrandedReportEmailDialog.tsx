@@ -38,6 +38,7 @@ interface BrandedReportEmailDialogProps {
   sendLabel?: string;
   dailyInspectionId?: string;
   reportId?: string;
+  clientMeetingPublicationId?: string;
   extraOptions?: ReactNode;
   onSent?: (recipients: string[]) => void | Promise<void>;
 }
@@ -135,6 +136,7 @@ export function BrandedReportEmailDialog({
   sendLabel = 'Send HTML + PDF',
   dailyInspectionId,
   reportId,
+  clientMeetingPublicationId,
   extraOptions,
   onSent,
 }: BrandedReportEmailDialogProps) {
@@ -189,6 +191,7 @@ export function BrandedReportEmailDialog({
         attachmentSize: delivery.pdfSize,
         dailyInspectionId,
         reportId,
+        clientMeetingPublicationId,
       });
       await onSent?.(recipients);
       toast.success(`Sent ${reportTitle} as HTML and PDF.`, { id: progress });

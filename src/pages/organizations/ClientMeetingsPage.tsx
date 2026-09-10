@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { CalendarDays, CheckCheck, Download, FileText, Mail, Plus, Save, Sparkles, Trash2 } from 'lucide-react';
+import { ArchiveRestore, CalendarDays, CheckCheck, Download, FileText, Mail, Plus, Save, Sparkles, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { resolveDistribution } from '@/lib/distribution';
 import { htmlReportPdfBase64 } from '@/lib/reports/htmlReportPdf';
 import { meetingReportHtml, type MeetingSnapshot } from '../../../supabase/functions/_shared/clientMeetingReport';
+import { parseUpload } from '@/lib/docs/parseUpload';
 import './client-meetings.css';
 const reportSchema = z.object({ title: z.string().trim().min(1, 'Add a title'), meeting_date: z.string().min(1), attendees: z.string(), transcript: z.string(), project_ids: z.array(z.string()).min(1, 'Choose at least one project'), sections: z.array(z.object({ heading: z.string().trim().min(1), text: z.string(), basis: z.enum(['verified', 'interpretation', 'needs_review']) })) });
 type ReportForm = Pick<ClientMeeting, 'title' | 'meeting_date' | 'attendees' | 'transcript' | 'project_ids' | 'sections'>;
@@ -49,6 +50,16 @@ export default function ClientMeetingsPage() {
     const portalUrl = `${window.location.origin}/owner-portal/clients/${clientId}/meetings`;
     const html = publication ? meetingReportHtml(publication.snapshot, portalUrl) : '';
     async function create() { const r = await api.command.mutateAsync({ operation: 'create', payload: { title: 'Portfolio coordination' } }); setSelected(r.id); setTab('edit'); }
+    async function openTranscriptIntake() {
+        if (!meeting) {
+            await create();
+            return;
+        }
+        setTab('edit');
+        window.setTimeout(() => document.getElementById('meeting-transcript-intake')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+    }
+    async function archiveMeeting(meetingId: string) { if (!window.confirm('Remove this meeting from the journal and client portal? It will remain recoverable in Trash.'))
+        return; await api.manage.mutateAsync({ operation: 'archive_meeting', id: meetingId }); setSelected(undefined); toast.success('Meeting moved to Trash'); }
     async function download() { if (!publication)
         return; setBusyPdf(true); try {
         const pdf = await htmlReportPdfBase64(html, { pageAware: true });
@@ -73,11 +84,13 @@ export default function ClientMeetingsPage() {
     const visibleActions = b.actions.filter(a => edit || a.published);
     const completed = visibleActions.filter(a => ['closed', 'approved'].includes(a.state)).length;
     return <div className="meeting-hub" data-testid="client-meeting-hub">
-  <header className="meeting-hub__heading"><div><p className="meeting-hub__eyebrow">{b.client.name} · Entire client portfolio</p><h1>Meetings &amp; Actions</h1><p className="text-muted-foreground">One conversation. Every project. Clear next steps.</p></div><div className="flex flex-wrap gap-2">{edit && <><Button variant="outline" onClick={() => setWeekly(true)}><CalendarDays className="mr-2 h-4 w-4"/>Weekly delivery</Button><Button onClick={() => void create()} disabled={api.command.isPending}><Plus className="mr-2 h-4 w-4"/>New meeting</Button></>}{portal && b.canEdit && <Button asChild variant="outline"><Link to={`/organizations/${clientId}/meetings`}>Edit as APAS</Link></Button>}</div></header>
-  {!records.length ? <section className="meeting-hub__surface p-8"><FileText className="h-8 w-8 mb-3 text-muted-foreground"/><h2>{edit ? 'Create your first client meeting' : 'Your meeting journal is ready'}</h2><p className="text-muted-foreground">{edit ? 'Paste your transcript, choose the projects discussed, and review a complete editable draft.' : 'Approved meeting reports will appear here with shared actions and updates.'}</p></section> : <div className="meeting-hub__layout">
-   <aside className="meeting-hub__journal" aria-label="Meeting dates"><p className="meeting-hub__eyebrow">Meeting journal</p>{records.map(r => <button key={r.id} aria-pressed={r.id === id} onClick={() => { if (tab === 'edit' && !window.confirm('Leave the editor? Unsaved changes will be lost.'))
-            return; setSelected(r.id); setTab('actions'); }}><strong>{dateLabel(r.date)}</strong><span>{r.title}</span></button>)}</aside>
+  <header className="meeting-hub__heading"><div><p className="meeting-hub__eyebrow">{b.client.name} · Entire client portfolio</p><h1>Meetings &amp; Actions</h1><p className="text-muted-foreground">One conversation. Every project. Clear next steps.</p></div><div className="flex flex-wrap gap-2">{edit && <><Button variant="outline" onClick={() => setWeekly(true)}><CalendarDays className="mr-2 h-4 w-4"/>Weekly delivery</Button><Button variant="outline" onClick={() => void openTranscriptIntake()}><Upload className="mr-2 h-4 w-4"/>Upload transcripts</Button><Button onClick={() => void create()} disabled={api.command.isPending}><Plus className="mr-2 h-4 w-4"/>New meeting</Button></>}{portal && b.canEdit && <Button asChild variant="outline"><Link to={`/organizations/${clientId}/meetings`}>Edit as APAS</Link></Button>}</div></header>
+  {!records.length && !edit ? <section className="meeting-hub__surface p-8"><FileText className="h-8 w-8 mb-3 text-muted-foreground"/><h2>Your meeting journal is ready</h2><p className="text-muted-foreground">Approved meeting reports will appear here with shared actions and updates.</p></section> : <div className="meeting-hub__layout">
+   <aside className="meeting-hub__journal" aria-label="Meeting and email journal"><p className="meeting-hub__eyebrow">Meeting journal</p>{records.map(r => <div className="meeting-hub__journal-row" key={r.id}><button aria-pressed={r.id === id} onClick={() => { if (tab === 'edit' && !window.confirm('Leave the editor? Unsaved changes will be lost.'))
+            return; setSelected(r.id); setTab('actions'); }}><strong>{dateLabel(r.date)}</strong><span>{r.title}</span></button>{edit && <button className="meeting-hub__remove" aria-label={`Delete meeting ${r.title}`} onClick={() => void archiveMeeting(r.id)}><Trash2 className="h-4 w-4"/></button>}</div>)}{edit && <><p className="meeting-hub__eyebrow mt-8">Sent emails</p>{b.emails.length ? b.emails.map(e => <div className="meeting-hub__email" key={e.id}><div><strong>{e.subject}</strong><span>{new Date(e.sent_at).toLocaleDateString()} · {e.recipients.join(', ')}</span></div><button aria-label={`Delete email ${e.subject}`} onClick={async () => { if (!window.confirm('Remove this email from the journal? The delivery audit will be retained in Trash.'))
+                            return; await api.manage.mutateAsync({ operation: 'dismiss_email', id: e.id }); toast.success('Email moved to Trash'); }}><Trash2 className="h-4 w-4"/></button></div>) : <p className="text-xs text-muted-foreground mt-2">No meeting reports emailed yet.</p>}<details className="meeting-hub__trash"><summary>Trash ({b.archivedMeetings.length + b.archivedSources.length + b.dismissedEmails.length})</summary>{b.archivedMeetings.map(m => <div key={m.id}><span>{m.title}</span><button aria-label={`Restore meeting ${m.title}`} onClick={() => void api.manage.mutateAsync({ operation: 'restore_meeting', id: m.id })}><ArchiveRestore className="h-4 w-4"/></button></div>)}{b.archivedSources.map(s => <div key={s.id}><span>{s.original_name}</span><button aria-label={`Restore transcript ${s.original_name}`} onClick={() => void api.manage.mutateAsync({ operation: 'restore_source', id: s.id })}><ArchiveRestore className="h-4 w-4"/></button></div>)}{b.dismissedEmails.map(e => <div key={e.id}><span>{e.subject}</span><button aria-label={`Restore email ${e.subject}`} onClick={() => void api.manage.mutateAsync({ operation: 'restore_email', id: e.id })}><ArchiveRestore className="h-4 w-4"/></button></div>)}</details></>}</aside>
    <div className="min-w-0">
+    {!current ? <section className="meeting-hub__surface p-8"><FileText className="h-8 w-8 mb-3 text-muted-foreground"/><h2>Create your first client meeting</h2><p className="text-muted-foreground mb-4">Start a meeting, then upload ZIP exports, messages, transcripts, PDFs, Word documents, or paste notes directly.</p><Button onClick={() => void create()}><Plus className="mr-2 h-4 w-4"/>New meeting</Button></section> : <>
     <section className="meeting-hub__surface p-6"><div className="flex flex-wrap items-start justify-between gap-3"><div><p className="meeting-hub__eyebrow">{current && dateLabel(current.date)}</p><h2>{current?.title}</h2></div><Badge variant="secondary">{publication ? `Released v${publication.revision}` : 'Internal draft'}</Badge></div><p className="mt-4 text-muted-foreground">{publication?.snapshot.sections[0]?.text || 'Create the narrative, review the actions, then release a dated report to the client.'}</p><div className="flex flex-wrap justify-between gap-2 text-sm mt-5"><span>{completed} of {visibleActions.length} actions confirmed complete</span><span>Current portfolio progress</span></div><progress className="w-full mt-2" max={Math.max(1, visibleActions.length)} value={completed} aria-label="Confirmed action completion"/></section>
     <div className="meeting-hub__tabs" aria-label="Meeting views">{([['actions', 'Action checklist'], ['report', 'Dated report'], ...(edit ? [['edit', 'Edit entire report']] : [])] as [
             typeof tab,
@@ -87,11 +100,12 @@ export default function ClientMeetingsPage() {
     {tab === 'actions' && <><div className="flex flex-wrap justify-between gap-3 my-4"><p className="text-sm text-muted-foreground">Live actions across all meetings. Expand any item to provide an update.</p>{edit && meeting && <Button variant="outline" onClick={() => setPendingAction({ meeting_id: meeting.id })}><Plus className="mr-2 h-4 w-4"/>Add action</Button>}</div>{visibleActions.length === 0 ? <p className="py-6 text-muted-foreground">No actions have been recorded yet.</p> : [...visibleActions].sort((a, c) => Number(['closed', 'approved'].includes(c.state)) - Number(['closed', 'approved'].includes(a.state))).map(a => <ActionRow key={a.id} action={a} bundle={b} edit={edit} command={api.command} onEdit={() => setPendingAction(a)}/>)}</>}
     {tab === 'report' && (publication ? <><div className="flex flex-wrap gap-2 my-4"><Button variant="outline" disabled={busyPdf} onClick={() => void download()}><Download className="mr-2 h-4 w-4"/>{busyPdf ? 'Preparing PDF...' : 'Download PDF'}</Button>{edit && <Button onClick={() => setEmail(true)}><Mail className="mr-2 h-4 w-4"/>Email this report</Button>}<span className="self-center text-sm text-muted-foreground">Released {dateLabel(publication.published_at)} · Snapshot, not live progress</span></div><PublishedReport snapshot={publication.snapshot}/></> : <p className="py-8 text-muted-foreground">No client report released yet. Use Edit entire report to prepare and publish it.</p>)}
     {tab === 'edit' && edit && meeting && <ReportEditor key={meeting.id} meeting={meeting} bundle={b} api={api} onAction={setPendingAction} onReleased={() => setTab('report')}/>}
+    </>}
    </div>
   </div>}
   {edit && pendingAction && <ActionEditor key={pendingAction.id || 'new'} action={pendingAction} bundle={b} command={api.command} close={() => setPendingAction(null)}/>}
   {edit && weekly && <WeeklyDelivery bundle={b} command={api.command} close={() => setWeekly(false)}/>}
-  {edit && publication && <BrandedReportEmailDialog open={email} onOpenChange={setEmail} reportTitle={publication.snapshot.title} projectName={b.client.name} filename={`Meeting-${publication.snapshot.meeting_date}.pdf`} defaultSubject={`${b.client.name}: ${publication.snapshot.title} | ${publication.snapshot.meeting_date}`} sourceModule="client-meetings" reportType="client_meeting" reportId={publication.id} prepareDelivery={async (message) => {
+  {edit && publication && <BrandedReportEmailDialog open={email} onOpenChange={setEmail} reportTitle={publication.snapshot.title} projectName={b.client.name} filename={`Meeting-${publication.snapshot.meeting_date}.pdf`} defaultSubject={`${b.client.name}: ${publication.snapshot.title} | ${publication.snapshot.meeting_date}`} sourceModule="client-meetings" reportType="client_meeting" clientMeetingPublicationId={publication.id} prepareDelivery={async (message) => {
                 // Re-read the released record before rendering; never email unsaved editor text.
                 const refreshed = await api.refetch();
                 const released = refreshed.data?.publications.find(p => p.id === publication.id);
@@ -102,6 +116,37 @@ export default function ClientMeetingsPage() {
                 return { bodyHtml, bodyText: `${message}\n${released.snapshot.title}\n${portalUrl}`, pdfBase64: pdf.base64, pdfSize: pdf.size };
             }}/>}<footer className="meeting-hub__footer">APAS Consulting · Powered by ProjOS · Client-scoped records and accountable updates</footer>
  </div>;
+}
+function TranscriptIntake({ meeting, bundle, api }: {
+    meeting: ClientMeeting;
+    bundle: ClientMeetingBundle;
+    api: ReturnType<typeof useClientMeetings>;
+}) {
+    const sources = bundle.sources.filter(source => source.meeting_id === meeting.id);
+    const accepted = '.zip,.txt,.md,.csv,.json,.html,.htm,.xml,.vtt,.srt,.log,.eml,.rtf,.pdf,.docx';
+    async function upload(files: FileList | null) {
+        if (!files)
+            return;
+        for (const file of Array.from(files)) {
+            let extractedText: string | undefined;
+            if (/\.(pdf|docx)$/i.test(file.name)) {
+                try {
+                    extractedText = (await parseUpload(file)).text;
+                }
+                catch {
+                    toast.error(`${file.name} could not be read. If it is scanned, run OCR or paste the text.`);
+                    continue;
+                }
+            }
+            const result = await api.uploadSource.mutateAsync({ meetingId: meeting.id, file, extractedText });
+            if (result.ignored?.length)
+                toast.info(`${file.name}: ${result.ignored.length} non-text ZIP entries were retained but not analyzed.`);
+            else
+                toast.success(`${file.name} added to the transcript package`);
+        }
+    }
+    return <section id="meeting-transcript-intake" className="meeting-hub__surface meeting-hub__intake p-5"><div><p className="meeting-hub__eyebrow">Step 1 · Source material</p><h3 className="font-semibold text-lg">Add every conversation and transcript</h3><p className="text-sm text-muted-foreground">Upload several files at once. ZIP packages are unpacked securely and readable conversations are labeled by source file so the report can cite them.</p></div><label className="meeting-hub__dropzone"><Upload className="h-6 w-6"/><span><strong>{api.uploadSource.isPending ? 'Reading source...' : 'Choose transcript files'}</strong><small>ZIP, messages, TXT, CSV, JSON, EML, PDF, Word, captions, or logs · 25 MB each</small></span><input type="file" multiple accept={accepted} disabled={api.uploadSource.isPending} onChange={e => { void upload(e.target.files).finally(() => { e.target.value = ''; }); }}/></label>{sources.length > 0 && <div className="meeting-hub__sources"><p className="text-sm font-medium">Included in the next analysis</p>{sources.map(source => <div key={source.id}><FileText className="h-4 w-4"/><span><strong>{source.original_name}</strong><small>{(source.byte_size / 1024).toFixed(source.byte_size > 10240 ? 0 : 1)} KB · {source.manifest.length} readable {source.manifest.length === 1 ? 'source' : 'sources'}</small></span><button type="button" aria-label={`Remove transcript ${source.original_name}`} onClick={async () => { if (!window.confirm(`Remove ${source.original_name} from future analysis? The original remains in the secure audit record.`))
+                            return; await api.manage.mutateAsync({ operation: 'archive_source', id: source.id }); toast.success('Transcript removed from future analysis'); }}><Trash2 className="h-4 w-4"/></button></div>)}</div>}</section>;
 }
 function PublishedReport({ snapshot: s }: {
     snapshot: MeetingSnapshot;
@@ -137,8 +182,9 @@ function ReportEditor({ meeting, bundle, api, onAction, onReleased }: {
    <div className="grid gap-4 sm:grid-cols-[1fr_180px]"><label>Report title<Input {...form.register('title')}/></label><label>Meeting date<Input type="date" {...form.register('meeting_date')}/></label></div>
    <label className="block">Participants<Input {...form.register('attendees')} placeholder="Names and organizations"/></label>
    <fieldset><legend className="mb-2">Projects discussed</legend><div className="flex flex-wrap gap-3">{bundle.projects.map(p => <label key={p.id} className="flex items-center gap-2 border rounded-lg p-3"><input type="checkbox" value={p.id} {...form.register('project_ids')}/>{p.name}</label>)}</div></fieldset>
-   <details className="rounded-xl border p-4"><summary className="cursor-pointer font-medium">Transcript and source notes (internal only)</summary><Textarea className="mt-3 min-h-48" {...form.register('transcript')} placeholder="Paste the full meeting transcript or dictate your notes here."/><p className="text-xs text-muted-foreground mt-2">These notes are never included in the client report. AI suggestions require verification.</p></details>
-   <div className="meeting-hub__surface p-4 space-y-3"><label className="block">Ask the meeting editor<Input {...instructions.register('instructions')} placeholder="For example: tighten the summary and group progress by project"/></label><Button type="button" variant="outline" disabled={api.generate.isPending} onClick={async () => { setDraft(await api.generate.mutateAsync({ meetingId: meeting.id, transcript: form.getValues('transcript'), sections: form.getValues('sections'), instructions: instructions.getValues('instructions') })); }}><Sparkles className="mr-2 h-4 w-4"/>{api.generate.isPending ? 'Preparing draft...' : 'Generate a draft preview'}</Button></div>
+   <TranscriptIntake meeting={meeting} bundle={bundle} api={api}/>
+   <label className="block meeting-hub__surface p-5">Paste, type, or dictate transcript notes<Textarea className="mt-3 min-h-56" {...form.register('transcript')} placeholder="Paste an Otter transcript, text-message conversation, email thread, meeting notes, or dictate directly here."/><p className="text-xs text-muted-foreground mt-2">Private source material. It is never shown in the client report. Uploaded sources and these notes are analyzed together.</p></label>
+   <div className="meeting-hub__surface p-5 space-y-3"><h3 className="font-semibold">Build the project-by-project report</h3><p className="text-sm text-muted-foreground">The meeting skill reads every attached source, extracts decisions, explicit commitments, risks, questions, blockers, and next agenda items, then organizes them under the matching client projects. Unknowns remain flagged for your review.</p><label className="block">Additional direction for the report<Input {...instructions.register('instructions')} placeholder="For example: emphasize inspection decisions and separate sewer, stormwater, and landscaping"/></label><Button type="button" disabled={api.generate.isPending || api.uploadSource.isPending} onClick={async () => { setDraft(await api.generate.mutateAsync({ meetingId: meeting.id, transcript: form.getValues('transcript'), sections: form.getValues('sections'), instructions: instructions.getValues('instructions') })); }}><Sparkles className="mr-2 h-4 w-4"/>{api.generate.isPending ? 'Reading every source...' : 'Extract and build report'}</Button></div>
    {draft && <div className="border rounded-xl p-5 space-y-4"><h3 className="font-semibold">AI draft preview</h3><p className="text-sm text-muted-foreground">Nothing has been overwritten. Review the narrative and action candidates.</p>{draft.sections.map((s, i) => <details key={i}><summary>{s.heading}</summary><p className="whitespace-pre-wrap my-2">{s.text}</p></details>)}<div className="flex flex-wrap gap-2"><Button type="button" onClick={() => { if (window.confirm('Replace the current draft narrative with this AI suggestion? Your published report will not change.')) {
         form.setValue('title', draft.title, { shouldDirty: true });
         form.setValue('sections', draft.sections, { shouldDirty: true });
