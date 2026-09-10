@@ -14,7 +14,7 @@ RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
  )
  AND EXISTS (
    SELECT 1 FROM client_meeting_actions a
-   WHERE a.client_id=p_client AND a.assignee_id=auth.uid() AND a.published
+   WHERE a.client_id=p_client AND a.assignee_id=auth.uid() AND a.published AND a.archived_at IS NULL
  );
 $$;
 
@@ -50,16 +50,16 @@ BEGIN
    (edit OR owner_can_access_project(p.id) OR (team AND EXISTS(SELECT 1 FROM client_meeting_actions a WHERE a.project_id=p.id AND a.assignee_id=auth.uid() AND a.published)))),'[]'::jsonb),
  'members',CASE WHEN edit THEN COALESCE((SELECT jsonb_agg(jsonb_build_object('id',user_id,'name',COALESCE(full_name,email))) FROM profiles
    WHERE workspace_id=(SELECT workspace_id FROM clients WHERE id=p_client_id) AND COALESCE(status,'active')='active'),'[]'::jsonb) ELSE '[]'::jsonb END,
- 'meetings',CASE WHEN edit THEN COALESCE((SELECT jsonb_agg(to_jsonb(m) ORDER BY meeting_date DESC,created_at DESC) FROM client_meetings m WHERE client_id=p_client_id),'[]'::jsonb) ELSE '[]'::jsonb END,
- 'publications',COALESCE((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.published_at DESC) FROM client_meeting_publications p WHERE p.client_id=p_client_id
-   AND (edit OR (team AND EXISTS(SELECT 1 FROM client_meeting_actions a WHERE a.meeting_id=p.meeting_id AND a.assignee_id=auth.uid() AND a.published))
+ 'meetings',CASE WHEN edit THEN COALESCE((SELECT jsonb_agg(to_jsonb(m) ORDER BY meeting_date DESC,created_at DESC) FROM client_meetings m WHERE client_id=p_client_id AND m.archived_at IS NULL),'[]'::jsonb) ELSE '[]'::jsonb END,
+ 'publications',COALESCE((SELECT jsonb_agg(to_jsonb(p) ORDER BY p.published_at DESC) FROM client_meeting_publications p WHERE p.client_id=p_client_id AND p.archived_at IS NULL
+   AND (edit OR (team AND EXISTS(SELECT 1 FROM client_meeting_actions a WHERE a.meeting_id=p.meeting_id AND a.assignee_id=auth.uid() AND a.published AND a.archived_at IS NULL))
      OR NOT EXISTS(SELECT 1 FROM jsonb_array_elements_text(p.snapshot->'project_ids') x WHERE NOT owner_can_access_project(x::uuid)))),'[]'::jsonb),
  'actions',COALESCE((SELECT jsonb_agg((CASE WHEN edit THEN to_jsonb(a) ELSE to_jsonb(a)-'source_quote'-'source_locator' END)
    ||jsonb_build_object('state',w.state,'step',w.current_step) ORDER BY a.created_at)
-   FROM client_meeting_actions a LEFT JOIN workflow_instances w ON w.id=a.workflow_id WHERE a.client_id=p_client_id
+   FROM client_meeting_actions a LEFT JOIN workflow_instances w ON w.id=a.workflow_id WHERE a.client_id=p_client_id AND a.archived_at IS NULL
    AND (edit OR (a.published AND ((team AND a.assignee_id=auth.uid()) OR owner_can_access_project(a.project_id))))),'[]'::jsonb),
  'comments',COALESCE((SELECT jsonb_agg(to_jsonb(c) ORDER BY c.created_at)
-   FROM client_meeting_comments c JOIN client_meeting_actions a ON a.id=c.action_id WHERE c.client_id=p_client_id
+   FROM client_meeting_comments c JOIN client_meeting_actions a ON a.id=c.action_id WHERE c.client_id=p_client_id AND a.archived_at IS NULL
    AND (edit OR (a.published AND ((team AND a.assignee_id=auth.uid()) OR owner_can_access_project(a.project_id))))
    AND (edit OR c.audience='client' OR (team AND a.assignee_id=auth.uid()))),'[]'::jsonb),
  'delivery',CASE WHEN edit THEN (SELECT to_jsonb(s) FROM client_meeting_delivery_settings s WHERE client_id=p_client_id) ELSE NULL END,
