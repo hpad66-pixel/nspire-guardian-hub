@@ -36,6 +36,24 @@ export interface MeetingPublication {
     published_at: string;
     snapshot: MeetingSnapshot;
 }
+export interface MeetingSource {
+    id: string;
+    meeting_id: string;
+    original_name: string;
+    mime_type: string;
+    byte_size: number;
+    extracted_text?: string;
+    manifest: Array<{ name: string; characters: number }>;
+    created_at: string;
+}
+export interface MeetingEmail {
+    id: string;
+    report_id: string;
+    subject: string;
+    recipients: string[];
+    sent_at: string;
+    status: string;
+}
 export interface MeetingDelivery {
     enabled: boolean;
     weekday: number;
@@ -76,6 +94,11 @@ export interface ClientMeetingBundle {
         error: string | null;
         updated_at: string;
     }[];
+    sources: MeetingSource[];
+    emails: MeetingEmail[];
+    archivedMeetings: ClientMeeting[];
+    archivedSources: MeetingSource[];
+    dismissedEmails: MeetingEmail[];
 }
 // One boundary for RPCs added by the meeting migration until generated types refresh.
 export async function meetingRpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
@@ -87,7 +110,13 @@ export async function meetingRpc<T>(name: string, args: Record<string, unknown>)
 export function useClientMeetings(clientId?: string) {
     const qc = useQueryClient();
     const key = ['client-meetings', clientId];
-    const list = useQuery({ queryKey: key, enabled: !!clientId, queryFn: () => meetingRpc<ClientMeetingBundle>('client_meeting_bundle', { p_client_id: clientId }), refetchInterval: 30000 });
+    const list = useQuery({ queryKey: key, enabled: !!clientId, queryFn: async () => {
+            const base = await meetingRpc<ClientMeetingBundle>('client_meeting_bundle', { p_client_id: clientId });
+            if (!base.canEdit)
+                return { ...base, sources: [], emails: [], archivedMeetings: [], archivedSources: [], dismissedEmails: [] };
+            const manage = await meetingRpc<Pick<ClientMeetingBundle, 'sources' | 'emails' | 'archivedMeetings' | 'archivedSources' | 'dismissedEmails'>>('client_meeting_manage_bundle', { p_client: clientId });
+            return { ...base, ...manage };
+        }, refetchInterval: 30000 });
     const command = useMutation({ mutationFn: ({ operation, payload }: {
             operation: string;
             payload?: Record<string, unknown>;
@@ -118,5 +147,26 @@ export function useClientMeetings(clientId?: string) {
                 actions: Partial<MeetingAction>[];
             };
         }, onError: (e: Error) => toast.error(e.message) });
-    return { ...list, command, generate };
+    const manage = useMutation({ mutationFn: ({ operation, id }: { operation: string; id: string }) => meetingRpc<void>('client_meeting_manage_command', { p_client: clientId, p_operation: operation, p_id: id }), onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
+    const uploadSource = useMutation({ mutationFn: async ({ meetingId, file, extractedText }: { meetingId: string; file: File; extractedText?: string }) => {
+            const body = new FormData();
+            body.append('clientId', clientId || '');
+            body.append('meetingId', meetingId);
+            body.append('file', file);
+            if (extractedText)
+                body.append('extractedText', extractedText);
+            const { data, error } = await supabase.functions.invoke('client-meeting-source', { body });
+            if (error) {
+                let message = error.message;
+                try {
+                    message = (await error.context.json()).error || message;
+                }
+                catch { /* Keep original error. */ }
+                throw new Error(message);
+            }
+            if (data?.error)
+                throw new Error(data.error);
+            return data;
+        }, onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
+    return { ...list, command, generate, manage, uploadSource };
 }

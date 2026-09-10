@@ -150,6 +150,9 @@ verify_jwt = false
 [functions.client-meeting-delivery]
 verify_jwt = true
 
+[functions.client-meeting-source]
+verify_jwt = false
+
 # API client minting validates the caller with auth.getUser() inside the
 # function. Disable the legacy gateway JWT check so asymmetric user JWTs from
 # the current Supabase Auth stack reach that explicit authorization path.
