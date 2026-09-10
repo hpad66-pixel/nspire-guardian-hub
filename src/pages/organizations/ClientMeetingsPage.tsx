@@ -190,7 +190,7 @@ function ReportEditor({ meeting, bundle, api, onAction, onReleased }: {
     }
     catch (error) {
         setGenerationError(error instanceof Error ? error.message : 'The report could not be generated.');
-    } }}><Sparkles className="mr-2 h-4 w-4"/>{api.generate.isPending ? 'Building report, usually under one minute...' : 'Extract and build report'}</Button>{generationError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><strong>Report not generated.</strong> {generationError}</div>}</div>
+    } }}><Sparkles className="mr-2 h-4 w-4"/>{api.generate.isPending ? 'Building report, this may take up to two minutes...' : 'Extract and build report'}</Button>{generationError && <div role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><strong>Report not generated.</strong> {generationError}</div>}</div>
    {draft && <div className="border rounded-xl p-5 space-y-4"><h3 className="font-semibold">AI draft preview</h3><p className="text-sm text-muted-foreground">Nothing has been overwritten. Review the narrative and action candidates.</p>{draft.sections.map((s, i) => <details key={i}><summary>{s.heading}</summary><p className="whitespace-pre-wrap my-2">{s.text}</p></details>)}<div className="flex flex-wrap gap-2"><Button type="button" onClick={() => { if (window.confirm('Replace the current draft narrative with this AI suggestion? Your published report will not change.')) {
         form.setValue('title', draft.title, { shouldDirty: true });
         form.setValue('sections', draft.sections, { shouldDirty: true });
