@@ -63,7 +63,10 @@ serve(async (req) => {
   const id = parts[resourceIdx + 1];
   const scopes: string[] = (tokenRow as any).scopes ?? [];
   const tenantId = (tokenRow as any).tenant_id as string;
-  const neededScope = req.method === "GET" ? `read:${resource}` : `write:${resource}`;
+  // Client meeting briefs are part of the existing client-update capability.
+  // The database additionally requires the API creator's meeting-edit permission.
+  const scopeResource = resource === "client-meetings" ? "client-updates" : resource;
+  const neededScope = req.method === "GET" ? `read:${scopeResource}` : `write:${scopeResource}`;
   if (!scopes.includes(neededScope)) {
     await meter(tenantId, apiClient.id, true);
     return json({ error: "insufficient_scope", required: neededScope }, 403);
@@ -80,6 +83,7 @@ serve(async (req) => {
   try {
     let response: Response;
     switch (resource) {
+      case "client-meetings": response = await routeClientMeetings(req, ctx, url); break;
       case "projects": response = await routeProjects(req.method, ctx, id, req, url); break;
       case "project-updates": response = await routeProjectUpdates(req.method, ctx, req, url); break;
       case "contacts": response = await routeContacts(req.method, ctx, id, req, url); break;
@@ -106,6 +110,24 @@ serve(async (req) => {
     return withCorrelation(json({ error: apiErr.code, correlation_id: ctx.correlationId }, apiErr.status), ctx.correlationId);
   }
 });
+
+async function routeClientMeetings(req: Request, ctx: RequestContext, url: URL) {
+  requireActor(ctx);
+  const body = req.method === 'GET' ? {} : await req.json();
+  const clientId = requiredUuid(req.method === 'GET' ? url.searchParams.get('client_id') : body.client_id, 'client_id');
+  const operation = req.method === 'GET' ? 'read' : String(body.operation);
+  if (!['read','create','save','action','comment'].includes(operation)) throw new ApiError(400,'meeting_draft_only');
+  const payload = body.payload && typeof body.payload === 'object' && !Array.isArray(body.payload) ? body.payload : {};
+  if (operation === 'create') {
+    payload.id = await idempotentUuid(req, ctx.apiClient.id, 'client-meetings');
+    const { data: existing } = await admin.from('client_meetings').select('id').eq('id',payload.id).eq('tenant_id',ctx.tenantId).eq('client_id',clientId).maybeSingle();
+    if (existing) return json({data:existing});
+  }
+  const { data, error } = await admin.rpc('agent_client_meeting', {p_tenant:ctx.tenantId,p_actor:ctx.actorUserId,p_client:clientId,p_operation:operation,p_payload:payload});
+  if (error) throw new ApiError(409,'meeting_command_rejected',error.message);
+  if(operation!=='read') await auditWrite(ctx,'client_meeting',data?.id||clientId,operation,null);
+  return json({data});
+}
 
 function enforceRateLimit(client: ApiClient): Response | null {
   const limit = client.rate_limit ?? 600;
