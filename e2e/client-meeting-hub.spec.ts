@@ -16,7 +16,7 @@ async function mount(page: Page, staff: boolean) {
         if (url.includes('client_meeting_manage_bundle'))
             data = { sources: [{ id: 'source1', meeting_id: 'm1', original_name: 'site-walk.txt', mime_type: 'text/plain', byte_size: 512, manifest: [{ name: 'site-walk.txt', characters: 184 }], created_at: '2026-09-09T11:00:00Z' }], emails: [{ id: 'email1', report_id: 'pub1', subject: 'R4 weekly coordination', recipients: ['owner@example.com'], sent_at: '2026-09-09T13:00:00Z', status: 'sent' }], archivedMeetings: [], archivedSources: [], dismissedEmails: [] };
         if (url.includes('client_meeting_bundle'))
-            data = { client: { id: client, name: 'R4 Capital' }, canEdit: staff, canAddInternalUpdates: staff, viewerKind: staff ? 'administrator' : 'client', projects: [{ id: project, name: 'Sewer extension' }], members: [{ id: user, name: 'R4 representative' }], meetings: staff ? [{ ...source, revision }] : [], publications: [{ id: 'pub1', meeting_id: 'm1', revision: 1, published_at: '2026-09-09T12:00:00Z', snapshot }], actions: [{ id: 'a1', meeting_id: 'm1', project_id: project, title: 'Confirm site access', assignee_id: user, assignee_name: 'R4 representative', ball_in_court: 'R4', due_date: null, source_quote: 'Please confirm access.', source_locator: '12:40', revision: 1, published: true, state: 'open', step: 1 }], comments: [], delivery: null, deliveries: [] };
+            data = { client: { id: client, name: 'R4 Capital' }, canEdit: staff, canAddInternalUpdates: staff, viewerKind: staff ? 'administrator' : 'client', projects: [{ id: project, name: 'Sewer extension' }], members: [{ id: user, name: 'R4 representative' }], meetings: staff ? [{ ...source, revision }] : [], publications: [{ id: 'pub1', meeting_id: 'm1', revision: 1, published_at: '2026-09-09T12:00:00Z', snapshot }], actions: [{ id: 'a1', meeting_id: 'm1', project_id: project, title: 'Confirm site access', assignee_id: user, assignee_name: 'R4 representative', ball_in_court: 'R4', due_date: null, source_quote: 'Please confirm access.', source_locator: '12:40', revision: 1, published: true, state: 'open', step: 1 }], comments: staff ? [{ id: 'c1', action_id: 'a1', author_name: 'APAS', body: 'Internal negotiation note', audience: 'internal', created_at: '2026-09-09T14:00:00Z' }, { id: 'c2', action_id: 'a1', author_name: 'APAS', body: 'Access coordination is underway.', audience: 'client', created_at: '2026-09-09T15:00:00Z' }] : [{ id: 'c2', action_id: 'a1', author_name: 'APAS', body: 'Access coordination is underway.', audience: 'client', created_at: '2026-09-09T15:00:00Z' }], delivery: null, deliveries: [] };
         if (url.includes('client_meeting_command')) {
             const body = route.request().postDataJSON();
             commands.push(body as CapturedCall);
@@ -104,7 +104,7 @@ test('client updates are interactive and internal editor stays hidden on mobile'
     await page.setViewportSize({ width: 390, height: 900 });
     const calls = await mount(page, false);
     await expect(page.getByRole('button', { name: 'Edit entire report', exact: true })).toHaveCount(0);
-    await page.getByText('0 updates · Discuss & view evidence', { exact: true }).click();
+    await page.getByText('1 updates · Discuss & view evidence', { exact: true }).click();
     await page.getByLabel('Add an update for the client').fill('Access is arranged for Friday.');
     await page.getByRole('button', { name: 'Publish client update', exact: true }).click();
     await expect.poll(() => calls.length).toBe(1);
@@ -129,6 +129,18 @@ test('staff can edit an existing action without losing its project', async ({ pa
     await page.getByRole('button', { name: 'Save action', exact: true }).click();
     await expect.poll(() => calls.length).toBe(1);
     expect(calls[0]).toMatchObject({ p_operation: 'action', p_payload: { id: 'a1', project_id: project, revision: 1, title: 'Confirm revised site access' } });
+});
+test('staff sees color-coded ownership and compiles selected client-safe actions', async ({ page }) => {
+    await mount(page, true);
+    await expect(page.getByLabel('Action owner: R4 representative')).toBeVisible();
+    await page.getByLabel('Include Confirm site access in client report').check();
+    await page.getByRole('button', { name: 'Compile update (1)', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Compile selected action update' })).toBeVisible();
+    const reportDialog = page.getByRole('dialog').filter({ hasText: 'Compile selected action update' });
+    await expect(reportDialog.getByText(/Latest update: Access coordination is underway/)).toBeVisible();
+    await expect(reportDialog.getByText('Internal negotiation note')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Request update', exact: true }).click();
+    await expect(page.getByText('Please review the selected action items and provide the requested status, decision, or supporting information in the secure client portal.')).toBeVisible();
 });
 test('MCP exposes scoped meeting tools and refuses publishing', async () => {
     const request = (method: string, params = {}) => new Request('https://projos.ai/mcp', { method: 'POST', headers: { authorization: 'Bearer test-secret', 'content-type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }) });

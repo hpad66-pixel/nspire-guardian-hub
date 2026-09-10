@@ -380,17 +380,17 @@ export default function ProjectsDashboard() {
               </div>
             )}
           </div>
-          {/* Health badge */}
-          <span className={cn(
-            'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border shrink-0',
-            hc.bg, hc.text, hc.border
-          )}>
-            <HIcon className="h-3 w-3" />
-            {hc.label}
-          </span>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <ProjectOwnerBadge project={project} prominent />
+            <span className={cn(
+              'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border',
+              hc.bg, hc.text, hc.border
+            )}>
+              <HIcon className="h-3 w-3" />
+              {hc.label}
+            </span>
+          </div>
         </div>
-
-        <ProjectOwnerBadge project={project} className="mb-1" />
 
         {isClosed ? (
           <ProjectClosedCardStamp project={project} />

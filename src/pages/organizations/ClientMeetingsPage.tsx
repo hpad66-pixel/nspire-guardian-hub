@@ -3,7 +3,7 @@ import { Link, useLocation, useParams } from 'react-router-dom';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArchiveRestore, CalendarDays, CheckCheck, Download, FileText, Mail, Plus, Save, Send, Sparkles, Trash2, Upload, Users } from 'lucide-react';
+import { ArchiveRestore, CalendarDays, CheckCheck, ClipboardList, Download, FileText, Mail, Plus, Save, Send, Sparkles, Trash2, Upload, UserRound, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,6 +18,7 @@ import { resolveDistribution } from '@/lib/distribution';
 import { htmlReportPdfBase64 } from '@/lib/reports/htmlReportPdf';
 import { meetingReportHtml, type MeetingSnapshot } from '../../../supabase/functions/_shared/clientMeetingReport';
 import { parseUpload } from '@/lib/docs/parseUpload';
+import { identityColor } from '@/lib/people/identityColor';
 import './client-meetings.css';
 const reportSchema = z.object({ title: z.string().trim().min(1, 'Add a title'), meeting_date: z.string().min(1), attendees: z.string(), transcript: z.string(), project_ids: z.array(z.string()).min(1, 'Choose at least one project'), sections: z.array(z.object({ heading: z.string().trim().min(1), text: z.string(), basis: z.enum(['verified', 'interpretation', 'needs_review']) })) });
 type ReportForm = Pick<ClientMeeting, 'title' | 'meeting_date' | 'attendees' | 'transcript' | 'project_ids' | 'sections'>;
@@ -33,6 +34,8 @@ export default function ClientMeetingsPage() {
     const [tab, setTab] = useState<'actions' | 'report' | 'edit'>('actions');
     const [email, setEmail] = useState(false);
     const [weekly, setWeekly] = useState(false);
+    const [selectedReportActions, setSelectedReportActions] = useState<Set<string>>(new Set());
+    const [actionReportOpen, setActionReportOpen] = useState(false);
     const b = api.data;
     const edit = !!b?.canEdit && !portal;
     const records = useMemo(() => {
@@ -100,7 +103,7 @@ export default function ClientMeetingsPage() {
             string
         ][]).map(([key, label]) => <button key={key} aria-pressed={tab === key} onClick={() => { if (tab === 'edit' && key !== 'edit' && !window.confirm('Leave the editor? Unsaved changes will be lost.'))
             return; setTab(key); }}>{label}</button>)}</div>
-    {tab === 'actions' && <><div className="flex flex-wrap justify-between gap-3 my-4"><p className="text-sm text-muted-foreground">Live actions across all meetings. Expand any item to provide an update.</p>{edit && meeting && <Button variant="outline" onClick={() => setPendingAction({ meeting_id: meeting.id })}><Plus className="mr-2 h-4 w-4"/>Add action</Button>}</div>{visibleActions.length === 0 ? <p className="py-6 text-muted-foreground">No actions have been recorded yet.</p> : [...visibleActions].sort((a, c) => Number(['closed', 'approved'].includes(c.state)) - Number(['closed', 'approved'].includes(a.state))).map(a => <ActionRow key={a.id} action={a} bundle={b} edit={edit} command={api.command} addUpdate={api.addUpdate} submitCompletion={api.submitCompletion} onEdit={() => setPendingAction(a)}/>)}</>}
+    {tab === 'actions' && <><div className="meeting-hub__action-toolbar my-4"><div><p className="text-sm font-medium">Live actions across all meetings</p><p className="text-sm text-muted-foreground">Expand an item to provide an update. Released items can be selected for a client report.</p></div>{edit && <div className="flex flex-wrap gap-2"><Button variant="ghost" onClick={() => { const released = visibleActions.filter(a => a.published).map(a => a.id); setSelectedReportActions(selectedReportActions.size === released.length ? new Set() : new Set(released)); }}>{selectedReportActions.size === visibleActions.filter(a => a.published).length && selectedReportActions.size ? 'Clear report selection' : 'Select client-visible'}</Button><Button variant="outline" disabled={!selectedReportActions.size} onClick={() => setActionReportOpen(true)}><ClipboardList className="mr-2 h-4 w-4"/>Compile update {selectedReportActions.size ? `(${selectedReportActions.size})` : ''}</Button>{meeting && <Button variant="outline" onClick={() => setPendingAction({ meeting_id: meeting.id })}><Plus className="mr-2 h-4 w-4"/>Add action</Button>}</div>}</div>{visibleActions.length === 0 ? <p className="py-6 text-muted-foreground">No actions have been recorded yet.</p> : [...visibleActions].sort((a, c) => Number(['closed', 'approved'].includes(c.state)) - Number(['closed', 'approved'].includes(a.state))).map(a => <ActionRow key={a.id} action={a} bundle={b} edit={edit} command={api.command} addUpdate={api.addUpdate} submitCompletion={api.submitCompletion} onEdit={() => setPendingAction(a)} reportSelected={selectedReportActions.has(a.id)} onReportSelect={(checked) => setSelectedReportActions(current => { const next = new Set(current); if (checked) next.add(a.id); else next.delete(a.id); return next; })}/>)}</>}
     {tab === 'report' && (publication ? <><div className="flex flex-wrap gap-2 my-4"><Button variant="outline" disabled={busyPdf} onClick={() => void download()}><Download className="mr-2 h-4 w-4"/>{busyPdf ? 'Preparing PDF...' : 'Download PDF'}</Button>{edit && <Button onClick={() => setEmail(true)}><Mail className="mr-2 h-4 w-4"/>Email this report</Button>}<span className="self-center text-sm text-muted-foreground">Released {dateLabel(publication.published_at)} · Snapshot, not live progress</span></div><PublishedReport snapshot={publication.snapshot}/></> : <p className="py-8 text-muted-foreground">No client report released yet. Use Edit entire report to prepare and publish it.</p>)}
     {tab === 'edit' && edit && meeting && <ReportEditor key={meeting.id} meeting={meeting} bundle={b} api={api} onAction={setPendingAction} onReleased={() => setTab('report')}/>}
     </>}
@@ -108,6 +111,7 @@ export default function ClientMeetingsPage() {
   </div>}
   {edit && pendingAction && <ActionEditor key={pendingAction.id || 'new'} action={pendingAction} bundle={b} command={api.command} close={() => setPendingAction(null)}/>}
   {edit && weekly && <WeeklyDelivery bundle={b} command={api.command} close={() => setWeekly(false)}/>}
+  {edit && actionReportOpen && <ActionUpdateReportDialog bundle={b} actions={visibleActions.filter(a => selectedReportActions.has(a.id) && a.published)} portalUrl={portalUrl} close={() => setActionReportOpen(false)}/>}
   {edit && publication && <BrandedReportEmailDialog open={email} onOpenChange={setEmail} reportTitle={publication.snapshot.title} projectName={b.client.name} filename={`Meeting-${publication.snapshot.meeting_date}.pdf`} defaultSubject={`${b.client.name}: ${publication.snapshot.title} | ${publication.snapshot.meeting_date}`} sourceModule="client-meetings" reportType="client_meeting" clientMeetingPublicationId={publication.id} prepareDelivery={async (message) => {
                 // Re-read the released record before rendering; never email unsaved editor text.
                 const refreshed = await api.refetch();
@@ -210,7 +214,7 @@ function ReportEditor({ meeting, bundle, api, onAction, onReleased }: {
   </form>
  </div>;
 }
-function ActionRow({ action: a, bundle, edit, command, addUpdate, submitCompletion, onEdit }: {
+function ActionRow({ action: a, bundle, edit, command, addUpdate, submitCompletion, onEdit, reportSelected, onReportSelect }: {
     action: MeetingAction;
     bundle: ClientMeetingBundle;
     edit: boolean;
@@ -218,13 +222,71 @@ function ActionRow({ action: a, bundle, edit, command, addUpdate, submitCompleti
     addUpdate: AddUpdate;
     submitCompletion: SubmitCompletion;
     onEdit: () => void;
+    reportSelected: boolean;
+    onReportSelect: (checked: boolean) => void;
 }) {
     const { user } = useAuth();
     const done = ['closed', 'approved'].includes(a.state);
     const [body, setBody] = useState('');
     const [audience, setAudience] = useState<'internal' | 'client'>(bundle.canAddInternalUpdates ? 'internal' : 'client');
     const comments = bundle.comments.filter(c => c.action_id === a.id);
-    return <article className={`meeting-hub__action ${done ? 'is-complete' : ''}`}><div className="flex gap-3 items-start"><input className="mt-1 h-5 w-5 shrink-0" type="checkbox" aria-label={done ? `Reopen ${a.title}` : `${edit ? 'Confirm' : 'Submit'} completion: ${a.title}`} checked={done || (!edit && a.step === 2)} disabled={command.isPending || submitCompletion.isPending || (!edit && (a.assignee_id !== user?.id || done || a.step === 2))} onChange={() => void (edit ? command.mutateAsync({ operation: done ? 'reopen' : 'confirm', payload: { id: a.id } }) : submitCompletion.mutateAsync(a.id))}/><div className="min-w-0 flex-1"><div className="flex flex-wrap gap-2 items-center"><span className="meeting-hub__eyebrow">{bundle.projects.find(p => p.id === a.project_id)?.name || 'Project'}</span><Badge variant="secondary">{done ? 'Confirmed complete' : a.step === 2 ? 'Completion review' : 'Open'}</Badge>{!a.published && edit && <Badge variant="outline">Not released</Badge>}</div><h3 className="mt-2 font-semibold text-lg">{a.title}</h3><p className="text-sm text-muted-foreground mt-1">Owner: {a.assignee_name || 'Unassigned'} · Ball in court: {a.step === 2 ? 'APAS reviewer' : a.ball_in_court || 'To confirm'} · Due: {a.due_date || 'Not agreed'}</p>{edit && <Button variant="link" className="px-0" onClick={onEdit}>Edit action</Button>}<details className="mt-3"><summary className="cursor-pointer text-sm">{comments.length} updates · Discuss &amp; view evidence</summary>{comments.map(c => <div key={c.id} className="border-l-2 pl-3 my-4"><p className="text-xs text-muted-foreground">{c.author_name} · {new Date(c.created_at).toLocaleString()} {edit && <Badge variant="outline" className="ml-2">{c.audience === 'internal' ? 'Team only' : 'Client visible'}</Badge>}</p><p className="whitespace-pre-wrap mt-1">{c.body}</p></div>)}{edit && a.source_quote && <blockquote className="text-sm bg-muted p-3 my-3">{a.source_quote}<br />{a.source_locator}</blockquote>}<form className="mt-4 space-y-3" onSubmit={async e => { e.preventDefault(); if (!body.trim()) return; await addUpdate.mutateAsync({ actionId: a.id, body, audience }); setBody(''); }}><div className="flex flex-wrap gap-2">{bundle.canAddInternalUpdates && <Button type="button" size="sm" variant={audience === 'internal' ? 'default' : 'outline'} onClick={() => setAudience('internal')}>Team instruction</Button>}<Button type="button" size="sm" variant={audience === 'client' ? 'default' : 'outline'} onClick={() => setAudience('client')} disabled={!a.published}>Client-visible update</Button></div><label className="block">{audience === 'internal' ? 'Add instructions for the team' : 'Add an update for the client'}<VoiceDictationTextareaWithAI value={body} onValueChange={setBody} context="notes" placeholder={audience === 'internal' ? 'Dictate context, constraints, evidence needed, and the expected result.' : 'Write a concise progress update the client can understand.'}/></label><Button type="submit" disabled={addUpdate.isPending || !body.trim()}><Send className="mr-2 h-4 w-4"/>{audience === 'internal' ? 'Post team instruction' : 'Publish client update'}</Button></form></details></div></div></article>;
+    const owner = a.assignee_name || 'Unassigned';
+    const ownerColor = identityColor(owner);
+    return <article className={`meeting-hub__action ${done ? 'is-complete' : ''}`}><div className="flex gap-3 items-start"><input className="mt-1 h-5 w-5 shrink-0" type="checkbox" aria-label={done ? `Reopen ${a.title}` : `${edit ? 'Confirm' : 'Submit'} completion: ${a.title}`} checked={done || (!edit && a.step === 2)} disabled={command.isPending || submitCompletion.isPending || (!edit && (a.assignee_id !== user?.id || done || a.step === 2))} onChange={() => void (edit ? command.mutateAsync({ operation: done ? 'reopen' : 'confirm', payload: { id: a.id } }) : submitCompletion.mutateAsync(a.id))}/><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-3"><div className="flex flex-wrap gap-2 items-center"><span className="meeting-hub__eyebrow">{bundle.projects.find(p => p.id === a.project_id)?.name || 'Project'}</span><Badge variant="secondary">{done ? 'Confirmed complete' : a.step === 2 ? 'Completion review' : 'Open'}</Badge>{!a.published && edit && <Badge variant="outline">Not released</Badge>}</div><div className="flex flex-wrap items-center justify-end gap-2">{edit && a.published && <label className="meeting-hub__report-select"><input type="checkbox" aria-label={`Include ${a.title} in client report`} checked={reportSelected} onChange={event => onReportSelect(event.target.checked)}/><span>Include in report</span></label>}<span className="meeting-hub__owner-chip" aria-label={`Action owner: ${owner}`} style={{ color: ownerColor.accent, borderColor: ownerColor.border, backgroundColor: ownerColor.soft, boxShadow: `0 4px 16px ${ownerColor.glow}` }}><UserRound className="h-4 w-4"/><span><small>Owner</small><strong>{owner}</strong></span></span></div></div><h3 className="mt-2 font-semibold text-lg">{a.title}</h3><p className="text-sm text-muted-foreground mt-1">Ball in court: {a.step === 2 ? 'APAS reviewer' : a.ball_in_court || 'To confirm'} · Due: {a.due_date || 'Not agreed'}</p>{edit && <Button variant="link" className="px-0" onClick={onEdit}>Edit action</Button>}<details className="mt-3"><summary className="cursor-pointer text-sm">{comments.length} updates · Discuss &amp; view evidence</summary>{comments.map(c => <div key={c.id} className="border-l-2 pl-3 my-4"><div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">{c.author_name} · {new Date(c.created_at).toLocaleString()} {edit && <Badge variant="outline" className="ml-2">{c.audience === 'internal' ? 'Team only' : 'Client visible'}</Badge>}</div><p className="whitespace-pre-wrap mt-1">{c.body}</p></div>)}{edit && a.source_quote && <blockquote className="text-sm bg-muted p-3 my-3">{a.source_quote}<br />{a.source_locator}</blockquote>}<form className="mt-4 space-y-3" onSubmit={async e => { e.preventDefault(); if (!body.trim()) return; await addUpdate.mutateAsync({ actionId: a.id, body, audience }); setBody(''); }}><div className="flex flex-wrap gap-2">{bundle.canAddInternalUpdates && <Button type="button" size="sm" variant={audience === 'internal' ? 'default' : 'outline'} onClick={() => setAudience('internal')}>Team instruction</Button>}<Button type="button" size="sm" variant={audience === 'client' ? 'default' : 'outline'} onClick={() => setAudience('client')} disabled={!a.published}>Client-visible update</Button></div><label className="block">{audience === 'internal' ? 'Add instructions for the team' : 'Add an update for the client'}<VoiceDictationTextareaWithAI value={body} onValueChange={setBody} context="notes" placeholder={audience === 'internal' ? 'Dictate context, constraints, evidence needed, and the expected result.' : 'Write a concise progress update the client can understand.'}/></label><Button type="submit" disabled={addUpdate.isPending || !body.trim()}><Send className="mr-2 h-4 w-4"/>{audience === 'internal' ? 'Post team instruction' : 'Publish client update'}</Button></form></details></div></div></article>;
+}
+
+function ActionUpdateReportDialog({ bundle, actions, portalUrl, close }: {
+    bundle: ClientMeetingBundle;
+    actions: MeetingAction[];
+    portalUrl: string;
+    close: () => void;
+}) {
+    const [purpose, setPurpose] = useState<'progress' | 'request'>('progress');
+    const [title, setTitle] = useState(`${bundle.client.name} action update`);
+    const [message, setMessage] = useState('');
+    const [emailOpen, setEmailOpen] = useState(false);
+    const today = new Date().toISOString().slice(0, 10);
+    const projectGroups = bundle.projects.filter(project => actions.some(action => action.project_id === project.id));
+    const snapshot: MeetingSnapshot = {
+        title,
+        meeting_date: today,
+        client_name: bundle.client.name,
+        attendees: 'Prepared by APAS Consulting',
+        project_ids: projectGroups.map(project => project.id),
+        sections: [
+            {
+                heading: purpose === 'request' ? 'Update requested' : 'Portfolio action update',
+                text: message.trim() || (purpose === 'request'
+                    ? 'Please review the selected action items and provide the requested status, decision, or supporting information in the secure client portal.'
+                    : 'This report summarizes the selected client-visible action items and their current recorded status.'),
+                basis: 'verified',
+            },
+            ...projectGroups.map(project => {
+                const projectActions = actions.filter(action => action.project_id === project.id);
+                const text = projectActions.map(action => {
+                    const update = bundle.comments.filter(comment => comment.action_id === action.id && comment.audience === 'client').at(-1);
+                    const status = ['closed', 'approved'].includes(action.state) ? 'Confirmed complete' : action.step === 2 ? 'Completion review' : 'Open';
+                    return `${action.title}\nOwner: ${action.assignee_name || 'Unassigned'}\nStatus: ${status}${action.due_date ? `\nDue: ${action.due_date}` : ''}${update ? `\nLatest update: ${update.body}` : ''}`;
+                }).join('\n\n');
+                return { heading: `Project: ${project.name}`, text, basis: 'verified' as const };
+            }),
+        ],
+        actions: actions.map(action => ({
+            id: action.id,
+            title: action.title,
+            project: bundle.projects.find(project => project.id === action.project_id)?.name || 'Project',
+            assignee: action.assignee_name,
+            ball_in_court: action.step === 2 ? 'APAS reviewer' : action.ball_in_court,
+            due_date: action.due_date,
+            state: action.state,
+            step: action.step,
+        })),
+    };
+    return <><Dialog open onOpenChange={value => !value && close()}><DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto"><DialogHeader><DialogTitle>Compile selected action update</DialogTitle></DialogHeader><div className="grid gap-5 lg:grid-cols-[300px_minmax(0,1fr)]"><div className="space-y-4"><div className="grid grid-cols-2 gap-2"><Button type="button" variant={purpose === 'progress' ? 'default' : 'outline'} onClick={() => setPurpose('progress')}>Send update</Button><Button type="button" variant={purpose === 'request' ? 'default' : 'outline'} onClick={() => setPurpose('request')}>Request update</Button></div><label className="block">Report title<Input value={title} onChange={event => setTitle(event.target.value)}/></label><label className="block">Opening note<VoiceDictationTextareaWithAI value={message} onValueChange={setMessage} context="notes" placeholder="Dictate a concise message for the client. Only approved, client-visible content will be included." className="mt-1 min-h-36"/></label><div className="rounded-xl border bg-muted/30 p-3 text-sm"><strong>{actions.length} selected action{actions.length === 1 ? '' : 's'}</strong><p className="mt-1 text-muted-foreground">Grouped across {projectGroups.length} project{projectGroups.length === 1 ? '' : 's'}. Team-only comments and source evidence are excluded.</p></div><Button className="w-full" disabled={!title.trim() || !actions.length} onClick={() => setEmailOpen(true)}><Mail className="mr-2 h-4 w-4"/>Email HTML + PDF</Button></div><div className="min-w-0"><PublishedReport snapshot={snapshot}/></div></div></DialogContent></Dialog><BrandedReportEmailDialog open={emailOpen} onOpenChange={setEmailOpen} reportTitle={snapshot.title} projectName={bundle.client.name} filename={`Action-Update-${today}.pdf`} defaultSubject={`${bundle.client.name}: ${purpose === 'request' ? 'action update requested' : 'action update'} | ${today}`} defaultMessage={message} sourceModule="client-meetings" reportType="client_action_update" prepareDelivery={async deliveryMessage => {
+        const bodyHtml = meetingReportHtml(snapshot, portalUrl, deliveryMessage);
+        const pdf = await htmlReportPdfBase64(meetingReportHtml(snapshot, portalUrl), { pageAware: true });
+        return { bodyHtml, bodyText: `${deliveryMessage}\n${snapshot.title}\n${portalUrl}`, pdfBase64: pdf.base64, pdfSize: pdf.size };
+    }}/></>;
 }
 const actionSchema = z.object({ title: z.string().trim().min(1), project_id: z.string().uuid(), assignee_id: z.string(), assignee_name: z.string(), ball_in_court: z.string(), due_date: z.string(), source_quote: z.string(), source_locator: z.string() });
 function ActionEditor({ action: a, bundle, command, close }: {
