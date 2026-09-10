@@ -142,6 +142,14 @@ verify_jwt = false
 [functions.api-v1]
 verify_jwt = false
 
+# Verify the signed-in user inside the function, including current signing keys.
+[functions.client-meeting-ai]
+verify_jwt = false
+
+# Scheduled delivery also checks the exact service credential inside the function.
+[functions.client-meeting-delivery]
+verify_jwt = true
+
 # API client minting validates the caller with auth.getUser() inside the
 # function. Disable the legacy gateway JWT check so asymmetric user JWTs from
 # the current Supabase Auth stack reach that explicit authorization path.

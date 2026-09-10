@@ -98,6 +98,11 @@ async function dispatch(message, request, env) {
 }
 
 const TOOL_HANDLERS = {
+  proj_os_get_client_meetings: (a,c) => api(c,"GET","/api-v1/client-meetings",{client_id:requireUuid(a.client_id,"client_id")}),
+  proj_os_edit_client_meeting: (a,c) => {
+    if(!["create","save","action","comment"].includes(a.operation)) throw rpcError(-32602,"Meeting tools may edit drafts only.");
+    return api(c,"POST","/api-v1/client-meetings",null,{client_id:requireUuid(a.client_id,"client_id"),operation:a.operation,payload:a.payload});
+  },
   proj_os_health: async (_a, c) => {
     const payload = await api(c, "GET", "/api-v1/projects", { limit: 1 });
     return {
@@ -359,6 +364,8 @@ const writeAnnotations = { readOnlyHint: false, destructiveHint: false, idempote
 const readAnnotations = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false };
 
 const TOOLS = [
+  { name: "proj_os_get_client_meetings", title: "Read client meeting journal", description: "Read dated client meeting drafts, released snapshots, live actions and comments. Resolve client_id from the live project registry first.", inputSchema: object({client_id:uuid("Exact client ID")},["client_id"]), annotations:readAnnotations },
+  { name: "proj_os_edit_client_meeting", title: "Edit client meeting draft", description: "After confirmation, create or edit a meeting draft, action, or comment. Never publishes or emails. Save payload requires id, revision, title, meeting_date, attendees, transcript, project_ids and sections [{heading,text,basis:needs_review|verified|interpretation}]. Action requires meeting_id, project_id, title; optional assignee_id, assignee_name, ball_in_court, due_date, source_quote, source_locator. Editing an action requires id and revision. Comment requires id (action ID) and body. Reread on revision conflict.", inputSchema:object({client_id:uuid("Exact client ID"),operation:{type:"string",enum:["create","save","action","comment"]},payload:{type:"object",description:"Operation-specific fields described above"}},["client_id","operation","payload"]),annotations:{...writeAnnotations,idempotentHint:false} },
   { name: "proj_os_health", title: "Check Proj OS connectivity", description: "Verify the MCP-to-API path and report how many projects are automatically connected in the live workspace registry.", inputSchema: object({}), annotations: readAnnotations },
   { name: "proj_os_list_projects", title: "List all Proj OS projects", description: "List every authorized current project from the live workspace registry. Newly created projects appear automatically; no MCP mapping is required. Follow meta.has_more with the next offset when needed.", inputSchema: object({ client_id: uuid("Optional client ID"), property_id: uuid("Optional property ID"), status: { type: "string", enum: ["planning", "active", "on_hold", "completed", "closed"] }, project_type: string("Optional project type"), limit: { type: "integer", minimum: 1, maximum: 200 }, offset: { type: "integer", minimum: 0 } }), annotations: readAnnotations },
   { name: "proj_os_search_projects", title: "Search Proj OS projects", description: "Find authorized Proj OS projects by name, description, scope, program key, or project key.", inputSchema: object({ q: string("Search text"), limit: { type: "integer", minimum: 1, maximum: 200 } }, ["q"]), annotations: readAnnotations },
