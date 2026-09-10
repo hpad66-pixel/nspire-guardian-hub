@@ -30,6 +30,8 @@ async function mount(page: Page, staff: boolean) {
             commands.push({ p_operation: 'upload_source' });
             data = { source: { id: 'source2' }, manifest: [{ name: 'messages.txt', characters: 56 }], ignored: [] };
         }
+        if (url.includes('/functions/v1/client-meeting-ai'))
+            data = { title: 'R4 portfolio coordination report', sections: [{ heading: 'Executive summary', text: 'Site access and water records require coordination.', basis: 'needs_review' }, { heading: 'Project: Sewer extension', text: 'Confirm the next site access date.', basis: 'needs_review' }], actions: [{ title: 'Confirm site access', project_id: project, assignee_name: 'R4 representative', ball_in_court: 'R4', source_quote: 'Please confirm access.', source_locator: 'site-walk.txt, 12:40' }] };
         if (url.includes('/auth/v1/user'))
             data = { id: user, email: 'owner@example.com' };
         await route.fulfill({ json: data });
@@ -66,6 +68,14 @@ test('staff can upload transcript packages and remove journal records safely', a
     page.once('dialog', dialog => void dialog.accept());
     await page.getByLabel('Delete meeting Portfolio coordination').click();
     await expect.poll(() => calls.some(call => call.p_operation === 'archive_meeting' && call.p_id === 'm1')).toBe(true);
+});
+test('staff builds an editable project-by-project draft from transcript sources', async ({ page }) => {
+    await mount(page, true);
+    await page.getByRole('button', { name: 'Edit entire report', exact: true }).click();
+    await page.getByRole('button', { name: 'Extract and build report', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'AI draft preview' })).toBeVisible();
+    await expect(page.getByText('Project: Sewer extension', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Review and add action', exact: true })).toBeVisible();
 });
 test('client updates are interactive and internal editor stays hidden on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
