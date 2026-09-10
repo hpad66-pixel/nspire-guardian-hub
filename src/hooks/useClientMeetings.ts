@@ -69,6 +69,8 @@ export interface ClientMeetingBundle {
         name: string;
     };
     canEdit: boolean;
+    canAddInternalUpdates: boolean;
+    viewerKind: 'administrator' | 'assigned_team' | 'client';
     projects: {
         id: string;
         name: string;
@@ -85,6 +87,7 @@ export interface ClientMeetingBundle {
         action_id: string;
         author_name: string;
         body: string;
+        audience: 'internal' | 'client';
         created_at: string;
     }[];
     delivery: MeetingDelivery | null;
@@ -124,6 +127,26 @@ export function useClientMeetings(clientId?: string) {
             id?: string;
             revision?: number;
         }>('client_meeting_command', { p_client_id: clientId, p_operation: operation, p_payload: payload ?? {} }), onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
+    const addUpdate = useMutation({ mutationFn: ({ actionId, body, audience }: {
+            actionId: string;
+            body: string;
+            audience: 'internal' | 'client';
+        }) => meetingRpc<{ id: string }>('client_meeting_add_update', { p_client_id: clientId, p_action_id: actionId, p_body: body, p_audience: audience }), onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
+    const bulkAssign = useMutation({ mutationFn: ({ meetingId, actions, assigneeId, dueDate, instruction }: {
+            meetingId: string;
+            actions: Partial<MeetingAction>[];
+            assigneeId?: string;
+            dueDate?: string;
+            instruction?: string;
+        }) => meetingRpc<{ ids: string[]; count: number }>('client_meeting_bulk_actions', {
+            p_client_id: clientId,
+            p_meeting_id: meetingId,
+            p_actions: actions,
+            p_assignee_id: assigneeId || null,
+            p_due_date: dueDate || null,
+            p_instruction: instruction || '',
+        }), onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
+    const submitCompletion = useMutation({ mutationFn: (actionId: string) => meetingRpc<{ id: string }>('client_meeting_submit_completion', { p_client_id: clientId, p_action_id: actionId }), onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
     const generate = useMutation({ mutationFn: async (input: {
             meetingId: string;
             transcript: string;
@@ -168,5 +191,5 @@ export function useClientMeetings(clientId?: string) {
                 throw new Error(data.error);
             return data;
         }, onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
-    return { ...list, command, generate, manage, uploadSource };
+    return { ...list, command, addUpdate, bulkAssign, submitCompletion, generate, manage, uploadSource };
 }

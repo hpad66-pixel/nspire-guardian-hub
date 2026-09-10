@@ -16,11 +16,21 @@ async function mount(page: Page, staff: boolean) {
         if (url.includes('client_meeting_manage_bundle'))
             data = { sources: [{ id: 'source1', meeting_id: 'm1', original_name: 'site-walk.txt', mime_type: 'text/plain', byte_size: 512, manifest: [{ name: 'site-walk.txt', characters: 184 }], created_at: '2026-09-09T11:00:00Z' }], emails: [{ id: 'email1', report_id: 'pub1', subject: 'R4 weekly coordination', recipients: ['owner@example.com'], sent_at: '2026-09-09T13:00:00Z', status: 'sent' }], archivedMeetings: [], archivedSources: [], dismissedEmails: [] };
         if (url.includes('client_meeting_bundle'))
-            data = { client: { id: client, name: 'R4 Capital' }, canEdit: staff, projects: [{ id: project, name: 'Sewer extension' }], members: [{ id: user, name: 'R4 representative' }], meetings: staff ? [{ ...source, revision }] : [], publications: [{ id: 'pub1', meeting_id: 'm1', revision: 1, published_at: '2026-09-09T12:00:00Z', snapshot }], actions: [{ id: 'a1', meeting_id: 'm1', project_id: project, title: 'Confirm site access', assignee_id: user, assignee_name: 'R4 representative', ball_in_court: 'R4', due_date: null, source_quote: 'Please confirm access.', source_locator: '12:40', revision: 1, published: true, state: 'open', step: 1 }], comments: [], delivery: null, deliveries: [] };
+            data = { client: { id: client, name: 'R4 Capital' }, canEdit: staff, canAddInternalUpdates: staff, viewerKind: staff ? 'administrator' : 'client', projects: [{ id: project, name: 'Sewer extension' }], members: [{ id: user, name: 'R4 representative' }], meetings: staff ? [{ ...source, revision }] : [], publications: [{ id: 'pub1', meeting_id: 'm1', revision: 1, published_at: '2026-09-09T12:00:00Z', snapshot }], actions: [{ id: 'a1', meeting_id: 'm1', project_id: project, title: 'Confirm site access', assignee_id: user, assignee_name: 'R4 representative', ball_in_court: 'R4', due_date: null, source_quote: 'Please confirm access.', source_locator: '12:40', revision: 1, published: true, state: 'open', step: 1 }], comments: [], delivery: null, deliveries: [] };
         if (url.includes('client_meeting_command')) {
             const body = route.request().postDataJSON();
             commands.push(body as CapturedCall);
             data = { id: 'm1', revision: ++revision };
+        }
+        if (url.includes('client_meeting_add_update')) {
+            const body = route.request().postDataJSON();
+            commands.push({ p_operation: 'add_update', p_payload: body });
+            data = { id: 'a1' };
+        }
+        if (url.includes('client_meeting_bulk_actions')) {
+            const body = route.request().postDataJSON();
+            commands.push({ p_operation: 'bulk_actions', p_payload: body });
+            data = { ids: ['a2'], count: 1 };
         }
         if (url.includes('client_meeting_manage_command')) {
             commands.push(route.request().postDataJSON() as CapturedCall);
@@ -76,16 +86,29 @@ test('staff builds an editable project-by-project draft from transcript sources'
     await expect(page.getByRole('heading', { name: 'AI draft preview' })).toBeVisible();
     await expect(page.getByText('Project: Sewer extension', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Review and add action', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add an action the transcript missed', exact: true })).toBeVisible();
+});
+test('staff can batch assign extracted actions with dictated instructions', async ({ page }) => {
+    const calls = await mount(page, true);
+    await page.getByRole('button', { name: 'Edit entire report', exact: true }).click();
+    await page.getByRole('button', { name: 'Extract and build report', exact: true }).click();
+    await page.getByLabel('Select Confirm site access').check();
+    await page.getByLabel('Assign to').selectOption(user);
+    await page.getByLabel('Instructions for the team').fill('Confirm access and attach written evidence.');
+    await page.getByRole('button', { name: 'Add and assign 1 selected', exact: true }).click();
+    await expect.poll(() => calls.some(call => call.p_operation === 'bulk_actions')).toBe(true);
+    const call = calls.find(item => item.p_operation === 'bulk_actions');
+    expect(call?.p_payload).toMatchObject({ p_assignee_id: user, p_instruction: 'Confirm access and attach written evidence.' });
 });
 test('client updates are interactive and internal editor stays hidden on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
     const calls = await mount(page, false);
     await expect(page.getByRole('button', { name: 'Edit entire report', exact: true })).toHaveCount(0);
     await page.getByText('0 updates · Discuss & view evidence', { exact: true }).click();
-    await page.getByLabel('Provide an update').fill('Access is arranged for Friday.');
-    await page.getByRole('button', { name: 'Post update', exact: true }).click();
+    await page.getByLabel('Add an update for the client').fill('Access is arranged for Friday.');
+    await page.getByRole('button', { name: 'Publish client update', exact: true }).click();
     await expect.poll(() => calls.length).toBe(1);
-    expect(calls[0].p_operation).toBe('comment');
+    expect(calls[0].p_operation).toBe('add_update');
     expect(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)).toBe(false);
     await page.screenshot({ path: test.info().outputPath('meeting-client-mobile.png'), fullPage: true });
 });
