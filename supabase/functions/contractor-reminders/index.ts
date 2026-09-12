@@ -31,6 +31,7 @@ serve(async (req) => {
   const { data: requirements } = await db.from("contractor_case_requirements")
     .select("id,tenant_id,case_id,title,status,current_document_id,case:contractor_qualification_cases(organization_id,project_id),document:contractor_documents(expiration_date)")
     .in("status", ["requested","needs_correction","verified","expired"])
+    .eq('portal_requested', true)
     .limit(1000);
 
   let sent = 0, skipped = 0, failed = 0;

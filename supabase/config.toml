@@ -299,3 +299,6 @@ verify_jwt = false
 # Water Intelligence — authenticated PDF ingest upsert
 [functions.water-intel-ingest]
 verify_jwt = true
+
+[functions.contractor-ntp]
+verify_jwt = false

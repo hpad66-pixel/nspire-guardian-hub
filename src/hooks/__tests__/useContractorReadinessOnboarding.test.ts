@@ -54,6 +54,21 @@ describe('useStartContractorOnboarding', () => {
     expect(response).toEqual({ caseId: 'case-1', invitation: null, crmSync: { status: 'not_applicable' } });
   });
 
+  it('persists the selected request before issuing the invitation',async()=>{
+    __mock.invoke.mockResolvedValue({data:{ok:true,emailSent:true},error:null});
+    const {result}=renderHookWithClient(()=>useStartContractorOnboarding());
+    await act(async()=>{await result.current.mutateAsync({organizationId:'org-1',sendPortal:true,recipientEmail:'firm@example.com',requestedCodes:['general_liability'],requestCompanyProfile:false,requestPortfolio:false});});
+    expect(__mock.rpc).toHaveBeenNthCalledWith(2,'configure_contractor_request',{p_case_id:'case-1',p_codes:['general_liability'],p_company_profile:false,p_portfolio:false});
+    expect(__mock.invoke).toHaveBeenCalledWith('contractor-invite',expect.any(Object));
+  });
+
+  it('does not send an untailored portal when saving selections fails',async()=>{
+    __mock.rpc.mockResolvedValueOnce({data:'case-1',error:null}).mockResolvedValueOnce({data:null,error:{message:'Permission denied'}});
+    const {result}=renderHookWithClient(()=>useStartContractorOnboarding());
+    await act(async()=>{await expect(result.current.mutateAsync({organizationId:'org-1',sendPortal:true,recipientEmail:'firm@example.com',requestedCodes:[]})).rejects.toThrow('request settings could not be saved');});
+    expect(__mock.invoke).not.toHaveBeenCalled();
+  });
+
   it('creates a consultant checklist with insurance instructions', async () => {
     const { result } = renderHookWithClient(() => useStartContractorOnboarding());
     await act(async () => {
