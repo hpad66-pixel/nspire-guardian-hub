@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useOrganizations } from '@/hooks/useDirectory';
 import { useActiveClients } from '@/hooks/useClients';
 import { useActiveProjects } from '@/hooks/useProjects';
-import { useStartContractorOnboarding, type ContractorInvitationResult } from '@/hooks/useContractorReadiness';
+import { useStartContractorOnboarding, useOnboardingChecklist, type ContractorInvitationResult } from '@/hooks/useContractorReadiness';
+import { RequestChecklist, type RequestSelection } from './RequestChecklist';
 import { toast } from 'sonner';
 
 type EngagementType = 'contractor' | 'consultant';
@@ -53,6 +54,11 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
   const [additionalInsuredName, setAdditionalInsuredName] = useState('');
   const [insuranceInstructions, setInsuranceInstructions] = useState('');
   const [result, setResult] = useState<OnboardingResultData | null>(null);
+  const checklist = useOnboardingChecklist(open);
+  const checklistItems = useMemo(() => (checklist.data ?? []).filter(i => i.applies_to === 'both' || i.applies_to === engagementType), [checklist.data, engagementType]);
+  const [selection, setSelection] = useState<RequestSelection | null>(null);
+  useEffect(() => { setSelection(null); }, [engagementType, organizationId]);
+  const requestSelection = selection ?? { codes: checklistItems.map(i => i.requirement_code), companyProfile: true, portfolio: true };
 
   const effectiveProjectId = fixedProjectId || projectId;
   const selectedProject = projects.find((project) => project.id === effectiveProjectId);
@@ -79,7 +85,7 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
     setPhone(''); setWebsite(''); setTrades(''); setScope(fixedProjectId ? 'project' : fixedClientId ? 'client' : 'workspace');
     setClientId(fixedClientId ?? ''); setProjectId(fixedProjectId ?? ''); setRiskTier('standard');
     setSendPortal(true); setRecipientName(''); setCertificateHolderName(''); setCertificateHolderAddress('');
-    setAdditionalInsuredName(''); setInsuranceInstructions(''); setResult(null);
+    setAdditionalInsuredName(''); setInsuranceInstructions(''); setResult(null); setSelection(null);
   };
 
   const submit = async () => {
@@ -89,6 +95,7 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
       if (scope === 'client' && !clientId) throw new Error('Select a client');
       if (scope === 'project' && !(fixedProjectId || projectId)) throw new Error('Select a project');
       if (sendPortal && !email.trim()) throw new Error('Enter the email that should receive the secure portal');
+      if (!checklist.data || checklist.error) throw new Error('Wait for the requirements to load before sending the invitation.');
       const started = await startOnboarding.mutateAsync({
         organizationId: mode === 'existing' ? organizationId : undefined,
         companyName: mode === 'new' ? companyName : undefined,
@@ -102,6 +109,9 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
         certificateHolderAddress,
         additionalInsuredName,
         insuranceInstructions,
+        requestedCodes: requestSelection.codes,
+        requestCompanyProfile: requestSelection.companyProfile,
+        requestPortfolio: requestSelection.portfolio,
         sendPortal,
         recipientEmail: email,
         recipientName,
@@ -181,11 +191,7 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
           </div>
         </div>
 
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          {engagementType === 'consultant'
-            ? 'Consultant checklist: W-9, professional or business license, general liability, workers compensation or exemption, professional liability, relevant experience, and standards acknowledgement.'
-            : 'Contractor checklist: W-9, trade license, general liability, workers compensation or exemption, commercial auto, safety program, relevant experience, and standards acknowledgement.'}
-        </div>
+        {checklist.isLoading ? <p className="text-sm text-muted-foreground">Loading your requirements…</p> : checklist.error ? <p role="alert" className="text-sm text-destructive">Requirements could not load. Close and reopen to retry.</p> : <RequestChecklist items={checklistItems} value={requestSelection} onChange={setSelection} />}
 
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
           <div className="flex items-start justify-between gap-4">

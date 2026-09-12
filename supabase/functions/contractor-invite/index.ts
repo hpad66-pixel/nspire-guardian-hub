@@ -137,7 +137,7 @@ serve(async (req) => {
 
     await admin.from("contractor_case_requirements")
       .update({ status: "requested" })
-      .eq("case_id", caseId).eq("status", "missing");
+      .eq("case_id", caseId).eq('portal_requested',true).eq("status", "missing");
     await admin.from("contractor_qualification_cases")
       .update({ status: "invited", invited_at: new Date().toISOString() })
       .eq("id", caseId);

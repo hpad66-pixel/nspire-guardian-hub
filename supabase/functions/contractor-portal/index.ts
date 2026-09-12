@@ -43,15 +43,24 @@ serve(async (req) => {
     }
 
     const { data: qualification } = await db.from("contractor_qualification_cases")
-      .select("id,tenant_id,organization_id,client_id,project_id,scope_type,status,score,work_ready,contract_ready,payment_ready,submitted_at,engagement_type,certificate_holder_name,certificate_holder_address,additional_insured_name,insurance_instructions")
+      .select("id,tenant_id,organization_id,client_id,project_id,scope_type,status,score,work_ready,contract_ready,payment_ready,submitted_at,engagement_type,certificate_holder_name,certificate_holder_address,additional_insured_name,insurance_instructions,request_company_profile,request_portfolio")
       .eq("id", access.case_id).eq("tenant_id", access.tenant_id).maybeSingle();
     if (!qualification) return json({ error: "Qualification request was not found" }, 404);
 
     if (access.role === "broker" && !["view", "upload_intent", "complete_upload", "save_response", "acknowledge", "comment"].includes(action)) {
       return json({ error: "Broker links may upload insurance evidence and answer checklist questions only." }, 403);
     }
-    if (qualification.status === "under_review" && !["view", "comment"].includes(action)) {
-      return json({ error: "This package is under review. APAS will reopen an item if a correction is needed." }, 409);
+    if (["suspended", "rejected"].includes(qualification.status) && !["view", "comment"].includes(action)) {
+      return json({ error: "This qualification is paused. Contact your review team." }, 409);
+    }
+    if ((action === 'update_company' && !qualification.request_company_profile) || (action === 'add_portfolio' && !qualification.request_portfolio)) {
+      return json({error: 'This information is already handled by your review team.'}, 409);
+    }
+    if (["upload_intent","complete_upload","save_response","acknowledge","comment"].includes(action)) {
+      const {data:item}=await db.from('contractor_case_requirements').select('id,category,status,portal_requested')
+        .eq('id',String(body.requirementId ?? '')).eq('case_id',qualification.id).maybeSingle();
+      if(!item || !item.portal_requested || (access.role === 'broker' && item.category !== 'insurance')) return json({error:'Requested checklist item not found'},404);
+      if(action !== 'comment' && ['under_review','verified','not_applicable','waived'].includes(item.status)) return json({error:'This item is already under review or approved. Ask the review team to reopen it if needed.'},409);
     }
 
     const touch = () => db.from("contractor_portal_links").update({
@@ -67,7 +76,7 @@ serve(async (req) => {
         qualification.client_id ? db.from("clients").select("id,name").eq("id", qualification.client_id).maybeSingle() : Promise.resolve({ data: null }),
         db.from("contractor_case_requirements")
           .select("id,requirement_code,title,description,category,gate_type,required,legally_required,verification_required,expiration_required,response_type,response_text,response_submitted_at,response_submitted_by_name,response_submitted_by_email,instructions,sort_order,status,current_document_id,due_date,waiver_reason")
-          .eq("case_id", qualification.id).order("sort_order"),
+          .eq("case_id", qualification.id).eq('portal_requested',true).in('category',access.role === 'broker' ? ['insurance'] : ['identity','tax','license','insurance','safety','financial','experience','agreement','other']).order("sort_order"),
         db.from("contractor_requirement_comments")
           .select("id,requirement_id,author_type,author_name,body,created_at")
           .eq("tenant_id", qualification.tenant_id).order("created_at"),
@@ -81,8 +90,12 @@ serve(async (req) => {
           .in("id", documentIds)
         : { data: [] };
       await touch();
+      const {data:notice}=access.role === 'broker' ? {data:null} : await db.from('contractor_notices_to_proceed')
+        .select('id,case_id,status,agreement_reference,agreement_approved_on,scope_of_work,start_date,completion_date,budget_cents,instructions,issued_at,snapshot')
+        .eq('case_id',qualification.id).eq('status','issued').maybeSingle();
       return json({
         ok: true,
+        notice,
         access: { email: access.email, role: access.role, expires_at: access.expires_at },
         qualification,
         organization: org,
@@ -334,18 +347,13 @@ serve(async (req) => {
     }
 
     if (action === "submit") {
-      const { data: incomplete } = await db.from("contractor_case_requirements")
-        .select("title,status").eq("case_id", qualification.id).eq("required", true)
-        .in("status", ["missing","requested","needs_correction","expired"]);
-      if (incomplete?.length) return json({
-        error: "Complete every required checklist item before submitting.",
-        incomplete: incomplete.map((r: any) => r.title),
-      }, 409);
-      await db.from("contractor_qualification_cases").update({
-        status: "under_review", submitted_at: new Date().toISOString(),
-      }).eq("id", qualification.id);
-      await db.from("contractor_case_requirements").update({ status: "under_review" })
-        .eq("case_id", qualification.id).eq("status", "submitted");
+      const reviewed = await db.from("contractor_case_requirements").update({ status: "under_review" })
+        .eq("case_id", qualification.id).eq('portal_requested',true).eq("status", "submitted").select('id');
+      if(reviewed.error) throw reviewed.error;
+      if(!reviewed.data?.length) return json({error:'No new items are waiting to be submitted. Saved items remain available.'},409);
+      const updated = await db.from("contractor_qualification_cases").update({ submitted_at: new Date().toISOString() }).eq("id", qualification.id);
+      if(updated.error) throw updated.error;
+      await db.rpc('recompute_contractor_readiness',{p_case_id:qualification.id});
       await db.from("contractor_activity_log").insert({
         tenant_id: qualification.tenant_id, case_id: qualification.id,
         organization_id: qualification.organization_id, actor_type: access.role,

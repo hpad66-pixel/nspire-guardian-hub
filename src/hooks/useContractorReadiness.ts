@@ -13,6 +13,9 @@ export type RequirementStatus =
 export type ContractorResponseType = 'document' | 'questionnaire' | 'either' | 'acknowledgement';
 
 export interface ContractorRequirement {
+  portal_requested?: boolean;
+  prior_approval_reference?: string | null;
+  prior_approval_valid_until?: string | null;
   id: string;
   case_id: string;
   requirement_code: string;
@@ -57,6 +60,8 @@ export interface ContractorDocument {
 }
 
 export interface ContractorCase {
+  request_company_profile?: boolean;
+  request_portfolio?: boolean;
   id: string;
   tenant_id: string;
   organization_id: string;
@@ -118,6 +123,9 @@ export interface ContractorReminderEvent {
 }
 
 export interface CreateContractorCaseInput {
+  requestedCodes?: string[];
+  requestCompanyProfile?: boolean;
+  requestPortfolio?: boolean;
   organizationId?: string;
   companyName?: string;
   email?: string;
@@ -274,6 +282,14 @@ export function useStartContractorOnboarding() {
       recipientName?: string;
     }) => {
       const caseId = await createContractorCaseRecord(input);
+      if (input.requestedCodes) {
+        const { error } = await (supabase.rpc as any)('configure_contractor_request', {
+          p_case_id: caseId, p_codes: input.requestedCodes,
+          p_company_profile: input.requestCompanyProfile ?? true,
+          p_portfolio: input.requestPortfolio ?? true,
+        });
+        if (error) throw Object.assign(new Error(`Checklist created, but request settings could not be saved: ${error.message}`), { caseId });
+      }
       let crmSync: { status: 'synced' | 'pending' | 'not_applicable'; message?: string } = {
         status: input.projectId ? 'pending' : 'not_applicable',
       };
@@ -311,6 +327,19 @@ export function useStartContractorOnboarding() {
       return { caseId, invitation: data as ContractorInvitationResult, crmSync };
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ['contractor-readiness'] }),
+  });
+}
+
+export function useOnboardingChecklist(enabled: boolean) {
+  return useQuery({
+    queryKey: ['contractor-readiness', 'onboarding-template'], enabled,
+    queryFn: async () => {
+      const { data: id, error } = await (supabase.rpc as any)('ensure_default_contractor_template');
+      if (error) throw error;
+      const result = await supabase.from('contractor_requirement_items' as any).select('*').eq('template_id', id).order('sort_order');
+      if (result.error) throw result.error;
+      return result.data as unknown as Array<{ requirement_code: string; title: string; required: boolean; applies_to: string }>;
+    },
   });
 }
 
