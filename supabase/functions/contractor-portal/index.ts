@@ -43,7 +43,7 @@ serve(async (req) => {
     }
 
     const { data: qualification } = await db.from("contractor_qualification_cases")
-      .select("id,tenant_id,organization_id,client_id,project_id,scope_type,status,score,work_ready,contract_ready,payment_ready,submitted_at")
+      .select("id,tenant_id,organization_id,client_id,project_id,scope_type,status,score,work_ready,contract_ready,payment_ready,submitted_at,engagement_type,certificate_holder_name,certificate_holder_address,additional_insured_name,insurance_instructions")
       .eq("id", access.case_id).eq("tenant_id", access.tenant_id).maybeSingle();
     if (!qualification) return json({ error: "Qualification request was not found" }, 404);
 

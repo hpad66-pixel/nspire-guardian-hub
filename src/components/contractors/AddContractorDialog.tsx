@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle2, Copy, Link2, Loader2, Mail, Plus, Search, ShieldCheck, Sparkles } from 'lucide-react';
+import { ArrowRight, BriefcaseBusiness, CheckCircle2, Copy, HardHat, Link2, Loader2, Mail, Plus, Search, ShieldCheck, Sparkles } from 'lucide-react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,14 @@ import { useActiveProjects } from '@/hooks/useProjects';
 import { useStartContractorOnboarding, type ContractorInvitationResult } from '@/hooks/useContractorReadiness';
 import { toast } from 'sonner';
 
+type EngagementType = 'contractor' | 'consultant';
+type OnboardingResultData = {
+  caseId: string;
+  invitation: ContractorInvitationResult;
+  engagementType: EngagementType;
+  crmSync: { status: 'synced' | 'pending' | 'not_applicable'; message?: string };
+};
+
 export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedClientId }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -25,6 +33,7 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
   const { data: clients = [] } = useActiveClients();
   const { data: projects = [] } = useActiveProjects();
   const startOnboarding = useStartContractorOnboarding();
+  const [engagementType, setEngagementType] = useState<EngagementType>('contractor');
   const [mode, setMode] = useState('existing');
   const [search, setSearch] = useState('');
   const [organizationId, setOrganizationId] = useState('');
@@ -39,7 +48,24 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
   const [riskTier, setRiskTier] = useState('standard');
   const [sendPortal, setSendPortal] = useState(true);
   const [recipientName, setRecipientName] = useState('');
-  const [result, setResult] = useState<{ caseId: string; invitation: ContractorInvitationResult } | null>(null);
+  const [certificateHolderName, setCertificateHolderName] = useState('');
+  const [certificateHolderAddress, setCertificateHolderAddress] = useState('');
+  const [additionalInsuredName, setAdditionalInsuredName] = useState('');
+  const [insuranceInstructions, setInsuranceInstructions] = useState('');
+  const [result, setResult] = useState<OnboardingResultData | null>(null);
+
+  const effectiveProjectId = fixedProjectId || projectId;
+  const selectedProject = projects.find((project) => project.id === effectiveProjectId);
+  const effectiveClientId = fixedClientId || (scope === 'project' ? selectedProject?.client_id : clientId) || '';
+  const selectedClient = clients.find((client) => client.id === effectiveClientId);
+
+  useEffect(() => {
+    if (!selectedClient) return;
+    const address = [selectedClient.address, selectedClient.city, selectedClient.state].filter(Boolean).join(', ');
+    setCertificateHolderName((current) => current || selectedClient.name);
+    setAdditionalInsuredName((current) => current || selectedClient.name);
+    setCertificateHolderAddress((current) => current || address);
+  }, [selectedClient]);
 
   const vendors = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -49,10 +75,11 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
   }, [organizations, search]);
 
   const reset = () => {
-    setMode('existing'); setSearch(''); setOrganizationId(''); setCompanyName(''); setEmail('');
+    setEngagementType('contractor'); setMode('existing'); setSearch(''); setOrganizationId(''); setCompanyName(''); setEmail('');
     setPhone(''); setWebsite(''); setTrades(''); setScope(fixedProjectId ? 'project' : fixedClientId ? 'client' : 'workspace');
     setClientId(fixedClientId ?? ''); setProjectId(fixedProjectId ?? ''); setRiskTier('standard');
-    setSendPortal(true); setRecipientName(''); setResult(null);
+    setSendPortal(true); setRecipientName(''); setCertificateHolderName(''); setCertificateHolderAddress('');
+    setAdditionalInsuredName(''); setInsuranceInstructions(''); setResult(null);
   };
 
   const submit = async () => {
@@ -70,12 +97,17 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
         clientId: scope === 'client' ? fixedClientId || clientId : null,
         projectId: scope === 'project' ? fixedProjectId || projectId : null,
         riskTier,
+        engagementType,
+        certificateHolderName,
+        certificateHolderAddress,
+        additionalInsuredName,
+        insuranceInstructions,
         sendPortal,
         recipientEmail: email,
         recipientName,
       });
       if (started.invitation) {
-        setResult({ caseId: started.caseId, invitation: started.invitation });
+        setResult({ caseId: started.caseId, invitation: started.invitation, engagementType, crmSync: started.crmSync });
         toast.success(started.invitation.emailSent ? 'Portal sent and onboarding started' : 'Secure portal created');
       } else {
         toast.success('Qualification checklist created');
@@ -96,11 +128,16 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
     <Dialog open={open} onOpenChange={(next) => { onOpenChange(next); if (!next) reset(); }}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{result ? 'Contractor onboarding is ready' : 'Onboard a contractor'}</DialogTitle>
-          <DialogDescription>{result ? 'The company is now in your master contractor portfolio and its qualification is being tracked.' : 'Create the company record, qualification checklist, and secure no-password portal in one step.'}</DialogDescription>
+          <DialogTitle>{result ? `${result.engagementType === 'consultant' ? 'Consultant' : 'Contractor'} onboarding is ready` : 'Onboard a company'}</DialogTitle>
+          <DialogDescription>{result ? 'The company is now in your reusable portfolio and its qualification is being tracked.' : 'Choose the relationship, create the right checklist, and send one secure no-password portal.'}</DialogDescription>
         </DialogHeader>
 
         {result ? <OnboardingResult result={result} onView={() => { onOpenChange(false); reset(); navigate(`/contractor-readiness/${result.caseId}`); }} /> : <>
+
+        <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Company relationship">
+          <EngagementChoice active={engagementType === 'contractor'} icon={HardHat} title="Contractor" detail="Trade work, field services, construction, or maintenance" onClick={() => setEngagementType('contractor')} />
+          <EngagementChoice active={engagementType === 'consultant'} icon={BriefcaseBusiness} title="Consultant" detail="Engineering, architecture, surveying, inspection, or advisory services" onClick={() => setEngagementType('consultant')} />
+        </div>
 
         <Tabs value={mode} onValueChange={setMode}>
           <TabsList className="grid w-full grid-cols-2">
@@ -120,27 +157,39 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
             </div>
           </TabsContent>
           <TabsContent value="new" className="grid gap-3 pt-2 sm:grid-cols-2">
-            <Field label="Company name *"><Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="ABC Roofing LLC" /></Field>
+            <Field label="Company name *"><Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder={engagementType === 'consultant' ? 'ABC Engineering LLC' : 'ABC Roofing LLC'} /></Field>
             <Field label="Phone"><Input value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
             <Field label="Website"><Input value={website} onChange={(e) => setWebsite(e.target.value)} placeholder="https://" /></Field>
           </TabsContent>
         </Tabs>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Trades / services"><Input value={trades} onChange={(e) => setTrades(e.target.value)} placeholder="Roofing, concrete, pressure washing" /><p className="mt-1 text-[11px] text-muted-foreground">Separate multiple trades with commas.</p></Field>
+          <Field label={engagementType === 'consultant' ? 'Disciplines / services' : 'Trades / services'}><Input value={trades} onChange={(e) => setTrades(e.target.value)} placeholder={engagementType === 'consultant' ? 'Civil engineering, surveying, inspections' : 'Roofing, concrete, pressure washing'} /><p className="mt-1 text-[11px] text-muted-foreground">Separate multiple services with commas.</p></Field>
           <Field label="Risk tier"><Select value={riskTier} onValueChange={setRiskTier}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="low">Low</SelectItem><SelectItem value="standard">Standard</SelectItem><SelectItem value="high">High</SelectItem><SelectItem value="critical">Critical</SelectItem></SelectContent></Select></Field>
           {!fixedProjectId && !fixedClientId && <Field label="Qualification scope"><Select value={scope} onValueChange={setScope}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="workspace">Company-wide</SelectItem><SelectItem value="client">One client</SelectItem><SelectItem value="project">One project</SelectItem></SelectContent></Select></Field>}
           {scope === 'client' && !fixedClientId && <Field label="Client"><Select value={clientId} onValueChange={setClientId}><SelectTrigger><SelectValue placeholder="Select client" /></SelectTrigger><SelectContent>{clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select></Field>}
           {scope === 'project' && !fixedProjectId && <Field label="Project"><Select value={projectId} onValueChange={setProjectId}><SelectTrigger><SelectValue placeholder="Select project" /></SelectTrigger><SelectContent>{projects.map((p) => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent></Select></Field>}
         </div>
 
+        <div className="rounded-xl border border-blue-200 bg-blue-50/70 p-4 dark:border-blue-900 dark:bg-blue-950/30">
+          <div className="flex items-start gap-3"><ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-blue-700" /><div><p className="text-sm font-bold text-blue-950 dark:text-blue-100">Insurance certificate instructions</p><p className="mt-0.5 text-xs leading-5 text-blue-800 dark:text-blue-200">These exact details appear in the secure portal so the company and its broker know how the certificate must be prepared.</p></div></div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <Field label="Certificate holder"><Input value={certificateHolderName} onChange={(e) => setCertificateHolderName(e.target.value)} placeholder="Client legal name" /></Field>
+            <Field label="Additional insured"><Input value={additionalInsuredName} onChange={(e) => setAdditionalInsuredName(e.target.value)} placeholder="Required insured party" /></Field>
+            <div className="sm:col-span-2"><Field label="Certificate holder address"><Input value={certificateHolderAddress} onChange={(e) => setCertificateHolderAddress(e.target.value)} placeholder="Street, city, state, ZIP" /></Field></div>
+            <div className="sm:col-span-2"><Field label="Special instructions"><Input value={insuranceInstructions} onChange={(e) => setInsuranceInstructions(e.target.value)} placeholder="Endorsements, project reference, or delivery instructions" /></Field></div>
+          </div>
+        </div>
+
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs leading-5 text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-          The standard checklist includes W-9, applicable trade license, general liability, workers compensation/exemption, commercial auto, safety program, relevant experience, and vendor standards acknowledgement. You can tailor the requirement template later.
+          {engagementType === 'consultant'
+            ? 'Consultant checklist: W-9, professional or business license, general liability, workers compensation or exemption, professional liability, relevant experience, and standards acknowledgement.'
+            : 'Contractor checklist: W-9, trade license, general liability, workers compensation or exemption, commercial auto, safety program, relevant experience, and standards acknowledgement.'}
         </div>
 
         <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
           <div className="flex items-start justify-between gap-4">
-            <div className="flex gap-3"><div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-white"><Sparkles className="h-4 w-4" /></div><div><p className="text-sm font-bold text-emerald-950 dark:text-emerald-100">Send the onboarding portal now</p><p className="mt-0.5 text-xs leading-5 text-emerald-800 dark:text-emerald-200">The contractor receives a branded mobile checklist. Missing items and document expirations are monitored automatically.</p></div></div>
+            <div className="flex gap-3"><div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-emerald-700 text-white"><Sparkles className="h-4 w-4" /></div><div><p className="text-sm font-bold text-emerald-950 dark:text-emerald-100">Send the onboarding portal now</p><p className="mt-0.5 text-xs leading-5 text-emerald-800 dark:text-emerald-200">The {engagementType} receives a branded mobile checklist. Missing items and document expirations are monitored automatically.</p></div></div>
             <Switch checked={sendPortal} onCheckedChange={setSendPortal} aria-label="Send onboarding portal now" />
           </div>
           {sendPortal && <div className="mt-4 grid gap-3 border-t border-emerald-200 pt-4 sm:grid-cols-2 dark:border-emerald-900">
@@ -158,7 +207,7 @@ export function AddContractorDialog({ open, onOpenChange, fixedProjectId, fixedC
   );
 }
 
-function OnboardingResult({ result, onView }: { result: { caseId: string; invitation: ContractorInvitationResult }; onView: () => void }) {
+function OnboardingResult({ result, onView }: { result: OnboardingResultData; onView: () => void }) {
   const copy = async () => {
     await navigator.clipboard.writeText(result.invitation.link);
     toast.success('Secure link copied');
@@ -167,16 +216,20 @@ function OnboardingResult({ result, onView }: { result: { caseId: string; invita
     <div className="rounded-2xl bg-gradient-to-br from-emerald-950 to-emerald-700 p-6 text-white">
       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white/15"><CheckCircle2 className="h-7 w-7" /></div>
       <h3 className="mt-4 text-xl font-bold">Company record and checklist created</h3>
-      <p className="mt-1 text-sm leading-6 text-emerald-100">{result.invitation.emailSent ? 'The secure onboarding email was delivered to the contractor.' : 'Email delivery is not configured or did not complete. Copy the secure link below and send it directly.'}</p>
+      <p className="mt-1 text-sm leading-6 text-emerald-100">{result.invitation.emailSent ? `The secure onboarding email was delivered to the ${result.engagementType}.` : 'Email delivery is not configured or did not complete. Copy the secure link below and send it directly.'}</p>
     </div>
     <div className="grid gap-3 sm:grid-cols-3">
       <ResultStep icon={ShieldCheck} number="1" label="Master record" detail="Saved for reuse" />
       <ResultStep icon={Mail} number="2" label="Portal" detail={result.invitation.emailSent ? 'Email sent' : 'Link ready'} />
-      <ResultStep icon={Link2} number="3" label="Monitoring" detail="Reminders active" />
+      <ResultStep icon={Link2} number="3" label="APAS CRM" detail={result.crmSync.status === 'synced' ? 'Project tags synced' : result.crmSync.status === 'pending' ? 'Follow-up pending' : 'Syncs when project-linked'} />
     </div>
     <div><Label>Secure onboarding link</Label><div className="mt-1.5 flex gap-2"><Input readOnly value={result.invitation.link} /><Button type="button" variant="outline" size="icon" onClick={copy} aria-label="Copy secure onboarding link"><Copy className="h-4 w-4" /></Button></div><p className="mt-1 text-xs text-muted-foreground">Private link · expires {new Date(result.invitation.expiresAt).toLocaleDateString()}</p></div>
-    <DialogFooter><Button onClick={onView}>Open contractor record<ArrowRight className="ml-2 h-4 w-4" /></Button></DialogFooter>
+    <DialogFooter><Button onClick={onView}>Open qualification record<ArrowRight className="ml-2 h-4 w-4" /></Button></DialogFooter>
   </div>;
+}
+
+function EngagementChoice({ active, icon: Icon, title, detail, onClick }: { active: boolean; icon: typeof HardHat; title: string; detail: string; onClick: () => void }) {
+  return <button type="button" role="radio" aria-checked={active} onClick={onClick} className={`rounded-xl border p-4 text-left transition-all ${active ? 'border-emerald-600 bg-emerald-50 shadow-sm ring-1 ring-emerald-600 dark:bg-emerald-950/30' : 'hover:border-emerald-300 hover:bg-muted/40'}`}><div className="flex items-start gap-3"><span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${active ? 'bg-emerald-800 text-white' : 'bg-muted text-muted-foreground'}`}><Icon className="h-5 w-5" /></span><span><span className="block text-sm font-bold">{title}</span><span className="mt-1 block text-xs leading-5 text-muted-foreground">{detail}</span></span>{active && <CheckCircle2 className="ml-auto h-5 w-5 text-emerald-700" />}</div></button>;
 }
 
 function ResultStep({ icon: Icon, number, label, detail }: { icon: typeof ShieldCheck; number: string; label: string; detail: string }) {

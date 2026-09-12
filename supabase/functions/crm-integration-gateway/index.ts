@@ -540,25 +540,33 @@ async function syncVendor(scope: Scope, body: Json) {
     throw new GatewayError("admin_required", "Only an administrator can synchronize a project vendor", 403);
   }
 
-  const [vendorResult, assignmentResult, projectResult, directoryResult] = await Promise.all([
+  const [vendorResult, assignmentResult, readinessAssignmentResult, readinessCaseResult, projectResult, directoryResult] = await Promise.all([
     scope.admin.from("organizations").select("*")
       .eq("id", organizationId).eq("tenant_id", scope.workspaceId).eq("is_active", true).maybeSingle(),
     scope.admin.from("project_vendor_assignments").select("id")
       .eq("tenant_id", scope.workspaceId).eq("project_id", scope.projectId)
       .eq("organization_id", organizationId).eq("is_active", true).maybeSingle(),
-    scope.admin.from("projects").select("name").eq("id", scope.projectId).maybeSingle(),
+    scope.admin.from("contractor_project_assignments").select("id,case_id")
+      .eq("tenant_id", scope.workspaceId).eq("project_id", scope.projectId)
+      .eq("organization_id", organizationId).maybeSingle(),
+    scope.admin.from("contractor_qualification_cases").select("engagement_type")
+      .eq("tenant_id", scope.workspaceId).eq("project_id", scope.projectId)
+      .eq("organization_id", organizationId).order("updated_at", { ascending: false }).limit(1).maybeSingle(),
+    scope.admin.from("projects").select("name,client:clients(name)").eq("id", scope.projectId).maybeSingle(),
     scope.admin.from("project_directory_entries").select("contact_id")
       .eq("tenant_id", scope.workspaceId).eq("project_id", scope.projectId)
       .eq("organization_id", organizationId).not("contact_id", "is", null),
   ]);
-  if (vendorResult.error || assignmentResult.error || projectResult.error || directoryResult.error) {
-    throw vendorResult.error || assignmentResult.error || projectResult.error || directoryResult.error;
+  if (vendorResult.error || assignmentResult.error || readinessAssignmentResult.error || readinessCaseResult.error || projectResult.error || directoryResult.error) {
+    throw vendorResult.error || assignmentResult.error || readinessAssignmentResult.error || readinessCaseResult.error || projectResult.error || directoryResult.error;
   }
   const vendor = vendorResult.data;
   const assignment = assignmentResult.data;
+  const readinessAssignment = readinessAssignmentResult.data;
+  const engagementType = readinessCaseResult.data?.engagement_type === "consultant" ? "consultant" : "contractor";
   const project = projectResult.data;
-  if (!vendor || !assignment) {
-    throw new GatewayError("vendor_not_assigned", "Confirm this vendor on the project before CRM synchronization", 409);
+  if (!vendor || (!assignment && !readinessAssignment)) {
+    throw new GatewayError("vendor_not_assigned", "Confirm this company on the project before CRM synchronization", 409);
   }
 
   await scope.admin.from("organizations").update({
@@ -575,16 +583,20 @@ async function syncVendor(scope: Scope, body: Json) {
   if (contactError) throw contactError;
 
   const projectTag = project?.name ? `Project: ${project.name}` : "Project Vendor";
+  const clientName = Array.isArray(project?.client) ? project.client[0]?.name : project?.client?.name;
+  const relationshipTag = engagementType === "consultant" ? "Consultant" : "Contractor";
+  const sourceTag = readinessAssignment ? "ProjOS Onboarding" : "ProjOS Vendor";
+  const relationshipTags = [sourceTag, relationshipTag, projectTag, ...(clientName ? [`Client: ${clientName}`] : [])];
   const contacts: ContactImportItem[] = (contactRows ?? []).map((row) => {
     const item = contactImportItem(row as Json);
     return {
       ...item,
       companyName: item.companyName ?? vendor.name,
       contactType: item.contactType === "other"
-        ? (vendor.kind === "sub" ? "contractor" : "vendor")
+        ? engagementType
         : item.contactType,
-      tags: [...new Set([...(item.tags ?? []), "ProjOS Vendor", projectTag])],
-      notes: item.notes ?? `Linked to ${project?.name ?? "a ProjOS project"} for vendor invoicing.`,
+      tags: [...new Set([...(item.tags ?? []), ...relationshipTags])],
+      notes: item.notes ?? `Linked to ${project?.name ?? "a ProjOS project"} for ${engagementType} onboarding.`,
     };
   });
   if (contacts.length === 0) {
@@ -601,9 +613,9 @@ async function syncVendor(scope: Scope, body: Json) {
       state: vendor.state ?? undefined,
       zipCode: vendor.postal_code ?? undefined,
       country: vendor.country ?? undefined,
-      contactType: vendor.kind === "sub" ? "contractor" : "vendor",
-      tags: ["ProjOS Vendor", vendor.kind === "sub" ? "Subcontractor" : "Vendor", projectTag],
-      notes: `Confirmed from a ProjOS invoice intake and linked to ${project?.name ?? "a project"}.`,
+      contactType: engagementType,
+      tags: relationshipTags,
+      notes: `Confirmed from ProjOS ${engagementType} onboarding and linked to ${project?.name ?? "a project"}.`,
       isActive: true,
     });
   }
