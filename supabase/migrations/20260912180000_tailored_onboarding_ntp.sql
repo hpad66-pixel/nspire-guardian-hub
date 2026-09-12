@@ -91,7 +91,7 @@ BEGIN
   WHERE case_id = p_case_id AND status = 'verified' AND prior_approval_valid_until < current_date;
   PERFORM public.recompute_contractor_readiness_base(p_case_id);
 END $$;
-REVOKE ALL ON FUNCTION public.recompute_contractor_readiness(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.recompute_contractor_readiness(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.recompute_contractor_readiness(uuid) TO authenticated, service_role;
 
 CREATE TABLE public.contractor_notices_to_proceed (

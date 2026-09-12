@@ -12,7 +12,7 @@ test('administrator tailors requests and previews the Notice to Proceed on mobil
   await page.getByLabel('Approved contract or proposal reference').fill('Signed proposal 101');
   await page.getByLabel('Authorized scope and deliverables').fill('Inspect backflow devices and deliver the inspection report.');
   await expect(page.frameLocator('iframe').getByText('Inspect backflow devices and deliver the inspection report.')).toBeVisible();
-  await page.screenshot({path:test.info().outputPath('ntp-mobile.png'),fullPage:true});
+  await page.screenshot({path:test.info().outputPath('ntp-mobile.png'),fullPage:true,animations:'disabled'});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
 });
 test('company can submit a partial batch and keep adding missing evidence during review',async({page})=>{
