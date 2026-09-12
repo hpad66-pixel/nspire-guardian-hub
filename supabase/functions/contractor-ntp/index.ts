@@ -8,6 +8,10 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 
 async function pdfAttachment(n: NoticeRecord) {
   const doc = await PDFDocument.create();
+  // Retries must produce identical attachment bytes for the provider's
+  // idempotency key, including PDF metadata timestamps.
+  const issuedDate = new Date(n.issued_at!);
+  doc.setCreationDate(issuedDate); doc.setModificationDate(issuedDate);
   const font = await doc.embedFont(StandardFonts.Helvetica); const bold = await doc.embedFont(StandardFonts.HelveticaBold);
   let page = doc.addPage([612,792]); let y = 738;
   const clean = (s: string) => s.replace(/\u2014/g, ', ').replace(/[^\x20-\x7E\n]/g, ' ');
@@ -56,7 +60,8 @@ serve(async req => {
     if(n.delivery_status === 'sent') return json({ok:true,alreadySent:true});
     if(!Deno.env.get('RESEND_API_KEY')) return json({error:'Email delivery is not configured. The issued letter remains saved.'},503);
     if(n.delivery_status === 'sending' && Date.now()-new Date(n.delivery_claimed_at).getTime()<300000) return json({error:'Delivery is already in progress'},409);
-    const claim=await db.from('contractor_notices_to_proceed').update({delivery_status:'sending',delivery_claimed_at:new Date().toISOString()})
+    const claimedAt = new Date().toISOString();
+    const claim=await db.from('contractor_notices_to_proceed').update({delivery_status:'sending',delivery_claimed_at:claimedAt,updated_at:claimedAt})
       .eq('id',n.id).eq('delivery_status',n.delivery_status).eq('updated_at',n.updated_at).select('id').maybeSingle();
     if(claim.error || !claim.data) return json({error:'Delivery is already in progress. Refresh to check its status.'},409);
     claimedId=n.id;
