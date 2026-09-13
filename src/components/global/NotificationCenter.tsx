@@ -76,6 +76,9 @@ export function NotificationCenter() {
           if (data?.project_id) navigate(`/projects/${data.project_id}?tab=action-items&item=${notification.entity_id}`);
           break;
         }
+        case 'client_meeting':
+          navigate(`/organizations/${notification.entity_id}/meetings`);
+          break;
         default:
           break;
       }

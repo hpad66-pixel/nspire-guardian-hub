@@ -133,6 +133,7 @@ export function ClientPortalShell() {
   const navigate = useNavigate();
   const location = useLocation();
   const routeProjectId = location.pathname.match(/^\/owner-portal\/projects\/([^/]+)/)?.[1];
+  const portfolioClientId = location.pathname.match(/^\/owner-portal\/clients\/([^/]+)\/meetings/)?.[1];
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
   const { data: ownerData, isLoading: ownerLoading } = useOwnerPortalData();
@@ -149,14 +150,15 @@ export function ClientPortalShell() {
   );
   const rememberedClientId = readRememberedOwnerPortalClient();
   const projects = useMemo(() => {
+    if (portfolioClientId) return allProjects.filter(project => project.client_id === portfolioClientId);
     if (portalKind === "owner") return allProjects;
     const anchor = requestedProjectId ?? allProjects[0]?.id ?? null;
-    return filterOwnerProjectsForClient(allProjects, anchor, rememberedClientId);
-  }, [allProjects, portalKind, rememberedClientId, requestedProjectId]);
+    return filterOwnerProjectsForClient(allProjects, anchor, portfolioClientId ?? rememberedClientId);
+  }, [allProjects, portalKind, portfolioClientId, rememberedClientId, requestedProjectId]);
   // Never silently fall back to projects[0] when a specific project was requested —
   // that made every client/preview see the same first contract.
   const matchedProject = projects.find((project) => project.id === requestedProjectId) ?? null;
-  const selectedProject = matchedProject ?? (requestedProjectId ? null : projects[0] ?? null);
+  const selectedProject = matchedProject ?? (requestedProjectId ? null : (portfolioClientId ? projects.find(p => p.client_id === portfolioClientId) : projects[0]) ?? null);
   const activeProjectId = selectedProject?.id ?? null;
   const selectedContract = selectedProject?.contract ?? null;
   const selectedContractId = selectedContract?.id ?? null;
@@ -188,6 +190,10 @@ export function ClientPortalShell() {
     enabledPortalModules,
     siteAccountabilityProjectId,
   );
+  const meetingsClientId = portfolioClientId ?? selectedProject?.client_id;
+  const portfolioNavigation: PortalNavEntry[] = meetingsClientId ? [{
+    to: `/owner-portal/clients/${meetingsClientId}/meetings`, label: 'Meetings & Actions', icon: CalendarDays, key: 'client-meetings',
+  }] : [];
 
   const decisions = (ownerData?.pendingOcos ?? []).filter((item) => item.prime_contract_id === selectedContractId).length
     + (ownerData?.pendingPayApps ?? []).filter((item) => item.prime_contract_id === selectedContractId).length;
@@ -201,10 +207,10 @@ export function ClientPortalShell() {
 
   useEffect(() => {
     // Flat /owner-portal handoff → first accessible project only when nothing was requested.
-    if (!ownerLoading && !routeProjectId && !requestedProjectId && projects[0]?.id) {
+    if (!ownerLoading && !routeProjectId && !portfolioClientId && !requestedProjectId && projects[0]?.id) {
       navigate(ownerPortalPath(projects[0].id) + location.hash, { replace: true });
     }
-  }, [ownerLoading, routeProjectId, requestedProjectId, projects, location.hash, navigate]);
+  }, [ownerLoading, routeProjectId, portfolioClientId, requestedProjectId, projects, location.hash, navigate]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -255,8 +261,8 @@ export function ClientPortalShell() {
           </Link>
 
           <div className="client-portal-header__project">
-            <small>Current project</small>
-            <strong>{projectName}</strong>
+            <small>{portfolioClientId ? 'Client portfolio' : 'Current project'}</small>
+            <strong>{portfolioClientId ? 'Meetings & Actions' : projectName}</strong>
           </div>
 
           <div className="client-portal-actions">
@@ -320,6 +326,7 @@ export function ClientPortalShell() {
               </div>
             </div>
             <nav className="client-portal-mobile-menu__nav" aria-label="Mobile client portal">
+              <PortalNavigationLinks items={portfolioNavigation} decisions={0} location={location} className="client-portal-mobile-menu__link" />
               <p className="client-portal-rail__eyebrow">Project workspace</p>
               <PortalNavigationLinks items={primaryNavigation} decisions={decisions} location={location} className="client-portal-mobile-menu__link" />
               <p className="client-portal-rail__eyebrow client-portal-rail__eyebrow--spaced">Records &amp; reference</p>
@@ -360,6 +367,8 @@ export function ClientPortalShell() {
           </div>
 
           <nav className="client-portal-rail" aria-label="Selected project">
+            <p className="client-portal-rail__eyebrow">Client portfolio</p>
+            <PortalNavigationLinks items={portfolioNavigation} decisions={0} location={location} className="client-portal-rail__link" />
             <p className="client-portal-rail__eyebrow">Project workspace</p>
             <PortalNavigationLinks items={primaryNavigation} decisions={decisions} location={location} className="client-portal-rail__link" />
             <p className="client-portal-rail__eyebrow client-portal-rail__eyebrow--spaced">Records &amp; reference</p>
@@ -403,7 +412,7 @@ export function ClientPortalShell() {
       </div>
 
       <nav className="client-portal-bottom-nav" aria-label="Client portal shortcuts">
-        {primaryNavigation.map((item) => {
+        {[...portfolioNavigation, ...primaryNavigation.slice(0, 4)].map((item) => {
           const Icon = item.icon;
           const overviewPath = ownerPortalPath(activeProjectId);
           const active = item.hash

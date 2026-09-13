@@ -62,6 +62,7 @@ const ContactsPage = lazy(() => import('./pages/crm/ContactsPage'));
 const VoiceAgentDashboard = lazy(() => import('./pages/voice-agent/VoiceAgentDashboard'));
 const OrganizationsPage = lazy(() => import('./pages/organizations/OrganizationsPage'));
 const OrganizationDetailPage = lazy(() => import('./pages/organizations/OrganizationDetailPage'));
+const ClientMeetingsPage = lazy(() => import('./pages/organizations/ClientMeetingsPage'));
 const NotFound = lazy(() => import('./pages/NotFound'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const PropertyAnalyticsPage = lazy(() => import('./pages/core/PropertyAnalyticsPage'));
@@ -321,6 +322,7 @@ const App = () => (
                     */}
                     <Route element={<PortalProtectedRoute role="owner" feature="owner_portal" />}>
                       <Route element={<ClientPortalShell />}>
+                        <Route path="/owner-portal/clients/:clientId/meetings" element={<ClientMeetingsPage />} />
                         <Route path="/owner-portal" element={<OwnerPortalLegacyRedirect />} />
                         <Route path="/owner-portal/contract" element={<OwnerPortalLegacyRedirect />} />
                         <Route path="/owner-portal/cos/:coId" element={<OwnerPortalLegacyRedirect />} />
@@ -388,6 +390,7 @@ const App = () => (
                               <Route path="/people" element={<PeoplePage />} />
                               <Route path="/organizations" element={<OrganizationsPage />} />
                               <Route path="/organizations/:clientId" element={<OrganizationDetailPage />} />
+                              <Route path="/organizations/:clientId/meetings" element={<ClientMeetingsPage />} />
                               <Route path="/organizations/:clientId/contractors" element={<ContractorReadinessPage />} />
                               <Route path="/contractor-readiness" element={<ContractorReadinessPage />} />
                               <Route path="/contractor-readiness/:caseId" element={<ContractorCasePage />} />

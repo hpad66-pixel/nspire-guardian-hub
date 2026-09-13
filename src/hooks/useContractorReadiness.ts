@@ -13,6 +13,9 @@ export type RequirementStatus =
 export type ContractorResponseType = 'document' | 'questionnaire' | 'either' | 'acknowledgement';
 
 export interface ContractorRequirement {
+  portal_requested?: boolean;
+  prior_approval_reference?: string | null;
+  prior_approval_valid_until?: string | null;
   id: string;
   case_id: string;
   requirement_code: string;
@@ -57,12 +60,19 @@ export interface ContractorDocument {
 }
 
 export interface ContractorCase {
+  request_company_profile?: boolean;
+  request_portfolio?: boolean;
   id: string;
   tenant_id: string;
   organization_id: string;
   client_id: string | null;
   project_id: string | null;
   scope_type: 'workspace' | 'client' | 'project';
+  engagement_type?: 'contractor' | 'consultant';
+  certificate_holder_name?: string | null;
+  certificate_holder_address?: string | null;
+  additional_insured_name?: string | null;
+  insurance_instructions?: string | null;
   status: ReadinessStatus;
   risk_tier: 'low' | 'standard' | 'high' | 'critical';
   score: number;
@@ -113,6 +123,9 @@ export interface ContractorReminderEvent {
 }
 
 export interface CreateContractorCaseInput {
+  requestedCodes?: string[];
+  requestCompanyProfile?: boolean;
+  requestPortfolio?: boolean;
   organizationId?: string;
   companyName?: string;
   email?: string;
@@ -122,6 +135,11 @@ export interface CreateContractorCaseInput {
   clientId?: string | null;
   projectId?: string | null;
   riskTier?: string;
+  engagementType?: 'contractor' | 'consultant';
+  certificateHolderName?: string;
+  certificateHolderAddress?: string;
+  additionalInsuredName?: string;
+  insuranceInstructions?: string;
 }
 
 export interface ContractorInvitationResult {
@@ -225,7 +243,7 @@ async function createContractorCaseRecord(input: CreateContractorCaseInput) {
           tenant_id: tenantId,
           name: input.companyName.trim(),
           legal_name: input.companyName.trim(),
-          kind: 'sub',
+          kind: input.engagementType === 'consultant' ? 'consultant' : 'sub',
           email: input.email?.trim() || null,
           phone: input.phone?.trim() || null,
           website: input.website?.trim() || null,
@@ -238,6 +256,11 @@ async function createContractorCaseRecord(input: CreateContractorCaseInput) {
         p_client_id: input.clientId ?? null,
         p_project_id: input.projectId ?? null,
         p_risk_tier: input.riskTier ?? 'standard',
+        p_engagement_type: input.engagementType ?? 'contractor',
+        p_certificate_holder_name: input.certificateHolderName?.trim() || null,
+        p_certificate_holder_address: input.certificateHolderAddress?.trim() || null,
+        p_additional_insured_name: input.additionalInsuredName?.trim() || null,
+        p_insurance_instructions: input.insuranceInstructions?.trim() || null,
       });
       if (error) throw error;
       if (input.trades?.length) {
@@ -259,7 +282,40 @@ export function useStartContractorOnboarding() {
       recipientName?: string;
     }) => {
       const caseId = await createContractorCaseRecord(input);
-      if (!input.sendPortal) return { caseId, invitation: null };
+      if (input.requestedCodes) {
+        const { error } = await (supabase.rpc as any)('configure_contractor_request', {
+          p_case_id: caseId, p_codes: input.requestedCodes,
+          p_company_profile: input.requestCompanyProfile ?? true,
+          p_portfolio: input.requestPortfolio ?? true,
+        });
+        if (error) throw Object.assign(new Error(`Checklist created, but request settings could not be saved: ${error.message}`), { caseId });
+      }
+      let crmSync: { status: 'synced' | 'pending' | 'not_applicable'; message?: string } = {
+        status: input.projectId ? 'pending' : 'not_applicable',
+      };
+      if (input.projectId) {
+        const { data: createdCase } = await supabase.from('contractor_qualification_cases' as any)
+          .select('organization_id').eq('id', caseId).maybeSingle();
+        const organizationId = (createdCase as any)?.organization_id ?? input.organizationId;
+        if (!organizationId) {
+          crmSync = { status: 'pending', message: 'Company was created, but CRM synchronization needs to be retried' };
+        } else {
+          try {
+            const { data: crmData, error: crmError } = await supabase.functions.invoke('crm-integration-gateway', {
+              body: { operation: 'sync_vendor', projectId: input.projectId, organizationId },
+            });
+            crmSync = !crmError && crmData?.ok
+              ? { status: 'synced' }
+              : { status: 'pending', message: crmData?.message || crmError?.message || 'CRM synchronization is pending' };
+          } catch (error) {
+            crmSync = {
+              status: 'pending',
+              message: error instanceof Error ? error.message : 'CRM synchronization is pending',
+            };
+          }
+        }
+      }
+      if (!input.sendPortal) return { caseId, invitation: null, crmSync };
       const recipientEmail = input.recipientEmail?.trim().toLowerCase();
       if (!recipientEmail) throw Object.assign(new Error('The checklist was created, but a recipient email is required to send the portal.'), { caseId });
       const { data, error } = await supabase.functions.invoke('contractor-invite', {
@@ -268,9 +324,22 @@ export function useStartContractorOnboarding() {
       if (error || !data?.ok) {
         throw Object.assign(new Error(data?.error || error?.message || 'The checklist was created, but the portal invitation could not be sent.'), { caseId });
       }
-      return { caseId, invitation: data as ContractorInvitationResult };
+      return { caseId, invitation: data as ContractorInvitationResult, crmSync };
     },
     onSettled: () => qc.invalidateQueries({ queryKey: ['contractor-readiness'] }),
+  });
+}
+
+export function useOnboardingChecklist(enabled: boolean) {
+  return useQuery({
+    queryKey: ['contractor-readiness', 'onboarding-template'], enabled,
+    queryFn: async () => {
+      const { data: id, error } = await (supabase.rpc as any)('ensure_default_contractor_template');
+      if (error) throw error;
+      const result = await supabase.from('contractor_requirement_items' as any).select('*').eq('template_id', id).order('sort_order');
+      if (result.error) throw result.error;
+      return result.data as unknown as Array<{ requirement_code: string; title: string; required: boolean; applies_to: string }>;
+    },
   });
 }
 

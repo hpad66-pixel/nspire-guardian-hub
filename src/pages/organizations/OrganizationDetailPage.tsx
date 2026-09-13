@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
-  ArrowLeft, ArrowRight, ChevronRight, Briefcase, FolderKanban, Mail, Phone, Globe, Images, Plus, ScanEye, UserRoundCheck, Users,
+  ArrowLeft, ArrowRight, ChevronRight, Briefcase, FileText, FolderKanban, Mail, Phone, Globe, Images, Plus, ScanEye, UserRoundCheck, Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -131,6 +131,7 @@ export default function OrganizationDetailPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => navigate(`/organizations/${org.id}/meetings`)}><FileText className="mr-2 h-4 w-4" />Meetings &amp; Actions</Button>
             <Button variant="outline" className="shrink-0" onClick={() => setTeamOpen(true)}><Users className="mr-2 h-4 w-4" />Team {typeof org.member_count === 'number' ? `(${org.member_count})` : ''}</Button>
             {canManageContractors && <Button variant="outline" className="shrink-0" onClick={() => navigate(`/organizations/${org.id}/contractors`)}><UserRoundCheck className="mr-2 h-4 w-4" />Contractors</Button>}
             {canCreateProject && <Button className="shrink-0" onClick={() => setCreateProjectOpen(true)}><Plus className="mr-2 h-4 w-4" />Create project</Button>}

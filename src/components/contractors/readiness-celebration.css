@@ -1,0 +1,4 @@
+.readiness-celebration{position:absolute;inset:0;pointer-events:none;overflow:hidden;border-radius:inherit}
+.readiness-celebration i{position:absolute;top:-10px;width:5px;height:9px;border-radius:2px;opacity:0;animation:readiness-fall 2.4s ease-out forwards}
+@keyframes readiness-fall{0%{opacity:0;translate:0 -10px}12%{opacity:.8}100%{opacity:0;translate:18px 260px;rotate:240deg}}
+@media(prefers-reduced-motion:reduce){.readiness-celebration{display:none}}

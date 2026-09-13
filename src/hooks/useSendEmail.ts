@@ -24,6 +24,7 @@ export interface SendEmailParams {
   attachmentSize?: number;
   dailyInspectionId?: string;
   reportId?: string;
+  clientMeetingPublicationId?: string;
 }
 
 export function useSendEmail() {

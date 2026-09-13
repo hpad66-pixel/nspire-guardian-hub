@@ -1,0 +1,32 @@
+name: Weekly client meeting delivery
+on:
+  schedule:
+    - cron: '10,40 * * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: client-meeting-delivery
+  cancel-in-progress: false
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.116.0
+      - name: Send new approved reports due this hour
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          MEETING_PROJECT_REF: ${{ secrets.VITE_SUPABASE_PROJECT_ID }}
+        run: |
+          set -euo pipefail
+          [[ "$MEETING_PROJECT_REF" =~ ^[a-z]{20}$ ]] || { echo "Invalid project reference"; exit 1; }
+          MEETING_SERVICE_KEY=$(supabase projects api-keys --project-ref "$MEETING_PROJECT_REF" -o json | jq -er '.[] | select(.name == "service_role") | .api_key')
+          test -n "$MEETING_SERVICE_KEY" || { echo "Missing delivery service credential"; exit 1; }
+          echo "::add-mask::$MEETING_SERVICE_KEY"
+          curl --fail-with-body --silent --show-error --max-time 500 \
+            -X POST "https://$MEETING_PROJECT_REF.supabase.co/functions/v1/client-meeting-delivery" \
+            -H "Authorization: Bearer $MEETING_SERVICE_KEY" \
+            -H 'Content-Type: application/json' --data '{}'
