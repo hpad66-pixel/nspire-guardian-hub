@@ -159,6 +159,10 @@ verify_jwt = false
 [functions.api-key-mint]
 verify_jwt = false
 
+# Remote MCP gateway — validates its own Bearer token via api_tokens table
+[functions.proj-os-mcp]
+verify_jwt = false
+
 # Webhook dispatcher — invoked by Supabase cron only
 [functions.webhook-dispatch]
 verify_jwt = false

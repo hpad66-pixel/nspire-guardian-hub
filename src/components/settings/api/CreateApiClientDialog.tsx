@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export const AVAILABLE_SCOPES = [
+  "read:mcp",
   "read:projects", "write:projects",
   "read:contacts", "write:contacts",
   "read:project-directory", "write:project-directory",
