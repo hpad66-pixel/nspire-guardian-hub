@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { Loader2, Landmark, Siren, FileCheck2, Leaf, Headphones, FileSearch } from 'lucide-react';
+import { Loader2, Landmark, Siren, FileCheck2, Leaf, Headphones, FileSearch, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
+import { isAuth0SignInEnabled, signInWithAuth0 } from '@/lib/auth/oauth';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -27,6 +28,7 @@ export default function AuthPage() {
   const isClientPortal = searchParams.get('portal') === 'client' || safeNext?.startsWith('/owner-portal') === true;
   const destination = safeNext ?? (isClientPortal ? '/owner-portal' : '/dashboard');
   const [isSubmitting, setIsSubmitting]   = useState(false);
+  const [isAuth0Loading, setIsAuth0Loading] = useState(false);
   const [loginEmail, setLoginEmail]       = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
@@ -50,6 +52,18 @@ export default function AuthPage() {
     } else {
       toast.success('Welcome back!');
       navigate(destination, { replace: true });
+    }
+  };
+
+  const handleAuth0SignIn = async () => {
+    setIsAuth0Loading(true);
+    try {
+      const { error } = await signInWithAuth0(`${window.location.origin}${destination}`);
+      if (error) toast.error('Failed to sign in with Auth0. Please try again.');
+    } catch {
+      toast.error('An unexpected error occurred. Please try again.');
+    } finally {
+      setIsAuth0Loading(false);
     }
   };
 
@@ -219,6 +233,28 @@ export default function AuthPage() {
                   : 'Sign in to access your APAS Project Controls workspace'}
               </p>
             </div>
+
+            {!isClientPortal && isAuth0SignInEnabled() && (
+              <>
+                <button
+                  onClick={handleAuth0SignIn}
+                  disabled={isAuth0Loading}
+                  className="mb-5 w-full flex items-center justify-center gap-3 h-12 rounded-xl text-sm font-semibold border border-primary/15 bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-60"
+                >
+                  {isAuth0Loading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <ShieldCheck className="h-4 w-4" />
+                  )}
+                  Continue with Auth0
+                </button>
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="flex-1 h-px bg-border" />
+                  <span className="text-xs text-muted-foreground">or continue with email</span>
+                  <div className="flex-1 h-px bg-border" />
+                </div>
+              </>
+            )}
 
             {/* Form */}
             <form onSubmit={handleLogin} className="space-y-4">
