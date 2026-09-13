@@ -20,7 +20,7 @@ The build is sequenced through four phases, each composed of numbered prompts th
 - **Backend:** Supabase (Postgres + Row-Level Security + Storage + Edge Functions)
 - **PDF/Export:** jspdf · html2canvas · SheetJS (xlsx)
 - **Billing:** Stripe (Phase 1 prompt A6)
-- **Auth:** Supabase Auth + SAML 2.0 SSO + SCIM 2.0 (Phase 1 prompt A7)
+- **Auth:** Auth0 Universal Login (the front door, shared across APAS products) bridged to Supabase Auth sessions · SAML 2.0 SSO + SCIM 2.0 (Phase 1 prompt A7)
 - **Testing:** Vitest (unit/hooks) · Playwright (e2e)
 - **CI:** GitHub Actions (typecheck + tests + migration dry-run on every PR)
 
@@ -142,6 +142,16 @@ API keys, webhook signing secrets, OAuth client secrets, and any other generated
 - Only the hash is persisted (`bcrypt` or `argon2id`) in a `*_hash` column.
 - Revocation is non-destructive — set `revoked_at`, never `DELETE`.
 - The UI shows the plaintext in a `RevealSecretOnceDialog`; reload and it's gone.
+
+### 11. Auth0 authenticates; Supabase Auth still owns the session
+
+Auth0 Universal Login is the single front door for signup and signin across every APAS product, so signup attribution (`app_metadata.signup_product`) is decided once, in Auth0. It does **not** replace Supabase Auth: 190 foreign keys reference `auth.users(id)` and 1,200+ RLS policies call `auth.uid()`, so Supabase's third-party-auth mode (Auth0-issued JWTs, `auth.uid()` = `auth0|…`) is off the table.
+
+Account creation therefore has exactly two routes, and neither is the browser:
+- `supabase/functions/auth0-callback` — verifies an Auth0 ID token server-side, resolves or creates the `auth.users` row, mints a Supabase session.
+- `supabase/functions/accept-workspace-invitation` — the single-use invitation path.
+
+Never call `supabase.auth.signUp` from the client. Never bypass `handle_new_user` by inserting a workspace directly — the presence or absence of `invitation_token` in `user_metadata` is what tells the trigger to join an existing workspace or provision a new one. Never link an Auth0 identity to an existing account by email unless the email is verified; that is account takeover. Setup and cutover: `docs/auth0-setup.md`.
 
 ---
 
@@ -271,6 +281,11 @@ Before tagging a phase complete, every item below must be green. This is the rub
 **Portals**
 - [ ] Every `/portal/sub/*` and `/portal/owner/*` route is wrapped in `<PortalProtectedRoute>`.
 
+**Identity**
+- [ ] No client-side `supabase.auth.signUp` — accounts come from the Auth0 bridge or a single-use invitation.
+- [ ] Auth0 identities link to an existing account only on a verified email.
+- [ ] Workspace provisioning still runs through `handle_new_user`, never a direct `workspaces` insert.
+
 **Secrets**
 - [ ] No plaintext secret is persisted anywhere — only `*_hash` columns.
 - [ ] Every secret-issuing flow uses an edge function and the once-only-reveal dialog.
@@ -322,7 +337,8 @@ If the prompt wins, update CLAUDE.md in the same PR.
 - `Procore_Lite_Lovable_Prompts.html` — 30 copy-paste prompts (the source of all work)
 - `Procore_Lite_ClaudeCode_Primer.md` — how to run those prompts through Claude Code
 - `Procore_Lite_Gap_Closure_Prompts.md` — G-series gap-closure prompts (G1–G6) bringing the build from the Phase 4 audit score to 100/100
+- `docs/auth0-setup.md` — Auth0 Universal Login setup, user migration, and cutover runbook
 
 ---
 
-*Last updated: 2026-04-26 · v1.1 (added rules 8–10, phase sign-off checklist, G-series companion artifact)*
+*Last updated: 2026-09-07 · v1.2 (added rule 11 — Auth0 Universal Login bridge)*
