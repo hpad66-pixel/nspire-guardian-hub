@@ -12,7 +12,6 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   userRole: AppRole | null;
-  signUp: (email: string, password: string, fullName?: string, companyName?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   /** Hands off to Auth0 Universal Login. Navigates away on success. */
   signInWithAuth0: (options?: StartAuth0Options) => Promise<{ error: Error | null }>;
@@ -121,27 +120,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName?: string, companyName?: string) => {
-    const redirectUrl = `${window.location.origin}/`;
-
-    // company_name (when present, and no workspace_id invite) tells the
-    // handle_new_user trigger to provision a fresh, isolated workspace and make
-    // this user its admin. Invited users carry workspace_id and join instead.
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: redirectUrl,
-        data: {
-          full_name: fullName,
-          ...(companyName ? { company_name: companyName } : {}),
-        },
-      },
-    });
-
-    return { error: error as Error | null };
-  };
-
   const signIn = async (email: string, password: string) => {
     const { error } = await supabase.auth.signInWithPassword({
       email,
@@ -173,7 +151,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, signUp, signIn, signInWithAuth0, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, userRole, signIn, signInWithAuth0, signOut }}>
       {children}
     </AuthContext.Provider>
   );
