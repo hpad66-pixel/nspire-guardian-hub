@@ -1,0 +1,4 @@
+{
+  "error": "oauth_discovery_not_configured",
+  "message": "Proj OS /mcp uses a static Authorization bearer header. Configure a static MCP header instead of OAuth discovery for this endpoint."
+}

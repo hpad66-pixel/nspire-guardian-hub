@@ -227,6 +227,24 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     }
   });
 
+  test("static OAuth discovery fallbacks are shipped as JSON", () => {
+    const files = [
+      "public/.well-known/oauth-protected-resource/mcp",
+      "public/.well-known/oauth-authorization-server",
+      "public/.well-known/openid-configuration",
+    ];
+
+    for (const file of files) {
+      const body = JSON.parse(read(file)) as { error: string; message: string };
+      expect(body.error).toBe("oauth_discovery_not_configured");
+      expect(body.message).toContain("static Authorization bearer header");
+    }
+
+    expect(read("public/_headers")).toContain("/.well-known/*");
+    expect(read("public/_headers")).toContain("Content-Type: application/json; charset=utf-8");
+    expect(read("public/_redirects")).toContain("/.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/mcp 200");
+  });
+
   test("public API enforces workspace project boundaries", () => {
     const source = read("supabase/functions/api-v1/index.ts");
     expect(source).toContain("listAuthorizedProjects(ctx.tenantId)");
