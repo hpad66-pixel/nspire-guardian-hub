@@ -5,6 +5,7 @@ import { useUserPermissions } from '@/hooks/usePermissions';
 import { useUnreadThreadCount, useUnreadThreadCountRealtime } from '@/hooks/useThreadReadStatus';
 import { useProjects } from '@/hooks/useProjects';
 import { isDedicatedSiteAccountabilityProject } from '@/lib/accountability/accountabilityNavigation';
+import { useWaterIntelAvailability } from '@/hooks/useWaterIntelligence';
 import { cn } from '@/lib/utils';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import {
@@ -36,16 +37,18 @@ import {
   CircleDollarSign,
   ScanEye,
   X,
+  Gauge,
+  Droplets,
 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
-type ActiveSection = 'portals' | 'daily' | 'compliance' | 'projects' | 'more';
+type ActiveSection = 'home' | 'daily' | 'compliance' | 'projects' | 'more';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function getActiveSection(pathname: string): ActiveSection {
-  if (pathname === '/dashboard' || pathname.startsWith('/portals')) return 'portals';
+  if (pathname === '/dashboard' || pathname === '/my-day' || pathname === '/cockpit') return 'home';
   if (
     pathname.startsWith('/inspections/daily') ||
     pathname.startsWith('/inspections/history') ||
@@ -109,8 +112,8 @@ function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: Pri
       </div>
       {/* Label */}
       <span
-        className="text-[12px] font-semibold leading-none tracking-tight transition-colors duration-200"
-        style={{ color: textColor, letterSpacing: isActive ? '-0.01em' : '0' }}
+        className="text-[12px] font-semibold leading-none transition-colors duration-200"
+        style={{ color: textColor, letterSpacing: 0 }}
       >
         {label}
       </span>
@@ -153,7 +156,7 @@ function SecondaryBarItem({
 function SecondaryBar({ activeSection, hasSiteAccountability }: { activeSection: ActiveSection; hasSiteAccountability: boolean }) {
   const { pathname } = useLocation();
 
-  if (activeSection === 'portals' || activeSection === 'more') return null;
+  if (activeSection === 'home' || activeSection === 'more') return null;
 
   let items: { to: string; label: string }[] = [];
   let accentColor = MODULE_COLORS.daily;
@@ -240,7 +243,7 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
         )}
       </div>
       <div className="min-w-0">
-        <p className="text-[15px] font-semibold tracking-tight text-[hsl(215,25%,92%)]" style={{ letterSpacing: '-0.012em' }}>
+        <p className="text-[15px] font-semibold text-[hsl(215,25%,92%)]" style={{ letterSpacing: 0 }}>
           {title}
         </p>
         <p className="text-[12px] font-medium leading-snug text-[hsl(215,16%,55%)] mt-0.5">{subtitle}</p>
@@ -274,6 +277,18 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability }: MoreD
   const { canView, currentRole } = useUserPermissions();
   const isAdminOrOwner = currentRole === 'admin' || currentRole === 'owner';
   const canManageContractors = ['admin', 'owner', 'manager', 'project_manager', 'administrator'].includes(currentRole ?? '');
+  const showPropertyOps = isModuleEnabled('propertyMgmtEnabled');
+  const showEmail = isModuleEnabled('emailInboxEnabled');
+  const showTraining = isModuleEnabled('trainingHubEnabled');
+  const showCockpit = isModuleEnabled('cockpitEnabled');
+  const showClientPortals = isModuleEnabled('clientPortalEnabled');
+  const canViewDailyReports = isModuleEnabled('reportsEnabled') && (canView('reports') || isAdminOrOwner);
+  const { data: hasEnabledWaterIntel = false } = useWaterIntelAvailability(showPropertyOps);
+  const showWaterIntelligence = showPropertyOps && (isAdminOrOwner || hasEnabledWaterIntel);
+  const showOperationsSection =
+    (showPropertyOps && (canView('issues') || canView('work_orders'))) ||
+    hasSiteAccountability ||
+    canViewDailyReports;
 
   const go = (path: string) => {
     onClose();
@@ -303,7 +318,7 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability }: MoreD
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 pb-3">
-          <span className="text-[17px] font-semibold text-[hsl(215,25%,92%)]" style={{ letterSpacing: '-0.018em' }}>
+          <span className="text-[17px] font-semibold text-[hsl(215,25%,92%)]" style={{ letterSpacing: 0 }}>
             More
           </span>
           <button
@@ -317,79 +332,135 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability }: MoreD
         {/* Tile grid */}
         <div className="grid grid-cols-2 gap-2 overflow-y-auto px-4 pb-8 pt-0">
 
-          {/* OPERATIONS — moved here from bottom bar */}
-          <DrawerSectionLabel label="Operations" />
+          <DrawerSectionLabel label="Command" />
           <DrawerTile
-            icon={<AlertTriangle className={iconClass} />}
-            iconBg={operationsRedBg}
-            title="Issues"
-            subtitle="Active defects & issues"
-            onClick={() => go('/issues')}
-          />
-          <DrawerTile
-            icon={<Wrench className={iconClass} />}
-            iconBg={operationsAmberBg}
-            title="Work Orders"
-            subtitle="Maintenance pipeline"
-            onClick={() => go('/work-orders')}
-          />
-          <DrawerTile
-            icon={<Shield className={iconClass} />}
+            icon={<Home className={iconClass} />}
             iconBg={portfolioIconBg}
-            title="Compliance Permits"
-            subtitle="Property compliance docs & scan"
-            onClick={() => go('/permits')}
+            title="Dashboard"
+            subtitle="Command center"
+            onClick={() => go('/dashboard')}
           />
-          {hasSiteAccountability && (
+          <DrawerTile
+            icon={<Sun className={iconClass} />}
+            iconBg={greenIconBg}
+            title="My Day"
+            subtitle="Your work queue"
+            onClick={() => go('/my-day')}
+          />
+          {showCockpit && (
             <DrawerTile
-              icon={<ScanEye className={iconClass} />}
-              iconBg={greenIconBg}
-              title="Site Accountability"
-              subtitle="Owner walks, photos & closeout proof"
-              onClick={() => go('/site-accountability')}
+              icon={<Gauge className={iconClass} />}
+              iconBg={adminIconBg}
+              title="Cockpit"
+              subtitle="Portfolio health"
+              onClick={() => go('/cockpit')}
             />
           )}
-          {(canView('reports') || isAdminOrOwner) && (
+          {showClientPortals && (
             <DrawerTile
-              icon={<ClipboardList className={iconClass} />}
-              iconBg={greenIconBg}
-              title="Daily Reports"
-              subtitle="View field reports"
-              onClick={() => go('/daily-reports')}
+              icon={<ShieldCheck className={iconClass} />}
+              iconBg={commIconBg}
+              title="Client Portals"
+              subtitle="External access"
+              onClick={() => go('/portals')}
             />
           )}
 
+          {showOperationsSection && (
+            <>
+              <DrawerSectionLabel label="Operations" />
+              {showPropertyOps && canView('issues') && (
+                <DrawerTile
+                  icon={<AlertTriangle className={iconClass} />}
+                  iconBg={operationsRedBg}
+                  title="Issues"
+                  subtitle="Active defects & issues"
+                  onClick={() => go('/issues')}
+                />
+              )}
+              {showPropertyOps && canView('work_orders') && (
+                <DrawerTile
+                  icon={<Wrench className={iconClass} />}
+                  iconBg={operationsAmberBg}
+                  title="Work Orders"
+                  subtitle="Maintenance pipeline"
+                  onClick={() => go('/work-orders')}
+                />
+              )}
+              {showPropertyOps && canView('work_orders') && (
+                <DrawerTile
+                  icon={<Shield className={iconClass} />}
+                  iconBg={portfolioIconBg}
+                  title="Compliance Permits"
+                  subtitle="Property compliance docs & scan"
+                  onClick={() => go('/permits')}
+                />
+              )}
+              {hasSiteAccountability && (
+                <DrawerTile
+                  icon={<ScanEye className={iconClass} />}
+                  iconBg={greenIconBg}
+                  title="Site Accountability"
+                  subtitle="Owner walks, photos & closeout proof"
+                  onClick={() => go('/site-accountability')}
+                />
+              )}
+              {canViewDailyReports && (
+                <DrawerTile
+                  icon={<ClipboardList className={iconClass} />}
+                  iconBg={greenIconBg}
+                  title="Daily Reports"
+                  subtitle="View field reports"
+                  onClick={() => go('/daily-reports')}
+                />
+              )}
+            </>
+          )}
+
           {/* PORTFOLIO */}
-          <DrawerSectionLabel label="Portfolio" />
-          <DrawerTile
-            icon={<Building className={iconClass} />}
-            iconBg={portfolioIconBg}
-            title="Properties"
-            subtitle="Manage your properties"
-            onClick={() => go('/properties')}
-          />
-          <DrawerTile
-            icon={<DoorOpen className={iconClass} />}
-            iconBg={portfolioIconBg}
-            title="Units"
-            subtitle="Unit inventory"
-            onClick={() => go('/units')}
-          />
-          <DrawerTile
-            icon={<Box className={iconClass} />}
-            iconBg={portfolioIconBg}
-            title="Assets"
-            subtitle="Equipment & assets"
-            onClick={() => go('/assets')}
-          />
-          {isModuleEnabled('occupancyEnabled') && (
-            <DrawerTile
-              icon={<Home className={iconClass} />}
-              iconBg={portfolioIconBg}
-              title="Occupancy"
-              subtitle="Tenant tracking"
-              onClick={() => go('/occupancy')}
-            />
+          {showPropertyOps && (
+            <>
+              <DrawerSectionLabel label="Property Ops" />
+              <DrawerTile
+                icon={<Building className={iconClass} />}
+                iconBg={portfolioIconBg}
+                title="Properties"
+                subtitle="Managed property desk"
+                onClick={() => go('/properties')}
+              />
+              {showWaterIntelligence && (
+                <DrawerTile
+                  icon={<Droplets className={iconClass} />}
+                  iconBg={greenIconBg}
+                  title="Water Intelligence"
+                  subtitle="Utility ledger & owner brief"
+                  onClick={() => go('/water-intel')}
+                />
+              )}
+              <DrawerTile
+                icon={<DoorOpen className={iconClass} />}
+                iconBg={portfolioIconBg}
+                title="Units"
+                subtitle="Unit inventory"
+                onClick={() => go('/units')}
+              />
+              <DrawerTile
+                icon={<Box className={iconClass} />}
+                iconBg={portfolioIconBg}
+                title="Assets"
+                subtitle="Equipment & assets"
+                onClick={() => go('/assets')}
+              />
+              {isModuleEnabled('occupancyEnabled') && (
+                <DrawerTile
+                  icon={<Home className={iconClass} />}
+                  iconBg={portfolioIconBg}
+                  title="Occupancy"
+                  subtitle="Tenant tracking"
+                  onClick={() => go('/occupancy')}
+                />
+              )}
+            </>
           )}
 
           {/* COMMUNICATIONS */}
@@ -402,13 +473,15 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability }: MoreD
             badge={unreadCount}
             onClick={() => go('/messages')}
           />
-          <DrawerTile
-            icon={<Mail className={iconClass} />}
-            iconBg={commIconBg}
-            title="Email"
-            subtitle="Email inbox"
-            onClick={() => go('/inbox')}
-          />
+          {showEmail && (
+            <DrawerTile
+              icon={<Mail className={iconClass} />}
+              iconBg={commIconBg}
+              title="Email"
+              subtitle="Email inbox"
+              onClick={() => go('/inbox')}
+            />
+          )}
           {isModuleEnabled('aiEnabled') && (
             <DrawerTile
               icon={<Phone className={iconClass} />}
@@ -446,13 +519,15 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability }: MoreD
               onClick={() => go('/contractor-readiness')}
             />
           )}
-          <DrawerTile
-            icon={<GraduationCap className={iconClass} />}
-            iconBg={orgIconBg}
-            title="Training"
-            subtitle="Training academy"
-            onClick={() => go('/training')}
-          />
+          {showTraining && (
+            <DrawerTile
+              icon={<GraduationCap className={iconClass} />}
+              iconBg={orgIconBg}
+              title="Training"
+              subtitle="Training academy"
+              onClick={() => go('/training')}
+            />
+          )}
           {canView('documents') && (
             <DrawerTile
               icon={<FileText className={iconClass} />}
@@ -571,11 +646,11 @@ export function MobileNav() {
         }}
         data-testid="mobile-bottom-nav"
       >
-        {/* Portals — always visible */}
+        {/* Home — always visible */}
         <PrimaryItem
           icon={<Home className="h-5 w-5" />}
-          label="Portals"
-          isActive={activeSection === 'portals'}
+          label="Home"
+          isActive={activeSection === 'home'}
           onClick={() => navigate('/dashboard')}
         />
 

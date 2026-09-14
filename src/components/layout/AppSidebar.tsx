@@ -58,6 +58,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useProjects } from '@/hooks/useProjects';
 import { isDedicatedSiteAccountabilityProject } from '@/lib/accountability/accountabilityNavigation';
+import { useWaterIntelAvailability } from '@/hooks/useWaterIntelligence';
 import {
   Tooltip,
   TooltipContent,
@@ -145,6 +146,8 @@ export function AppSidebar() {
   const isAdmin = currentRole === 'admin';
   const isAdminOrOwner = currentRole === 'admin' || currentRole === 'owner';
   const canManageContractors = ['admin', 'owner', 'manager', 'project_manager', 'administrator'].includes(currentRole ?? '');
+  const { data: hasEnabledWaterIntel = false } = useWaterIntelAvailability(isModuleEnabled('propertyMgmtEnabled'));
+  const showWaterIntelligence = isModuleEnabled('propertyMgmtEnabled') && (isAdminOrOwner || hasEnabledWaterIntel);
 
   const openIssueCount = (issues as Array<{ status: string | null }>).filter(
     (i) => i.status !== 'resolved' && i.status !== 'verified',
@@ -181,7 +184,7 @@ export function AppSidebar() {
             </div>
             {!collapsed && (
               <span className="grid gap-1 leading-none">
-                <strong className="text-[16px] font-bold tracking-[-0.025em] text-sidebar-foreground">Project Controls</strong>
+                <strong className="text-[16px] font-bold text-sidebar-foreground">Project Controls</strong>
                 <small className="text-[9px] font-bold uppercase tracking-[0.14em] text-sidebar-muted">Powered by projOS</small>
               </span>
             )}
@@ -191,7 +194,7 @@ export function AppSidebar() {
         {/* ── CONTENT ── */}
         <SidebarContent className="overflow-y-auto overflow-x-hidden px-2 py-1">
           {/* ─── Overview ─── */}
-          <SectionLabel label="Overview" collapsed={collapsed} />
+          <SectionLabel label="Command" collapsed={collapsed} />
           <div className="space-y-px">
             <NavItem to="/dashboard" icon={Home} label="Dashboard" collapsed={collapsed} end />
             <NavItem to="/my-day" icon={Sunrise} label="My Day" collapsed={collapsed} />
@@ -204,13 +207,16 @@ export function AppSidebar() {
               client to see their projects, then enter each project. ─── */}
           {(isModuleEnabled('constructionEnabled') || isModuleEnabled('consultingEnabled')) && canView('projects') && (
             <>
-              <SectionLabel label="Projects" collapsed={collapsed} />
+              <SectionLabel label="Portfolio" collapsed={collapsed} />
               <div className="space-y-px">
                 {/* Flat view of every project, and the Clients hub (manage all
                     clients, create, search). Proposals are NOT here — they live
                     inside each project. */}
                 <NavItem to="/projects" icon={FolderKanban} label="All Projects" collapsed={collapsed} end />
                 <NavItem to="/organizations" icon={Briefcase} label="Clients" collapsed={collapsed} />
+                {isModuleEnabled('clientPortalEnabled') && (
+                  <NavItem to="/portals" icon={ShieldCheck} label="Client Portals" collapsed={collapsed} />
+                )}
                 {hasSiteAccountability && <NavItem to="/site-accountability" icon={ScanEye} label="Site Accountability" collapsed={collapsed} />}
                 {/* Your clients nested to their projects: click a client to open it,
                     expand to jump straight into any of its projects. */}
@@ -237,13 +243,15 @@ export function AppSidebar() {
             </>
           )}
 
-          {/* ─── Property Management (nSpire / property ops) ─── */}
+          {/* ─── Property Ops (property-backed modules) ─── */}
           {isModuleEnabled('propertyMgmtEnabled') && (
             <>
-              <SectionLabel label="Property Management" collapsed={collapsed} />
+              <SectionLabel label="Property Ops" collapsed={collapsed} />
               <div className="space-y-px">
                 <NavItem to="/properties" icon={Building2} label="Properties" collapsed={collapsed} />
-                <NavItem to="/water-intel" icon={Droplets} label="Water Intelligence" collapsed={collapsed} />
+                {showWaterIntelligence && (
+                  <NavItem to="/water-intel" icon={Droplets} label="Water Intelligence" collapsed={collapsed} />
+                )}
                 <NavItem to="/units" icon={DoorOpen} label="Units" collapsed={collapsed} />
                 {isModuleEnabled('occupancyEnabled') && (
                   <NavItem to="/occupancy" icon={Home} label="Occupancy" collapsed={collapsed} />
@@ -301,8 +309,8 @@ export function AppSidebar() {
             </>
           )}
 
-          {/* ─── People ─── */}
-          <SectionLabel label="People" collapsed={collapsed} />
+          {/* ─── People & CRM ─── */}
+          <SectionLabel label="People & CRM" collapsed={collapsed} />
           <div className="space-y-px">
             {canView('people') && (
               <NavItem to="/people" icon={Users} label="Team" collapsed={collapsed} />

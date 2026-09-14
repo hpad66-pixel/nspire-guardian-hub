@@ -25,6 +25,23 @@ export interface WaterIntelScope {
   token?: string | null;
 }
 
+export function useWaterIntelAvailability(enabled = true) {
+  return useQuery({
+    queryKey: ['water-intel-availability'],
+    enabled,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id')
+        .eq('water_intel_enabled', true)
+        .limit(1);
+      if (error) throw error;
+      return (data ?? []).length > 0;
+    },
+  });
+}
+
 function numBill(row: Record<string, unknown>): WaterBill {
   return {
     ...(row as unknown as WaterBill),
@@ -510,6 +527,7 @@ export function useWaterIntelAdmin() {
     },
     onSuccess: (_, vars) => {
       qc.invalidateQueries({ queryKey: ['water-intel-admin'] });
+      qc.invalidateQueries({ queryKey: ['water-intel-availability'] });
       toast.success(vars.enabled ? 'Water Intelligence enabled' : 'Water Intelligence turned off');
     },
     onError: (e: Error) => toast.error(e.message),

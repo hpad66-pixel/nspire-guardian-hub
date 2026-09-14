@@ -18,6 +18,7 @@ export type DashboardNavItemId =
   | 'inbox'
   | 'voice'
   | 'stores'
+  | 'water-intel'
   | 'reports'
   | 'documents'
   | 'portals'
@@ -111,7 +112,7 @@ export const DASHBOARD_NAV_CATEGORIES: DashboardNavCategoryDef[] = [
         id: 'daily-grounds',
         label: 'Daily Grounds',
         description: 'Site walks tied to inspectable assets',
-        to: '/daily-grounds',
+        to: '/inspections/daily',
         module: 'dailyGroundsEnabled',
       },
       {
@@ -132,7 +133,7 @@ export const DASHBOARD_NAV_CATEGORIES: DashboardNavCategoryDef[] = [
         id: 'clients',
         label: 'Clients',
         description: 'Organizations and project portfolios',
-        to: '/clients',
+        to: '/organizations',
         module: 'projectsEnabled',
       },
       {
@@ -168,6 +169,13 @@ export const DASHBOARD_NAV_CATEGORIES: DashboardNavCategoryDef[] = [
         description: 'ElevenLabs hotline → tickets → work orders',
         to: '/voice-agent',
         module: 'aiEnabled',
+      },
+      {
+        id: 'water-intel',
+        label: 'Water Intelligence',
+        description: 'Property utility ledger, bill QA, and owner brief',
+        to: '/water-intel',
+        module: 'propertyMgmtEnabled',
       },
       {
         id: 'reports',

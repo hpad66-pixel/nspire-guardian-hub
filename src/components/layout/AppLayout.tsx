@@ -28,8 +28,10 @@ import type { ModuleConfig } from '@/types/modules';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRoles } from '@/hooks/useUserManagement';
 import { useMyProfile } from '@/hooks/useMyProfile';
+import { useMyPortalKind } from '@/hooks/usePortals';
 import type { Database } from '@/integrations/supabase/types';
 import { ProjectClosureBoundary } from '@/components/projects/ProjectClosureBoundary';
+import { internalAppRedirectForPortalKind } from '@/lib/portal/portalRedirect';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -45,6 +47,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const { user } = useAuth();
   const { data: assignedRoles = [] } = useUserRoles(user?.id ?? null);
   const { data: myProfile } = useMyProfile();
+  const { data: portalKind = 'main', isLoading: portalKindLoading } = useMyPortalKind();
   const [searchOpen, setSearchOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -150,6 +153,21 @@ export function AppLayout({ children }: AppLayoutProps) {
       navigate('/dashboard', { replace: true });
     }
   }, [location.pathname, isModuleEnabled, modulesLoading, navigate]);
+
+  const portalRedirect = internalAppRedirectForPortalKind(portalKind);
+
+  useEffect(() => {
+    if (portalKindLoading || !portalRedirect) return;
+    navigate(portalRedirect, { replace: true });
+  }, [navigate, portalKindLoading, portalRedirect]);
+
+  if (portalKindLoading || portalRedirect) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+      </div>
+    );
+  }
 
   return (
     <>

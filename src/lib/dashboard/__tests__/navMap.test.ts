@@ -14,7 +14,16 @@ describe('filterDashboardNavCategories', () => {
     expect(ids).toContain('projects');
     expect(ids).not.toContain('work-orders');
     expect(ids).not.toContain('permits');
+    expect(ids).not.toContain('water-intel');
     expect(ids).not.toContain('voice');
+  });
+
+  it('routes launchers to mounted app routes', () => {
+    const items = DASHBOARD_NAV_CATEGORIES.flatMap((c) => c.items);
+
+    expect(items.find((i) => i.id === 'clients')?.to).toBe('/organizations');
+    expect(items.find((i) => i.id === 'daily-grounds')?.to).toBe('/inspections/daily');
+    expect(items.find((i) => i.id === 'water-intel')?.to).toBe('/water-intel');
   });
 
   it('drops empty categories', () => {
