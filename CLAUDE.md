@@ -341,4 +341,4 @@ If the prompt wins, update CLAUDE.md in the same PR.
 
 ---
 
-*Last updated: 2026-09-07 · v1.2 (added rule 11 — Auth0 Universal Login bridge)*
+*Last updated: 2026-04-26 · v1.1 (added rules 8–10, phase sign-off checklist, G-series companion artifact). Auth0 Universal Login bridge addendum added 2026-09-07 under rule 11.*
