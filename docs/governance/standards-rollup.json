@@ -1,0 +1,55 @@
+{
+  "schema": "apas.governance-dashboard-rollup/1",
+  "consumerId": "projos",
+  "productName": "ProjOS",
+  "repository": "https://github.com/hpad66-pixel/nspire-guardian-hub.git",
+  "dashboardPurpose": "Show whether program workflows, identity, authorization, approvals, audit, contractor/vendor collaboration and ontology references are governed by explicit evidence and role boundaries.",
+  "certificationStatus": "not-certified-dashboard-evidence-only",
+  "sourceTruthBoundary": "ProjOS owns workflow state, approvals, identity/authorization enforcement and audit records. Ontology gives shared meaning, but must not replace approval authority or live security decisions.",
+  "lanes": [
+    {
+      "key": "data-governance",
+      "label": "Data governance",
+      "standardFamily": "DAMA / ISO 8000-style data quality and lineage",
+      "evidenceRequired": ["record lineage", "document custody", "approval state", "retention basis", "correction history"]
+    },
+    {
+      "key": "security-governance",
+      "label": "Security governance",
+      "standardFamily": "ISO/IEC 27001 control alignment",
+      "evidenceRequired": ["identity authority", "role mapping", "tenant/project separation", "audit logging", "secret isolation"]
+    },
+    {
+      "key": "ai-governance",
+      "label": "AI governance",
+      "standardFamily": "ISO/IEC 42001 plus NIST AI RMF-style risk management",
+      "evidenceRequired": ["model/provider inventory", "human approval gates", "evaluation evidence", "known limitations", "decision boundaries"]
+    },
+    {
+      "key": "semantic-web",
+      "label": "Semantic web standards",
+      "standardFamily": "W3C RDF / OWL / SHACL / SPARQL alignment",
+      "evidenceRequired": ["ontology version pin", "program taxonomy placement", "SHACL validation", "query contract", "semantic-impact review"]
+    },
+    {
+      "key": "federal-omb-readiness",
+      "label": "Federal and OMB readiness",
+      "standardFamily": "OMB and federal AI/data governance policy mapping",
+      "evidenceRequired": ["policy inventory", "control owner", "evidence artifact", "exception register", "review cadence"]
+    }
+  ],
+  "rollupSignals": [
+    "identity_authority_boundary",
+    "approval_audit_trail",
+    "ontology_consumer_pin",
+    "workflow_authority_preserved",
+    "ai_decision_boundary"
+  ],
+  "blockedClaims": [
+    "ontology approves workflow decisions",
+    "CRM context is live security authority",
+    "AI approval without human decision",
+    "production semantic dependency without approval",
+    "certified compliance"
+  ]
+}

@@ -18,6 +18,8 @@
     "typecheck": "node scripts/typecheck-critical.mjs",
     "typecheck:full": "tsc -p tsconfig.app.json --noEmit",
     "test": "vitest run",
+    "test:ontology": "node --test tests/ontology-consumer-pin.test.mjs",
+    "test:governance": "node --test tests/governance-dashboard-rollup.test.mjs",
     "test:agent-local": "node --test scripts/agent-local-gateway.test.mjs",
     "agent:local-gateway": "node scripts/agent-local-gateway.mjs",
     "agent:keys": "node scripts/agent-session-keypair.mjs",

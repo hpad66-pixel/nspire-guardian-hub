@@ -1,0 +1,42 @@
+{
+  "contractVersion": "apas.ontology-consumer-pin/1",
+  "consumerId": "projos",
+  "productName": "ProjOS",
+  "repository": "https://github.com/hpad66-pixel/nspire-guardian-hub.git",
+  "ontologyRelease": {
+    "releaseId": "onewateros-5.4-pinned",
+    "repository": "https://github.com/APAS-ai/Ontology.git",
+    "branch": "main",
+    "commit": "711c1ea3cba0f3a095ecaafa50dcc67bd32e260d",
+    "owlFile": "1_OneWaterOS_v5.4.owl",
+    "owlSha256": "db4968b62f8808a4f3fcc0e1c3f70c8e803ac6739063c40b740b8a4d63826409",
+    "versionIri": "https://onewater.apas.ai/ontology/5.4",
+    "versionInfo": "5.4.0",
+    "releaseStatus": "pinned",
+    "semanticApproval": false
+  },
+  "authorityBoundary": {
+    "projosOwnsWorkflowState": true,
+    "projosOwnsApprovalsAndAudit": true,
+    "ontologyOwnsSharedMeaning": true,
+    "crmIsNotSecurityAuthority": true
+  },
+  "allowedUses": [
+    "operating-object mapping",
+    "approval and audit vocabulary review",
+    "identity-context alignment"
+  ],
+  "blockedUses": [
+    "automatic ontology replacement",
+    "delegating workflow authority to ontology",
+    "production semantic dependency without approval"
+  ],
+  "upgradeGate": {
+    "requiredChecks": [
+      "workflow state authority remains in ProjOS",
+      "approval and audit mappings remain compatible",
+      "identity/customer model boundary remains compatible",
+      "rollback path keeps the prior ontology mapping available"
+    ]
+  }
+}
