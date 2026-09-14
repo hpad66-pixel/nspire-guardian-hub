@@ -28,6 +28,22 @@ interface VoiceAgentContext {
   onTicketCreated?: (ticket: { requestId?: string | null; ticketNumber?: string | null }) => void;
 }
 
+function asDynamicVariables(values: Record<string, string | number | boolean | null | undefined>) {
+  return Object.fromEntries(
+    Object.entries(values).filter(([, value]) => {
+      if (typeof value === 'string') return value.trim().length > 0;
+      return value !== null && value !== undefined;
+    }),
+  ) as Record<string, string | number | boolean>;
+}
+
+function makeClientCallId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  return `voice-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function useVoiceAgent(context?: VoiceAgentContext) {
   const qc = useQueryClient();
   const processingStarted = useRef(false);
@@ -230,8 +246,23 @@ export function useVoiceAgent(context?: VoiceAgentContext) {
         throw new Error('No signed URL received from server');
       }
 
+      const ctx = contextRef.current;
+      const clientCallId = makeClientCallId();
+      const dynamicVariables = asDynamicVariables({
+        call_id: clientCallId,
+        client_call_id: clientCallId,
+        property_id: ctx?.propertyId,
+        property_name: ctx?.propertyName,
+        caller_name: ctx?.callerName,
+        caller_email: ctx?.callerEmail,
+        caller_phone: ctx?.callerPhone,
+      });
+      const userId = ctx?.callerEmail?.trim() || ctx?.callerPhone?.trim() || ctx?.callerName?.trim() || undefined;
+
       const conversationId = await conversation.startSession({
         signedUrl: data.signed_url,
+        dynamicVariables,
+        userId,
       });
 
       const callId = typeof conversationId === 'string' ? conversationId : data.agent_id || 'active';
@@ -242,9 +273,9 @@ export function useVoiceAgent(context?: VoiceAgentContext) {
         callId,
       }));
 
-      const ctx = contextRef.current;
       const parts = [
         callId ? `call_id=${callId}` : null,
+        clientCallId ? `client_call_id=${clientCallId}` : null,
         ctx?.propertyId ? `property_id=${ctx.propertyId}` : null,
         ctx?.propertyName ? `property_name=${ctx.propertyName}` : null,
         ctx?.callerName ? `caller_name=${ctx.callerName}` : null,

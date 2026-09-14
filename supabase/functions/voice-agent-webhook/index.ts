@@ -58,6 +58,22 @@ serve(async (req) => {
       return lines.length ? lines.join('\n') : null;
     };
 
+    const loadRequestSummary = async (requestId: string) => {
+      const { data: request, error } = await supabase
+        .from('maintenance_requests')
+        .select('id, call_id, ticket_number, work_order_id')
+        .eq('id', requestId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error reloading maintenance request summary:', error);
+      }
+
+      return request || null;
+    };
+
+    let responseBody: Record<string, unknown> = { success: true };
+
     switch (eventType) {
       case 'conversation.started': {
         console.log('Conversation started:', conversation_id);
@@ -170,9 +186,20 @@ serve(async (req) => {
               .join('\n')
           : null;
 
+        const initiationData =
+          postCallData?.conversation_initiation_client_data ||
+          postCallData?.metadata?.conversation_initiation_client_data ||
+          payload?.conversation_initiation_client_data ||
+          payload?.metadata?.conversation_initiation_client_data ||
+          {};
+
         const dynamicVars =
-          postCallData?.conversation_initiation_client_data?.dynamic_variables ||
-          postCallData?.conversation_initiation_client_data?.dynamicVariables ||
+          initiationData?.dynamic_variables ||
+          initiationData?.dynamicVariables ||
+          postCallData?.dynamic_variables ||
+          postCallData?.dynamicVariables ||
+          payload?.dynamic_variables ||
+          payload?.dynamicVariables ||
           {};
 
         const callerName =
@@ -196,8 +223,18 @@ serve(async (req) => {
         const unitId = normalizeString(dynamicVars?.unit_id) || null;
         let unitNumber = normalizeString(dynamicVars?.unit_number) || null;
 
+        let clientCallId =
+          normalizeString(dynamicVars?.client_call_id) ||
+          normalizeString(dynamicVars?.clientCallId) ||
+          normalizeString(dynamicVars?.call_id) ||
+          normalizeString(dynamicVars?.callId);
+
         // Contextual updates are plain text — recover property_id / unit from transcript if needed
         const contextBlob = `${transcriptText || ''} ${userOnlyTranscript || ''}`;
+        if (!clientCallId) {
+          const m = contextBlob.match(/\b(?:client_call_id|call_id)\s*=\s*([A-Za-z0-9._:-]+)/i);
+          if (m) clientCallId = m[1];
+        }
         if (!propertyId) {
           const m = contextBlob.match(/property_id\s*=\s*([0-9a-f-]{36})/i);
           if (m) propertyId = m[1];
@@ -328,20 +365,31 @@ serve(async (req) => {
           break;
         }
 
-        const { data: existingRequest, error: existingError } = await supabase
-          .from('maintenance_requests')
-          .select('id')
-          .eq('call_id', conversationId)
-          .maybeSingle();
+        let existingRequest: { id: string; call_id: string | null; ticket_number?: number | null; work_order_id?: string | null } | null = null;
+        const lookupCallIds = Array.from(new Set([conversationId, clientCallId].filter(Boolean)));
 
-        if (existingError) {
-          console.error('Error checking for existing request:', existingError);
+        for (const lookupCallId of lookupCallIds) {
+          const { data: foundRequest, error: existingError } = await supabase
+            .from('maintenance_requests')
+            .select('id, call_id, ticket_number, work_order_id')
+            .eq('call_id', lookupCallId)
+            .maybeSingle();
+
+          if (existingError) {
+            console.error('Error checking for existing request:', existingError);
+          }
+
+          if (foundRequest?.id) {
+            existingRequest = foundRequest;
+            break;
+          }
         }
 
         if (existingRequest?.id) {
           const { error: updateError } = await supabase
             .from('maintenance_requests')
             .update({
+              call_id: conversationId,
               call_transcript: transcriptText || userOnlyTranscript || issueDescription,
               call_duration_seconds: callDurationSeconds,
               call_recording_url: callRecordingUrl,
@@ -361,6 +409,15 @@ serve(async (req) => {
 
           if (updateError) {
             console.error('Error updating request from post_call_transcription:', updateError);
+          } else {
+            const updated = await loadRequestSummary(existingRequest.id) || existingRequest;
+            responseBody = {
+              success: true,
+              action: 'updated',
+              request_id: updated.id,
+              ticket_number: updated.ticket_number,
+              work_order_id: updated.work_order_id,
+            };
           }
           break;
         }
@@ -391,7 +448,7 @@ serve(async (req) => {
             preferred_access_time: preferredAccessTime,
             has_pets: hasPets,
             special_access_instructions: specialInstructions,
-            call_id: conversationId,
+            call_id: conversationId || clientCallId,
             call_started_at: callStartedAt || new Date().toISOString(),
             call_ended_at: callEndedAt || new Date().toISOString(),
             call_duration_seconds: callDurationSeconds,
@@ -405,7 +462,15 @@ serve(async (req) => {
         if (insertError) {
           console.error('Error creating request from post_call_transcription:', insertError);
         } else {
-          console.log('Created maintenance request from post_call_transcription:', inserted);
+          const created = await loadRequestSummary(inserted.id) || inserted;
+          responseBody = {
+            success: true,
+            action: 'created',
+            request_id: created.id,
+            ticket_number: created.ticket_number,
+            work_order_id: created.work_order_id,
+          };
+          console.log('Created maintenance request from post_call_transcription:', created);
         }
 
         break;
@@ -416,7 +481,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ success: true }),
+      JSON.stringify(responseBody),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 200,

@@ -99,6 +99,7 @@ serve(async (req) => {
           has_pets,
           special_instructions,
           call_id,
+          client_call_id,
         } = parameters;
 
         if (!property_id) {
@@ -125,7 +126,7 @@ serve(async (req) => {
             preferred_access_time: preferred_access_time || null,
             has_pets: Boolean(has_pets),
             special_access_instructions: special_instructions || null,
-            call_id: call_id || null,
+            call_id: call_id || client_call_id || null,
             call_started_at: new Date().toISOString(),
             status: 'new',
           })
