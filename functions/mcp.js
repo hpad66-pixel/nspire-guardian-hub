@@ -29,7 +29,7 @@ export async function onRequest(context) {
   if (!env.PROJ_OS_MCP_SHARED_SECRET) return rpcHttpError(null, -32000, "MCP is not configured", 503, request);
   const bearer = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
   if (!bearer || !(await secureEqual(bearer, env.PROJ_OS_MCP_SHARED_SECRET))) {
-    return rpcHttpError(null, -32001, "Unauthorized", 401, request);
+    return rpcHttpError(null, -32001, "Unauthorized: configure Authorization: Bearer <PROJ_OS_MCP_SHARED_SECRET>", 401, request, bearerAuthHeaders());
   }
 
   let message;
@@ -330,12 +330,13 @@ function rpcResponse(id, result, error, request) {
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...corsHeaders(request) },
   });
 }
-function rpcHttpError(id, code, message, status, request) {
+function rpcHttpError(id, code, message, status, request, extraHeaders = {}) {
   return new Response(JSON.stringify({ jsonrpc: "2.0", id, error: { code, message } }), {
     status,
-    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...corsHeaders(request) },
+    headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...corsHeaders(request), ...extraHeaders },
   });
 }
+function bearerAuthHeaders() { return { "www-authenticate": 'Bearer realm="proj-os-mcp"' }; }
 function rpcError(rpcCode, message) { const error = new Error(message); error.rpcCode = rpcCode; return error; }
 function cleanHeader(value) { return String(value || "").replace(/[\r\n]/g, "").slice(0, 200); }
 function requireText(value, field) { const text = String(value || "").trim(); if (!text) throw new Error(`${field} is required`); return text; }

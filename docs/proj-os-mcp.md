@@ -52,7 +52,11 @@ There is no project-by-project setup. The API client's tenant determines the wor
 
 `GET /mcp` now returns JSON (`405` + `application/json`) so a current Hermes preflight can succeed even without `skip_preflight`. Keep the flag anyway.
 
-## 5. Connect Cursor / Slack agents
+## 5. Connect Claude / Cursor / Slack agents
+
+The Cloudflare `/mcp` endpoint is a static bearer-header MCP endpoint. It is not a user-consent OAuth authorization server, and it does not support OAuth Dynamic Client Registration. Claude custom connectors must therefore be configured with a static `Authorization` header if that connector option is available in your Claude workspace. Do not paste the Proj OS API client ID/secret into Claude's OAuth Client ID fields for this endpoint; those credentials are only for the server-side MCP-to-Supabase token exchange.
+
+If Claude only shows OAuth Client ID/Secret settings, the current `/mcp` endpoint is not the right connector mode yet. The next implementation step would be a real Claude-compatible OAuth flow with PKCE, a token endpoint, and protected-resource metadata. Until then, use a header-capable MCP client such as Claude's static-header connector option, Cursor, Slack agents, or Hermes.
 
 Add a remote MCP server in Cursor and store `PROJ_OS_MCP_SHARED_SECRET` as a Cursor secret. Slack-launched agents can only call live projOS tools after that MCP is registered for the workspace/user.
 

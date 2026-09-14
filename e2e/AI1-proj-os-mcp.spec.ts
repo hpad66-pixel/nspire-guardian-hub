@@ -3,6 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { onRequest } from "../functions/mcp.js";
+import { onRequest as spaFallback } from "../functions/[[path]].js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relative: string) => fs.readFileSync(path.join(root, relative), "utf8");
@@ -173,6 +174,37 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     request.headers.delete("authorization");
     const response = await onRequest({ request, env });
     expect(response.status).toBe(401);
+    expect(response.headers.get("www-authenticate")).toBe('Bearer realm="proj-os-mcp"');
+    expect(response.headers.get("www-authenticate") || "").not.toContain("resource_metadata");
+    const body = await response.json() as { error: { message: string } };
+    expect(body.error.message).toContain("Authorization: Bearer");
+  });
+
+  test("OAuth discovery probes return JSON instead of the React app", async () => {
+    const assets = {
+      fetch: async () => new Response("<!doctype html><div id=\"root\"></div>", {
+        status: 200,
+        headers: { "content-type": "text/html" },
+      }),
+    };
+    const next = async () => new Response("not found", { status: 404 });
+    const paths = [
+      "/.well-known/oauth-protected-resource",
+      "/.well-known/oauth-protected-resource/mcp",
+      "/.well-known/oauth-authorization-server",
+      "/.well-known/openid-configuration",
+    ];
+
+    for (const pathname of paths) {
+      const response = await spaFallback({
+        request: new Request(`https://projos.ai${pathname}`, { method: "GET" }),
+        env: { ASSETS: assets },
+        next,
+      });
+      expect(response.status).toBe(404);
+      expect(response.headers.get("content-type") || "").toContain("application/json");
+      expect(await response.text()).toContain("oauth_discovery_not_configured");
+    }
   });
 
   test("public API enforces workspace project boundaries", () => {
