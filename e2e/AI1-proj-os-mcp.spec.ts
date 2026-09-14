@@ -270,6 +270,8 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     expect(read("public/_headers")).toContain("/.well-known/*");
     expect(read("public/_headers")).toContain("Content-Type: application/json; charset=utf-8");
     expect(read("public/_redirects")).toContain("/.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/mcp 200");
+    expect(read("vite.config.ts")).toContain("/^\\/oauth($|\\/)/");
+    expect(read("src/main.tsx")).toContain("oauth-route-flush");
   });
 
   test("Claude OAuth facade registers, approves through Proj OS, exchanges, and authenticates MCP", async () => {

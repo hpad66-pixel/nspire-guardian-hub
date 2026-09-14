@@ -28,7 +28,8 @@ if (typeof window !== "undefined") {
 // header and feedback workspace shipped in the same release.
 // 2026-09-02: flush so every client drops the overflow-x:clip shell that
 // trapped document scroll on every page.
-const SW_CLEANUP_VERSION = "2026-09-02-document-scroll-flush";
+// 2026-09-13: flush stale SWs that hijacked /oauth/* connector consent routes.
+const SW_CLEANUP_VERSION = "2026-09-13-oauth-route-flush";
 const SW_CLEANUP_KEY = "proj-os-sw-cleanup";
 
 async function evictStaleServiceWorkers(): Promise<boolean> {

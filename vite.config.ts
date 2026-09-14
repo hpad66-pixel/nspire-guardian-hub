@@ -100,6 +100,7 @@ export default defineConfig(() => ({
         // otherwise hijack it into a protected route.
         navigateFallbackDenylist: [
           /^\/~oauth/,
+          /^\/oauth($|\/)/,
           /^\/auth\/callback/,
           /^\/auth\//,
           /^\/schedule-demo($|\/|\.)/,
