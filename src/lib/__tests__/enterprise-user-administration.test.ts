@@ -43,9 +43,20 @@ describe('enterprise workspace user administration', () => {
     expect(acceptPage).toContain("'accept-workspace-invitation'");
     expect(acceptPage).toContain('signInWithPassword');
     expect(acceptPage).not.toContain('auth.signUp');
-    expect(authPage).not.toContain('Create a company workspace');
     expect(authPage).not.toContain('signInWithOAuth');
     expect(authPage).not.toContain('Continue with Google');
+  });
+
+  it('creates accounts only through the invitation function or the Auth0 bridge', () => {
+    // Self-serve signup reopened with Auth0 Universal Login, so the page no
+    // longer has to be signup-free. What must stay true is that the client never
+    // creates an account itself: it is either the single-use invitation (which
+    // proves the email) or the Auth0 bridge (which verifies an ID token
+    // server-side before calling auth.admin.createUser).
+    expect(authPage).not.toContain('supabase.auth.signUp');
+    expect(authPage).toContain('signInWithAuth0');
+    expect(acceptPage).toContain('startAuth0');
+    expect(acceptPage).toContain('invitationToken: token');
   });
 
   it('routes role writes through audited tenant-authorized RPCs', () => {

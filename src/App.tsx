@@ -24,6 +24,7 @@ const AuthPage = lazy(() => import('./pages/auth/AuthPage'));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage'));
 const AcceptInvitePage = lazy(() => import('./pages/auth/AcceptInvitePage'));
+const Auth0CallbackPage = lazy(() => import('./pages/auth/Auth0CallbackPage'));
 const InspectionsDashboard = lazy(() => import('./pages/inspections/InspectionsDashboard'));
 const OutsideInspections = lazy(() => import('./pages/inspections/OutsideInspections'));
 const InsideInspections = lazy(() => import('./pages/inspections/InsideInspections'));
@@ -286,6 +287,8 @@ const App = () => (
                     <Route path="/home-alt" element={<Navigate to="/" replace />} />
                     <Route path="/home-legacy" element={<Navigate to="/" replace />} />
                     <Route path="/auth" element={<AuthPage />} />
+                    {/* Auth0 hands the minted Supabase session back here. */}
+                    <Route path="/auth/callback" element={<Auth0CallbackPage />} />
                     <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                     <Route path="/reset-password" element={<ResetPasswordPage />} />
                     <Route path="/accept-invite/:token" element={<AcceptInvitePage />} />
