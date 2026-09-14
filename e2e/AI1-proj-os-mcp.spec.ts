@@ -4,6 +4,9 @@ import * as path from "node:path";
 import { fileURLToPath } from "node:url";
 import { onRequest } from "../functions/mcp.js";
 import { onRequest as spaFallback } from "../functions/[[path]].js";
+import { onRequest as oauthAuthorizationServer } from "../functions/.well-known/oauth-authorization-server/[[path]].js";
+import { onRequest as oauthProtectedResource } from "../functions/.well-known/oauth-protected-resource/[[path]].js";
+import { onRequest as openidConfiguration } from "../functions/.well-known/openid-configuration.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relative: string) => fs.readFileSync(path.join(root, relative), "utf8");
@@ -200,6 +203,23 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
         request: new Request(`https://projos.ai${pathname}`, { method: "GET" }),
         env: { ASSETS: assets },
         next,
+      });
+      expect(response.status).toBe(404);
+      expect(response.headers.get("content-type") || "").toContain("application/json");
+      expect(await response.text()).toContain("oauth_discovery_not_configured");
+    }
+  });
+
+  test("explicit OAuth discovery routes return JSON", async () => {
+    const routes = [
+      oauthProtectedResource,
+      oauthAuthorizationServer,
+      openidConfiguration,
+    ];
+
+    for (const route of routes) {
+      const response = await route({
+        request: new Request("https://projos.ai/.well-known/oauth-protected-resource/mcp", { method: "GET" }),
       });
       expect(response.status).toBe(404);
       expect(response.headers.get("content-type") || "").toContain("application/json");
