@@ -1,4 +1,12 @@
 {
-  "error": "oauth_discovery_not_configured",
-  "message": "Proj OS /mcp uses a static Authorization bearer header. Configure a static MCP header instead of OAuth discovery for this endpoint."
+  "issuer": "https://projos.ai",
+  "authorization_endpoint": "https://projos.ai/oauth/authorize",
+  "token_endpoint": "https://projos.ai/oauth/token",
+  "registration_endpoint": "https://projos.ai/oauth/register",
+  "response_types_supported": ["code"],
+  "grant_types_supported": ["authorization_code", "refresh_token"],
+  "token_endpoint_auth_methods_supported": ["none"],
+  "code_challenge_methods_supported": ["S256"],
+  "scopes_supported": ["mcp"],
+  "service_documentation": "https://projos.ai/docs/proj-os-mcp"
 }

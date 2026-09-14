@@ -1,3 +1,5 @@
+import { json, oauthServerMetadata, protectedResourceMetadata } from "./oauth/_shared.js";
+
 const FILE_PATH_RE = /\.[a-z0-9]+$/i;
 const OAUTH_DISCOVERY_PATHS = new Set([
   "/.well-known/oauth-protected-resource",
@@ -18,15 +20,11 @@ function isOAuthDiscoveryPath(pathname) {
 }
 
 function oauthDiscoveryNotConfigured(request) {
-  const headers = {
-    "content-type": "application/json; charset=utf-8",
-    "cache-control": "no-store",
-  };
-  if (request.method === "HEAD") return new Response(null, { status: 404, headers });
-  return new Response(JSON.stringify({
-    error: "oauth_discovery_not_configured",
-    message: "Proj OS /mcp uses a static Authorization bearer header. Configure a static MCP header instead of OAuth discovery for this endpoint.",
-  }), { status: 404, headers });
+  const headers = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
+  const url = new URL(request.url);
+  if (request.method === "HEAD") return new Response(null, { status: 200, headers });
+  if (url.pathname.startsWith("/.well-known/oauth-protected-resource")) return json(protectedResourceMetadata(request));
+  return json(oauthServerMetadata(request));
 }
 
 export async function onRequest(context) {

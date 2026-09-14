@@ -76,7 +76,25 @@ write:client-updates
 
 ## Claude connection
 
-For Claude remote custom connectors, add the remote MCP URL above and configure the Authorization header with a short-lived bearer token.
+For Claude remote custom connectors, use the public Cloudflare endpoint:
+
+```text
+https://projos.ai/mcp
+```
+
+Claude discovers the Proj OS authorization server through:
+
+```text
+https://projos.ai/.well-known/oauth-protected-resource/mcp
+```
+
+The connector supports Dynamic Client Registration and PKCE authorization code exchange. When Claude opens the authorization page, enter the deployed `PROJ_OS_MCP_SHARED_SECRET` to approve the connector. Claude then receives a signed bearer token that `/mcp` accepts without exposing database credentials.
+
+For header-capable MCP clients, you may also configure:
+
+```text
+Authorization: Bearer <PROJ_OS_MCP_SHARED_SECRET>
+```
 
 For Claude Desktop or any host that expects a local stdio command, use the bridge:
 

@@ -8,6 +8,7 @@
  *   PROJ_OS_SUPABASE_FUNCTIONS_URL (optional when VITE_SUPABASE_URL is set)
  *   PROJ_OS_MCP_ALLOWED_ORIGINS (optional comma-separated browser origins)
  */
+import { protectedResourceMetadataUrl, verifyMcpAccessToken } from "./oauth/_shared.js";
 
 const SUPPORTED_PROTOCOLS = new Set(["2025-11-25", "2025-06-18", "2025-03-26"]);
 let tokenCache = null;
@@ -28,8 +29,8 @@ export async function onRequest(context) {
   if (originError) return rpcHttpError(null, -32001, originError, 403, request);
   if (!env.PROJ_OS_MCP_SHARED_SECRET) return rpcHttpError(null, -32000, "MCP is not configured", 503, request);
   const bearer = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  if (!bearer || !(await secureEqual(bearer, env.PROJ_OS_MCP_SHARED_SECRET))) {
-    return rpcHttpError(null, -32001, "Unauthorized: configure Authorization: Bearer <PROJ_OS_MCP_SHARED_SECRET>", 401, request, bearerAuthHeaders());
+  if (!bearer || !(await isAuthorizedBearer(bearer, request, env))) {
+    return rpcHttpError(null, -32001, "Unauthorized: configure Authorization: Bearer <PROJ_OS_MCP_SHARED_SECRET>", 401, request, bearerAuthHeaders(request));
   }
 
   let message;
@@ -319,6 +320,11 @@ async function secureEqual(a, b) {
   return diff === 0;
 }
 
+async function isAuthorizedBearer(bearer, request, env) {
+  if (await secureEqual(bearer, env.PROJ_OS_MCP_SHARED_SECRET)) return true;
+  return Boolean(await verifyMcpAccessToken(bearer, env, request));
+}
+
 async function sha256Hex(value) {
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
   return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -336,7 +342,9 @@ function rpcHttpError(id, code, message, status, request, extraHeaders = {}) {
     headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...corsHeaders(request), ...extraHeaders },
   });
 }
-function bearerAuthHeaders() { return { "www-authenticate": 'Bearer realm="proj-os-mcp"' }; }
+function bearerAuthHeaders(request) {
+  return { "www-authenticate": `Bearer realm="proj-os-mcp", resource_metadata="${protectedResourceMetadataUrl(request)}"` };
+}
 function rpcError(rpcCode, message) { const error = new Error(message); error.rpcCode = rpcCode; return error; }
 function cleanHeader(value) { return String(value || "").replace(/[\r\n]/g, "").slice(0, 200); }
 function requireText(value, field) { const text = String(value || "").trim(); if (!text) throw new Error(`${field} is required`); return text; }

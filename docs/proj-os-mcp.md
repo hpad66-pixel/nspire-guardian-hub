@@ -54,9 +54,26 @@ There is no project-by-project setup. The API client's tenant determines the wor
 
 ## 5. Connect Claude / Cursor / Slack agents
 
-The Cloudflare `/mcp` endpoint is a static bearer-header MCP endpoint. It is not a user-consent OAuth authorization server, and it does not support OAuth Dynamic Client Registration. Claude custom connectors must therefore be configured with a static `Authorization` header if that connector option is available in your Claude workspace. Do not paste the Proj OS API client ID/secret into Claude's OAuth Client ID fields for this endpoint; those credentials are only for the server-side MCP-to-Supabase token exchange.
+The Cloudflare `/mcp` endpoint supports two connector modes:
 
-If Claude only shows OAuth Client ID/Secret settings, the current `/mcp` endpoint is not the right connector mode yet. The next implementation step would be a real Claude-compatible OAuth flow with PKCE, a token endpoint, and protected-resource metadata. Until then, use a header-capable MCP client such as Claude's static-header connector option, Cursor, Slack agents, or Hermes.
+- Static bearer header for Hermes, Cursor, Slack agents, and any MCP host that can set request headers.
+- Claude-compatible OAuth discovery, Dynamic Client Registration, PKCE authorization code exchange, refresh tokens, and signed bearer tokens.
+
+Claude custom connectors can use the remote MCP URL:
+
+```text
+https://projos.ai/mcp
+```
+
+When Claude opens the Proj OS authorization page, enter the deployed `PROJ_OS_MCP_SHARED_SECRET` from Cloudflare Pages settings. Do not paste the Proj OS API client ID/secret into Claude's OAuth Client ID fields; those credentials are only for the server-side MCP-to-Supabase token exchange.
+
+The OAuth facade does not expose database credentials. It signs Claude MCP bearer tokens with `PROJ_OS_MCP_SHARED_SECRET`, and `/mcp` accepts those signed tokens in addition to the original static shared secret. Discovery documents are available at:
+
+```text
+https://projos.ai/.well-known/oauth-protected-resource/mcp
+https://projos.ai/.well-known/oauth-authorization-server
+https://projos.ai/.well-known/openid-configuration
+```
 
 Add a remote MCP server in Cursor and store `PROJ_OS_MCP_SHARED_SECRET` as a Cursor secret. Slack-launched agents can only call live projOS tools after that MCP is registered for the workspace/user.
 

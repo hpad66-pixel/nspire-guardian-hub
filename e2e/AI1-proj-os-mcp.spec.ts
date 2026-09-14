@@ -7,6 +7,9 @@ import { onRequest as spaFallback } from "../functions/[[path]].js";
 import { onRequest as oauthAuthorizationServer } from "../functions/.well-known/oauth-authorization-server/[[path]].js";
 import { onRequest as oauthProtectedResource } from "../functions/.well-known/oauth-protected-resource/[[path]].js";
 import { onRequest as openidConfiguration } from "../functions/.well-known/openid-configuration.js";
+import { onRequest as oauthAuthorize } from "../functions/oauth/authorize.js";
+import { onRequest as oauthRegister } from "../functions/oauth/register.js";
+import { onRequest as oauthToken } from "../functions/oauth/token.js";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = (relative: string) => fs.readFileSync(path.join(root, relative), "utf8");
@@ -24,6 +27,13 @@ function mcpRequest(method: string, params: unknown = {}) {
 }
 
 const env = { PROJ_OS_MCP_SHARED_SECRET: "test-secret" };
+
+async function pkceChallenge(verifier: string) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  let binary = "";
+  for (const byte of new Uint8Array(digest)) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
 
 test.describe("AI1 Proj OS agent API and MCP", () => {
   test("MCP initializes as Proj OS", async () => {
@@ -177,13 +187,13 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     request.headers.delete("authorization");
     const response = await onRequest({ request, env });
     expect(response.status).toBe(401);
-    expect(response.headers.get("www-authenticate")).toBe('Bearer realm="proj-os-mcp"');
-    expect(response.headers.get("www-authenticate") || "").not.toContain("resource_metadata");
+    expect(response.headers.get("www-authenticate") || "").toContain('Bearer realm="proj-os-mcp"');
+    expect(response.headers.get("www-authenticate") || "").toContain("resource_metadata=");
     const body = await response.json() as { error: { message: string } };
     expect(body.error.message).toContain("Authorization: Bearer");
   });
 
-  test("OAuth discovery probes return JSON instead of the React app", async () => {
+  test("OAuth discovery probes advertise the Claude connector flow", async () => {
     const assets = {
       fetch: async () => new Response("<!doctype html><div id=\"root\"></div>", {
         status: 200,
@@ -204,30 +214,41 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
         env: { ASSETS: assets },
         next,
       });
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(200);
       expect(response.headers.get("content-type") || "").toContain("application/json");
-      expect(await response.text()).toContain("oauth_discovery_not_configured");
+      const body = await response.json() as Record<string, unknown>;
+      expect(JSON.stringify(body)).toContain("https://projos.ai");
+      if (pathname.includes("oauth-protected-resource")) {
+        expect(body.resource).toBe("https://projos.ai/mcp");
+      } else {
+        expect(body.authorization_endpoint).toBe("https://projos.ai/oauth/authorize");
+        expect(body.registration_endpoint).toBe("https://projos.ai/oauth/register");
+        expect(body.code_challenge_methods_supported).toContain("S256");
+      }
     }
   });
 
-  test("explicit OAuth discovery routes return JSON", async () => {
-    const routes = [
-      oauthProtectedResource,
-      oauthAuthorizationServer,
-      openidConfiguration,
-    ];
+  test("explicit OAuth discovery routes return metadata JSON", async () => {
+    const resource = await oauthProtectedResource({
+      request: new Request("https://projos.ai/.well-known/oauth-protected-resource/mcp", { method: "GET" }),
+    });
+    expect(resource.status).toBe(200);
+    expect((await resource.json() as any).resource).toBe("https://projos.ai/mcp");
 
-    for (const route of routes) {
+    for (const route of [oauthAuthorizationServer, openidConfiguration]) {
       const response = await route({
-        request: new Request("https://projos.ai/.well-known/oauth-protected-resource/mcp", { method: "GET" }),
+        request: new Request("https://projos.ai/.well-known/oauth-authorization-server", { method: "GET" }),
       });
-      expect(response.status).toBe(404);
+      expect(response.status).toBe(200);
       expect(response.headers.get("content-type") || "").toContain("application/json");
-      expect(await response.text()).toContain("oauth_discovery_not_configured");
+      const body = await response.json() as any;
+      expect(body.authorization_endpoint).toBe("https://projos.ai/oauth/authorize");
+      expect(body.token_endpoint).toBe("https://projos.ai/oauth/token");
+      expect(body.registration_endpoint).toBe("https://projos.ai/oauth/register");
     }
   });
 
-  test("static OAuth discovery fallbacks are shipped as JSON", () => {
+  test("static OAuth discovery fallbacks are shipped as metadata JSON", () => {
     const files = [
       "public/.well-known/oauth-protected-resource/mcp",
       "public/.well-known/oauth-authorization-server",
@@ -235,14 +256,90 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     ];
 
     for (const file of files) {
-      const body = JSON.parse(read(file)) as { error: string; message: string };
-      expect(body.error).toBe("oauth_discovery_not_configured");
-      expect(body.message).toContain("static Authorization bearer header");
+      const body = JSON.parse(read(file)) as Record<string, unknown>;
+      expect(JSON.stringify(body)).toContain("https://projos.ai");
     }
 
     expect(read("public/_headers")).toContain("/.well-known/*");
     expect(read("public/_headers")).toContain("Content-Type: application/json; charset=utf-8");
     expect(read("public/_redirects")).toContain("/.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/mcp 200");
+  });
+
+  test("Claude OAuth facade registers, approves, exchanges, and authenticates MCP", async () => {
+    const registerResponse = await oauthRegister({
+      request: new Request("https://projos.ai/oauth/register", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          client_name: "Claude",
+          redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
+        }),
+      }),
+      env,
+    });
+    expect(registerResponse.status).toBe(201);
+    const registration = await registerResponse.json() as any;
+    expect(registration.client_id).toContain("proj-os-claude-");
+    expect(registration.token_endpoint_auth_method).toBe("none");
+
+    const verifier = "test-verifier-for-claude-oauth-pkce";
+    const authorizeParams = new URLSearchParams({
+      response_type: "code",
+      client_id: registration.client_id,
+      redirect_uri: "https://claude.ai/api/mcp/auth_callback",
+      state: "state-123",
+      code_challenge: await pkceChallenge(verifier),
+      code_challenge_method: "S256",
+      scope: "mcp",
+    });
+    const approvalPage = await oauthAuthorize({
+      request: new Request(`https://projos.ai/oauth/authorize?${authorizeParams.toString()}`),
+      env,
+    });
+    expect(approvalPage.status).toBe(200);
+    expect(await approvalPage.text()).toContain("Authorize Proj OS");
+
+    const form = new URLSearchParams(authorizeParams);
+    form.set("approval_secret", "test-secret");
+    const approval = await oauthAuthorize({
+      request: new Request("https://projos.ai/oauth/authorize", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: form.toString(),
+      }),
+      env,
+    });
+    expect(approval.status).toBe(302);
+    const callbackUrl = new URL(approval.headers.get("location") || "");
+    expect(callbackUrl.origin + callbackUrl.pathname).toBe("https://claude.ai/api/mcp/auth_callback");
+    expect(callbackUrl.searchParams.get("state")).toBe("state-123");
+    const code = callbackUrl.searchParams.get("code") || "";
+    expect(code).toContain("pos_mcp_code_");
+
+    const tokenBody = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: "https://claude.ai/api/mcp/auth_callback",
+      code_verifier: verifier,
+    });
+    const tokenResponse = await oauthToken({
+      request: new Request("https://projos.ai/oauth/token", {
+        method: "POST",
+        headers: { "content-type": "application/x-www-form-urlencoded" },
+        body: tokenBody.toString(),
+      }),
+      env,
+    });
+    expect(tokenResponse.status).toBe(200);
+    const token = await tokenResponse.json() as any;
+    expect(token.access_token).toContain("pos_mcp_oauth_");
+    expect(token.refresh_token).toContain("pos_mcp_refresh_");
+
+    const request = mcpRequest("initialize", { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "claude", version: "1" } });
+    request.headers.set("authorization", `Bearer ${token.access_token}`);
+    const mcpResponse = await onRequest({ request, env });
+    expect(mcpResponse.status).toBe(200);
+    expect((await mcpResponse.json() as any).result.serverInfo.name).toBe("proj-os");
   });
 
   test("public API enforces workspace project boundaries", () => {
