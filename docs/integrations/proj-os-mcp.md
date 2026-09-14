@@ -88,7 +88,7 @@ Claude discovers the Proj OS authorization server through:
 https://projos.ai/.well-known/oauth-protected-resource/mcp
 ```
 
-The connector supports Dynamic Client Registration and PKCE authorization code exchange. When Claude opens the authorization page, enter the deployed `PROJ_OS_MCP_SHARED_SECRET` to approve the connector. Claude then receives a signed bearer token that `/mcp` accepts without exposing database credentials.
+The connector supports Dynamic Client Registration and PKCE authorization code exchange. When Claude opens the authorization page, sign in with Proj OS and approve the connector for the current workspace. Proj OS verifies the user, mints a revocable workspace API client, and returns Claude an opaque bearer token that `/mcp` accepts without exposing database credentials or Cloudflare secrets.
 
 For header-capable MCP clients, you may also configure:
 

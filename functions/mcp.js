@@ -29,8 +29,9 @@ export async function onRequest(context) {
   if (originError) return rpcHttpError(null, -32001, originError, 403, request);
   if (!env.PROJ_OS_MCP_SHARED_SECRET) return rpcHttpError(null, -32000, "MCP is not configured", 503, request);
   const bearer = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  if (!bearer || !(await isAuthorizedBearer(bearer, request, env))) {
-    return rpcHttpError(null, -32001, "Unauthorized: configure Authorization: Bearer <PROJ_OS_MCP_SHARED_SECRET>", 401, request, bearerAuthHeaders(request));
+  const authContext = bearer ? await authenticateBearer(bearer, request, env) : null;
+  if (!authContext) {
+    return rpcHttpError(null, -32001, "Unauthorized: sign in with Proj OS OAuth or configure Authorization: Bearer <PROJ_OS_MCP_SHARED_SECRET>", 401, request, bearerAuthHeaders(request));
   }
 
   let message;
@@ -43,7 +44,7 @@ export async function onRequest(context) {
   if (message.id === undefined || message.id === null) return new Response(null, { status: 202 });
 
   try {
-    const result = await dispatch(message, request, env);
+    const result = await dispatch(message, request, env, authContext);
     return rpcResponse(message.id, result, undefined, request);
   } catch (error) {
     const code = Number.isInteger(error?.rpcCode) ? error.rpcCode : -32603;
@@ -51,7 +52,7 @@ export async function onRequest(context) {
   }
 }
 
-async function dispatch(message, request, env) {
+async function dispatch(message, request, env, authContext) {
   if (message.method === "initialize") {
     const requested = message.params?.protocolVersion;
     return {
@@ -72,13 +73,14 @@ async function dispatch(message, request, env) {
     const args = message.params?.arguments || {};
     const tool = TOOL_HANDLERS[name];
     if (!tool) throw rpcError(-32602, `Unknown tool: ${String(name)}`);
-    const requester = cleanHeader(request.headers.get("x-proj-requester-id")) || "hermes";
+    const requester = cleanHeader(request.headers.get("x-proj-requester-id")) || authContext.requester || "hermes";
     const correlationId = crypto.randomUUID();
     const argumentHash = await sha256Hex(JSON.stringify(args));
     try {
       const data = await tool(args, {
         correlationId,
         env,
+        apiToken: authContext.apiToken,
         idempotencyKey: `${requester}:${String(message.id)}:${name}:${argumentHash}`,
         requester,
       });
@@ -214,9 +216,9 @@ async function api(ctx, method, path, query = null, body = undefined) {
   for (const [key, value] of Object.entries(query || {})) {
     if (value !== undefined && value !== null && value !== "") url.searchParams.set(key, String(value));
   }
-  let token = await accessToken(ctx.env);
+  let token = ctx.apiToken || await accessToken(ctx.env);
   let response = await fetchApi(url, method, body, token, ctx);
-  if (response.status === 401 || response.status === 403) {
+  if (!ctx.apiToken && (response.status === 401 || response.status === 403)) {
     tokenCache = null;
     token = await accessToken(ctx.env);
     response = await fetchApi(url, method, body, token, ctx);
@@ -320,9 +322,19 @@ async function secureEqual(a, b) {
   return diff === 0;
 }
 
-async function isAuthorizedBearer(bearer, request, env) {
-  if (await secureEqual(bearer, env.PROJ_OS_MCP_SHARED_SECRET)) return true;
-  return Boolean(await verifyMcpAccessToken(bearer, env, request));
+async function authenticateBearer(bearer, request, env) {
+  if (await secureEqual(bearer, env.PROJ_OS_MCP_SHARED_SECRET)) {
+    return { mode: "shared_secret", requester: "hermes" };
+  }
+  const token = await verifyMcpAccessToken(bearer, env, request);
+  if (!token?.api_token) return null;
+  return {
+    mode: "oauth",
+    apiToken: token.api_token,
+    requester: token.user_id ? `user:${token.user_id}` : "claude",
+    tenantId: token.tenant_id,
+    userId: token.user_id,
+  };
 }
 
 async function sha256Hex(value) {

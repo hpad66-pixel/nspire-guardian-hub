@@ -7,6 +7,7 @@ import { onRequest as spaFallback } from "../functions/[[path]].js";
 import { onRequest as oauthAuthorizationServer } from "../functions/.well-known/oauth-authorization-server/[[path]].js";
 import { onRequest as oauthProtectedResource } from "../functions/.well-known/oauth-protected-resource/[[path]].js";
 import { onRequest as openidConfiguration } from "../functions/.well-known/openid-configuration.js";
+import { onRequest as oauthApprove } from "../functions/oauth/approve.js";
 import { onRequest as oauthAuthorize } from "../functions/oauth/authorize.js";
 import { onRequest as oauthRegister } from "../functions/oauth/register.js";
 import { onRequest as oauthToken } from "../functions/oauth/token.js";
@@ -118,7 +119,9 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
           PROJ_OS_SUPABASE_FUNCTIONS_URL: "https://example.supabase.co/functions/v1",
         },
       });
-      const body = await response.json() as any;
+      const body = await response.json() as {
+        result: { isError: boolean; structuredContent: { data: { destination: string } } };
+      };
       expect(body.result.isError).toBe(false);
       expect(body.result.structuredContent.data.destination).toBe("both");
       expect(calls).toHaveLength(2);
@@ -233,7 +236,7 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
       request: new Request("https://projos.ai/.well-known/oauth-protected-resource/mcp", { method: "GET" }),
     });
     expect(resource.status).toBe(200);
-    expect((await resource.json() as any).resource).toBe("https://projos.ai/mcp");
+    expect(((await resource.json()) as { resource: string }).resource).toBe("https://projos.ai/mcp");
 
     for (const route of [oauthAuthorizationServer, openidConfiguration]) {
       const response = await route({
@@ -241,7 +244,11 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
       });
       expect(response.status).toBe(200);
       expect(response.headers.get("content-type") || "").toContain("application/json");
-      const body = await response.json() as any;
+      const body = await response.json() as {
+        authorization_endpoint: string;
+        token_endpoint: string;
+        registration_endpoint: string;
+      };
       expect(body.authorization_endpoint).toBe("https://projos.ai/oauth/authorize");
       expect(body.token_endpoint).toBe("https://projos.ai/oauth/token");
       expect(body.registration_endpoint).toBe("https://projos.ai/oauth/register");
@@ -265,7 +272,57 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
     expect(read("public/_redirects")).toContain("/.well-known/oauth-protected-resource /.well-known/oauth-protected-resource/mcp 200");
   });
 
-  test("Claude OAuth facade registers, approves, exchanges, and authenticates MCP", async () => {
+  test("Claude OAuth facade registers, approves through Proj OS, exchanges, and authenticates MCP", async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      calls.push({ url, init });
+      if (url.endsWith("/api-key-mint")) {
+        expect(init?.headers).toMatchObject({
+          authorization: "Bearer supabase-user-token",
+          apikey: "e2e-anon-key",
+        });
+        const payload = JSON.parse(String(init?.body));
+        expect(payload.name).toContain("Claude MCP");
+        expect(payload.scopes).toContain("read:projects");
+        expect(payload.scopes).toContain("write:project-updates");
+        return new Response(JSON.stringify({
+          client_id: "workspace-api-client",
+          client_secret: "workspace-api-secret",
+          api_client: {
+            workspace_id: "44444444-4444-4444-8444-444444444444",
+            created_by: "55555555-5555-4555-8555-555555555555",
+          },
+        }), { status: 201, headers: { "content-type": "application/json" } });
+      }
+      if (url.endsWith("/oauth-token")) {
+        const payload = JSON.parse(String(init?.body));
+        expect(payload).toMatchObject({
+          grant_type: "client_credentials",
+          client_id: "workspace-api-client",
+          client_secret: "workspace-api-secret",
+        });
+        return new Response(JSON.stringify({ access_token: "workspace-api-token", expires_in: 3600 }), {
+          status: 200, headers: { "content-type": "application/json" },
+        });
+      }
+      if (url.includes("/api-v1/projects")) {
+        return new Response(JSON.stringify({
+          data: [],
+          meta: { total: 0, connection_mode: "workspace_dynamic" },
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ error: "unexpected_url", url }), { status: 500 });
+    }) as typeof fetch;
+
+    const oauthEnv = {
+      ...env,
+      PROJ_OS_SUPABASE_FUNCTIONS_URL: "https://example.supabase.co/functions/v1",
+      VITE_SUPABASE_URL: "https://example.supabase.co",
+      VITE_SUPABASE_PUBLISHABLE_KEY: "e2e-anon-key",
+    };
+
     const registerResponse = await oauthRegister({
       request: new Request("https://projos.ai/oauth/register", {
         method: "POST",
@@ -275,71 +332,100 @@ test.describe("AI1 Proj OS agent API and MCP", () => {
           redirect_uris: ["https://claude.ai/api/mcp/auth_callback"],
         }),
       }),
-      env,
+      env: oauthEnv,
     });
-    expect(registerResponse.status).toBe(201);
-    const registration = await registerResponse.json() as any;
-    expect(registration.client_id).toContain("proj-os-claude-");
-    expect(registration.token_endpoint_auth_method).toBe("none");
+    try {
+      expect(registerResponse.status).toBe(201);
+      const registration = await registerResponse.json() as {
+        client_id: string;
+        token_endpoint_auth_method: string;
+      };
+      expect(registration.client_id).toContain("proj-os-claude-");
+      expect(registration.token_endpoint_auth_method).toBe("none");
 
-    const verifier = "test-verifier-for-claude-oauth-pkce";
-    const authorizeParams = new URLSearchParams({
-      response_type: "code",
-      client_id: registration.client_id,
-      redirect_uri: "https://claude.ai/api/mcp/auth_callback",
-      state: "state-123",
-      code_challenge: await pkceChallenge(verifier),
-      code_challenge_method: "S256",
-      scope: "mcp",
-    });
-    const approvalPage = await oauthAuthorize({
-      request: new Request(`https://projos.ai/oauth/authorize?${authorizeParams.toString()}`),
-      env,
-    });
-    expect(approvalPage.status).toBe(200);
-    expect(await approvalPage.text()).toContain("Authorize Proj OS");
+      const verifier = "test-verifier-for-claude-oauth-pkce";
+      const authorizeParams = new URLSearchParams({
+        response_type: "code",
+        client_id: registration.client_id,
+        redirect_uri: "https://claude.ai/api/mcp/auth_callback",
+        state: "state-123",
+        code_challenge: await pkceChallenge(verifier),
+        code_challenge_method: "S256",
+        scope: "mcp",
+      });
+      const approvalPage = await oauthAuthorize({
+        request: new Request(`https://projos.ai/oauth/authorize?${authorizeParams.toString()}`),
+        env: oauthEnv,
+      });
+      expect(approvalPage.status).toBe(200);
+      const approvalHtml = await approvalPage.text();
+      expect(approvalHtml).toContain("Connect Claude to Proj OS");
+      expect(approvalHtml).toContain("Sign in to Proj OS");
+      expect(approvalHtml).not.toContain("MCP shared secret");
 
-    const form = new URLSearchParams(authorizeParams);
-    form.set("approval_secret", "test-secret");
-    const approval = await oauthAuthorize({
-      request: new Request("https://projos.ai/oauth/authorize", {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: form.toString(),
-      }),
-      env,
-    });
-    expect(approval.status).toBe(302);
-    const callbackUrl = new URL(approval.headers.get("location") || "");
-    expect(callbackUrl.origin + callbackUrl.pathname).toBe("https://claude.ai/api/mcp/auth_callback");
-    expect(callbackUrl.searchParams.get("state")).toBe("state-123");
-    const code = callbackUrl.searchParams.get("code") || "";
-    expect(code).toContain("pos_mcp_code_");
+      const approval = await oauthApprove({
+        request: new Request("https://projos.ai/oauth/approve", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            oauth: Object.fromEntries(authorizeParams.entries()),
+            access_token: "supabase-user-token",
+          }),
+        }),
+        env: oauthEnv,
+      });
+      expect(approval.status).toBe(200);
+      const approvalBody = await approval.json() as { redirect_url: string };
+      const callbackUrl = new URL(approvalBody.redirect_url);
+      expect(callbackUrl.origin + callbackUrl.pathname).toBe("https://claude.ai/api/mcp/auth_callback");
+      expect(callbackUrl.searchParams.get("state")).toBe("state-123");
+      const code = callbackUrl.searchParams.get("code") || "";
+      expect(code).toContain("pos_mcp_code_");
 
-    const tokenBody = new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: "https://claude.ai/api/mcp/auth_callback",
-      code_verifier: verifier,
-    });
-    const tokenResponse = await oauthToken({
-      request: new Request("https://projos.ai/oauth/token", {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: tokenBody.toString(),
-      }),
-      env,
-    });
-    expect(tokenResponse.status).toBe(200);
-    const token = await tokenResponse.json() as any;
-    expect(token.access_token).toContain("pos_mcp_oauth_");
-    expect(token.refresh_token).toContain("pos_mcp_refresh_");
+      const tokenBody = new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: "https://claude.ai/api/mcp/auth_callback",
+        code_verifier: verifier,
+      });
+      const tokenResponse = await oauthToken({
+        request: new Request("https://projos.ai/oauth/token", {
+          method: "POST",
+          headers: { "content-type": "application/x-www-form-urlencoded" },
+          body: tokenBody.toString(),
+        }),
+        env: oauthEnv,
+      });
+      expect(tokenResponse.status).toBe(200);
+      const token = await tokenResponse.json() as {
+        access_token: string;
+        refresh_token: string;
+        expires_in: number;
+      };
+      expect(token.access_token).toContain("pos_mcp_oauth_");
+      expect(token.refresh_token).toContain("pos_mcp_refresh_");
+      expect(token.expires_in).toBe(3600);
 
-    const request = mcpRequest("initialize", { protocolVersion: "2025-11-25", capabilities: {}, clientInfo: { name: "claude", version: "1" } });
-    request.headers.set("authorization", `Bearer ${token.access_token}`);
-    const mcpResponse = await onRequest({ request, env });
-    expect(mcpResponse.status).toBe(200);
-    expect((await mcpResponse.json() as any).result.serverInfo.name).toBe("proj-os");
+      const request = mcpRequest("tools/call", {
+        name: "proj_os_health",
+        arguments: {},
+      });
+      request.headers.set("authorization", `Bearer ${token.access_token}`);
+      const mcpResponse = await onRequest({ request, env: oauthEnv });
+      expect(mcpResponse.status).toBe(200);
+      const mcpBody = await mcpResponse.json() as {
+        result: { structuredContent: { ok: boolean } };
+      };
+      expect(mcpBody.result.structuredContent.ok).toBe(true);
+
+      const projectCall = calls.find((call) => call.url.includes("/api-v1/projects"));
+      expect(projectCall?.init?.headers).toMatchObject({
+        authorization: "Bearer workspace-api-token",
+        "x-proj-requester-id": "user:55555555-5555-4555-8555-555555555555",
+      });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test("public API enforces workspace project boundaries", () => {

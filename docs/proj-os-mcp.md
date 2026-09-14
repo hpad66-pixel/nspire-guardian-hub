@@ -57,7 +57,7 @@ There is no project-by-project setup. The API client's tenant determines the wor
 The Cloudflare `/mcp` endpoint supports two connector modes:
 
 - Static bearer header for Hermes, Cursor, Slack agents, and any MCP host that can set request headers.
-- Claude-compatible OAuth discovery, Dynamic Client Registration, PKCE authorization code exchange, refresh tokens, and signed bearer tokens.
+- Claude-compatible OAuth discovery, Dynamic Client Registration, PKCE authorization code exchange, refresh tokens, and encrypted bearer tokens.
 
 Claude custom connectors can use the remote MCP URL:
 
@@ -65,9 +65,9 @@ Claude custom connectors can use the remote MCP URL:
 https://projos.ai/mcp
 ```
 
-When Claude opens the Proj OS authorization page, enter the deployed `PROJ_OS_MCP_SHARED_SECRET` from Cloudflare Pages settings. Do not paste the Proj OS API client ID/secret into Claude's OAuth Client ID fields; those credentials are only for the server-side MCP-to-Supabase token exchange.
+Claude custom connectors do not need a Cloudflare secret. Claude follows the Proj OS OAuth flow, sends the user to `/oauth/authorize`, and the user signs in with their Proj OS account. Approval calls the existing `api-key-mint` Edge Function, so Proj OS verifies the user, checks API-client admin permission, checks the workspace plan gate, creates a revocable workspace API client, and returns Claude an opaque MCP bearer plus refresh token.
 
-The OAuth facade does not expose database credentials. It signs Claude MCP bearer tokens with `PROJ_OS_MCP_SHARED_SECRET`, and `/mcp` accepts those signed tokens in addition to the original static shared secret. Discovery documents are available at:
+The OAuth facade does not expose database credentials or raw API client secrets to Claude. Authorization codes, refresh tokens, and MCP access tokens are encrypted with the server-side `PROJ_OS_MCP_SHARED_SECRET`; `/mcp` decrypts valid tokens and forwards tool calls with the approved workspace API bearer. Discovery documents are available at:
 
 ```text
 https://projos.ai/.well-known/oauth-protected-resource/mcp
