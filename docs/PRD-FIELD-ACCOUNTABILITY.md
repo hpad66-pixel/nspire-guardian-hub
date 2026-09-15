@@ -132,6 +132,47 @@ The primary mobile action is **Start site walk**. It opens a bottom-sheet style 
 
 Offline capture is a progressive enhancement: queue safely on the device and upload when connectivity returns. Never show “uploaded” until the server confirms storage and database linkage.
 
+## Owner walk punch capture feature
+
+ProjOS includes **Owner Punch Capture** as a reusable Site Accountability feature for R4-style walkthroughs and future property closeout walks. It is not an R4-only workflow. Any enabled project can use the same feature to convert owner conversations and field photographs into controlled, reviewable scope items.
+
+The reusable category map starts with five owner-walk disciplines:
+
+| Category | Default use | Closeout expectation |
+|---|---|---|
+| Structural | Walls, slabs, stairs, settlement, voids, railing, envelope/stucco conditions | Owner acceptance defaults on when safety, support, or visible sign-off matters |
+| Mechanical | HVAC, equipment, condensate, service clearances | APAS or property-manager verification unless elevated by policy |
+| Electrical | Lighting, exposed wiring, access-control, gate-control and weather-rated enclosures | Owner acceptance defaults on for owner-originated or visible security items |
+| Plumbing | Drainage, irrigation, outlets, ponding, inlets, discharge and water paths | Flow/source testing and after evidence required before closeout |
+| Landscaping | Turf, sod, soil, tree/root, planting, mulch and establishment care | Before/after coverage plus establishment notes where applicable |
+
+The feature must keep four records distinct:
+
+1. **Photo evidence**: immutable original image, EXIF/GPS, evidence type and uploader caption.
+2. **Owner testimony**: raw Otter/Wispr/voice transcript excerpt or typed owner quote.
+3. **APAS controlled scope**: cleaned, accountable work description with category, location, ball-in-court, due date and owner visibility.
+4. **Completion proof**: after photographs, completion note, APAS verification, and owner acceptance or reopen reason where required.
+
+The owner walk flow is:
+
+```mermaid
+flowchart LR
+  A[Start owner walk] --> B[Capture before photos]
+  B --> C[Attach transcript or voice note]
+  C --> D[Human triage category and location]
+  D --> E[Create or group scope item]
+  E --> F[Assign responsible party and due date]
+  F --> G[Upload after proof and completion note]
+  G --> H[APAS verification]
+  H --> I{Owner acceptance required?}
+  I -->|Yes| J[Owner accepts or reopens]
+  I -->|No| K[Verified closeout]
+  J -->|Accept| K
+  J -->|Reopen| F
+```
+
+Owner Punch Capture appears as the first Field Accountability tab because it is the operational starting point for walkthroughs. The board, walk inbox, photo intelligence workspace, and owner scope report remain supporting views of the same underlying records.
+
 ## Desktop and staff UX
 
 The project navigation includes **Field Accountability** under Field/Delivery for all project types by default. The page provides:
