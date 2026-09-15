@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Clock3, Eye,
-  Camera, Images, Loader2, MessageCircleQuestion, Pencil, Repeat2, ShieldCheck, Sparkles, UserRound,
+  AlertTriangle, ArrowRight, CheckCircle2, ClipboardCheck, Clock3, Copy, ExternalLink, Eye,
+  Camera, Images, Loader2, MessageCircleQuestion, Pencil, Repeat2, Share2, ShieldCheck, Sparkles, UserRound,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,10 @@ import { FieldAccountabilityDetail } from '@/components/accountability/FieldAcco
 import { FieldWalkCaptureDialog } from '@/components/accountability/FieldWalkCaptureDialog';
 import { OwnerPhotoScopeReport } from '@/components/accountability/OwnerPhotoScopeReport';
 import { useClientPortalProject, useOwnerPortalHref } from '@/components/portal/ClientPortalProjectContext';
+import { QRCodeGenerator } from '@/components/qr/QRCodeGenerator';
 import { useFieldAccountability, type FieldItem } from '@/hooks/useFieldAccountability';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 const CLOSED = new Set(['verified', 'rejected']);
 
@@ -27,6 +29,11 @@ export default function OwnerAccountabilityPage() {
   const submittedPhotos = data?.untriagedPhotos ?? [];
   const selected = items.find((item) => item.id === selectedId) ?? null;
   const projectName = projects.find((project) => project.id === projectId)?.name || 'your project';
+  const walkthroughPath = href('/accountability');
+  const walkthroughUrl = useMemo(() => {
+    if (typeof window === 'undefined') return walkthroughPath;
+    return new URL(walkthroughPath, window.location.origin).toString();
+  }, [walkthroughPath]);
   const allPhotos = useMemo(() => items.flatMap((item) => item.photos.map((photo) => ({
     itemId: item.id,
     itemTitle: item.title,
@@ -52,35 +59,40 @@ export default function OwnerAccountabilityPage() {
   if (!projectId) return null;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-7 px-4 py-6 sm:px-6 sm:py-9" data-testid="owner-accountability-page">
+    <div className="mx-auto max-w-7xl space-y-5 px-3 pb-24 pt-4 sm:space-y-7 sm:px-6 sm:py-9" data-testid="owner-accountability-page">
       <header className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <Link to={href()} className="text-sm text-slate-500 hover:underline">← Portal overview</Link>
           <p className="mt-5 text-xs font-bold uppercase tracking-[.18em] text-emerald-700">Evidence-backed project care</p>
-          <h1 className="mt-1 font-display text-4xl font-medium text-[#082b23] sm:text-5xl">Site Accountability</h1>
+          <h1 className="mt-1 font-display text-3xl font-medium leading-tight text-[#082b23] sm:text-5xl">Site Accountability</h1>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600 sm:text-base">A clear view of what was observed, who owns the next action, and the photographic proof behind every verified result at {projectName}.</p>
         </div>
-        <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-center">
-          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-800"><ShieldCheck className="h-4 w-4" />Private, project-specific record</span>
-          <Button className="h-11 rounded-xl bg-[#0d6b57] hover:bg-[#095746]" onClick={() => setCaptureOpen(true)}><Camera className="mr-2 h-4 w-4" />Add site photos</Button>
+        <div className="grid w-full gap-2 sm:w-auto sm:grid-cols-[auto_auto] sm:items-center">
+          <span className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-semibold text-emerald-800 sm:w-fit sm:rounded-full"><ShieldCheck className="h-4 w-4" />Private, project-specific record</span>
+          <Button className="h-12 w-full rounded-xl bg-[#0d6b57] text-base hover:bg-[#095746] sm:h-11 sm:w-auto sm:text-sm" onClick={() => setCaptureOpen(true)}><Camera className="mr-2 h-4 w-4" />Add site photos</Button>
         </div>
       </header>
 
-      <section className="overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-sm">
+      <section className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm sm:rounded-3xl">
         <div className="grid lg:grid-cols-[1.05fr_1.95fr]">
-          <div className="bg-gradient-to-br from-[#082b23] to-[#0d6b57] p-6 text-white sm:p-7">
+          <div className="bg-gradient-to-br from-[#082b23] to-[#0d6b57] p-5 text-white sm:p-7">
             <p className="text-xs font-bold uppercase tracking-[.17em] text-emerald-200">Simple photo update</p>
-            <h2 className="mt-2 font-display text-3xl">Show the team what you see.</h2>
+            <h2 className="mt-2 font-display text-2xl leading-tight sm:text-3xl">Show the team what you see.</h2>
             <p className="mt-2 text-sm leading-relaxed text-emerald-50/75">Upload from your phone, review the AI starting caption, and keep your own words under your control.</p>
-            <Button className="mt-5 bg-amber-400 text-amber-950 hover:bg-amber-300" onClick={() => setCaptureOpen(true)}><Camera className="mr-2 h-4 w-4" />Start an owner walk</Button>
+            <Button className="mt-5 h-12 w-full rounded-xl bg-amber-400 text-base text-amber-950 hover:bg-amber-300 sm:w-auto sm:text-sm" onClick={() => setCaptureOpen(true)}><Camera className="mr-2 h-4 w-4" />Start an owner walk</Button>
           </div>
-          <div className="grid gap-px bg-slate-200 sm:grid-cols-3">
+          <div className="grid gap-px bg-slate-200 md:grid-cols-3">
             <HowStep number="1" title="Capture" body="Take one photo or choose a full batch. Date and GPS metadata are preserved when available." />
             <HowStep number="2" title="Explain" body="Use your voice or type a caption. AI may suggest wording, always labeled as a draft." />
             <HowStep number="3" title="Follow through" body="The team triages the condition. Questions, responsibility, and completion proof stay connected." />
           </div>
         </div>
       </section>
+
+      <WalkthroughAccessCard
+        url={walkthroughUrl}
+        onStartWalk={() => setCaptureOpen(true)}
+      />
 
       {submittedPhotos.length > 0 && (
         <section className="space-y-4 rounded-3xl border border-sky-200 bg-sky-50/45 p-5 sm:p-6">
@@ -159,7 +171,61 @@ export default function OwnerAccountabilityPage() {
 
       <FieldAccountabilityDetail item={selected} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null); }} portalMode="owner" />
       <FieldWalkCaptureDialog open={captureOpen} onOpenChange={setCaptureOpen} projectId={projectId} audience="owner" />
+      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-emerald-200 bg-white/95 p-3 shadow-[0_-12px_35px_rgba(15,92,79,.16)] backdrop-blur sm:hidden">
+        <Button className="h-12 w-full rounded-xl bg-[#0d6b57] text-base hover:bg-[#095746]" onClick={() => setCaptureOpen(true)}>
+          <Camera className="mr-2 h-5 w-5" /> Start owner walk
+        </Button>
+      </div>
     </div>
+  );
+}
+
+function WalkthroughAccessCard({ url, onStartWalk }: { url: string; onStartWalk: () => void }) {
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success('Walkthrough link copied');
+    } catch {
+      toast.error('Copy was blocked. You can still open the link directly.');
+    }
+  }
+
+  async function shareLink() {
+    if (!navigator.share) {
+      await copyLink();
+      return;
+    }
+    try {
+      await navigator.share({ title: 'ProjOS site walkthrough', text: 'Open the mobile site walkthrough.', url });
+    } catch {
+      // User cancelled the native sheet; no error toast needed.
+    }
+  }
+
+  return (
+    <section className="grid gap-4 rounded-2xl border border-sky-200 bg-white p-4 shadow-sm sm:rounded-3xl sm:p-5 lg:grid-cols-[1fr_auto] lg:items-center" data-testid="owner-walkthrough-access-card">
+      <div className="flex min-w-0 gap-3">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-sky-50 text-sky-700"><Camera className="h-5 w-5" /></span>
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-[.16em] text-sky-700">Mobile walkthrough link</p>
+          <h2 className="mt-1 font-display text-2xl leading-tight text-[#082b23]">Scan or open this exact walkthrough</h2>
+          <a href={url} className="mt-2 block truncate rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 underline-offset-4 hover:underline">
+            {url}
+          </a>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <Button className="h-11 rounded-xl bg-[#0d6b57] hover:bg-[#095746]" onClick={onStartWalk}><Camera className="mr-2 h-4 w-4" />Start walk</Button>
+            <Button variant="outline" className="h-11 rounded-xl" onClick={copyLink}><Copy className="mr-2 h-4 w-4" />Copy link</Button>
+            <Button variant="outline" className="h-11 rounded-xl" onClick={() => void shareLink()}><Share2 className="mr-2 h-4 w-4" />Share</Button>
+          </div>
+        </div>
+      </div>
+      <div className="mx-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-sm lg:mx-0">
+        <QRCodeGenerator value={url} size={156} className="h-[156px] w-[156px]" />
+        <Button asChild variant="ghost" className="mt-2 h-9 w-full rounded-xl text-xs">
+          <a href={url}><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Open link</a>
+        </Button>
+      </div>
+    </section>
   );
 }
 

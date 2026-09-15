@@ -126,16 +126,16 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
 
   return (
     <Dialog open={open} onOpenChange={(value) => { if (!submitting) onOpenChange(value); }}>
-      <DialogContent className="max-h-[94dvh] max-w-4xl overflow-y-auto p-0 sm:rounded-3xl">
-        <div className="border-b bg-gradient-to-br from-[#082b23] to-[#0d6b57] p-6 text-white sm:p-8">
+      <DialogContent className="max-h-[100dvh] w-[100vw] max-w-4xl overflow-y-auto overscroll-contain rounded-none p-0 sm:max-h-[94dvh] sm:w-[calc(100vw-1rem)] sm:rounded-3xl">
+        <div className="border-b bg-gradient-to-br from-[#082b23] to-[#0d6b57] p-5 pr-12 text-white sm:p-8">
           <DialogHeader>
             <p className="text-xs font-bold uppercase tracking-[.18em] text-emerald-200">Mobile field capture</p>
-            <DialogTitle className="font-display text-3xl">Start a site walk</DialogTitle>
+            <DialogTitle className="font-display text-2xl leading-tight sm:text-3xl">Start a site walk</DialogTitle>
             <DialogDescription className="max-w-xl text-emerald-50/80">Take pictures now or select a full batch. AI prepares a factual starting point, but your project team reviews it before anything becomes a finding.</DialogDescription>
           </DialogHeader>
         </div>
 
-        <div className="space-y-6 p-5 sm:p-8">
+        <div className="space-y-5 p-4 pb-0 sm:space-y-6 sm:p-8">
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="walk-title">Walk title</Label>
@@ -170,10 +170,10 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
 
           <section className="rounded-3xl border border-dashed border-emerald-300 bg-emerald-50/40 p-4 sm:p-6">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Button type="button" className="h-16 rounded-2xl bg-[#0d6b57] text-base hover:bg-[#095746]" onClick={() => cameraRef.current?.click()}>
+              <Button type="button" className="h-14 rounded-2xl bg-[#0d6b57] text-base hover:bg-[#095746] sm:h-16" onClick={() => cameraRef.current?.click()}>
                 <Camera className="mr-2 h-5 w-5" /> Take a picture
               </Button>
-              <Button type="button" variant="outline" className="h-16 rounded-2xl bg-white text-base" onClick={() => libraryRef.current?.click()}>
+              <Button type="button" variant="outline" className="h-14 rounded-2xl bg-white text-base sm:h-16" onClick={() => libraryRef.current?.click()}>
                 <Images className="mr-2 h-5 w-5" /> Choose many photos
               </Button>
               <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(event) => { addFiles(event.target.files); event.currentTarget.value = ''; }} />
@@ -193,7 +193,7 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
               <div className="grid gap-3 sm:grid-cols-2">
                 {queue.map((item, index) => (
                   <article key={`${item.file.name}-${index}`} className="overflow-hidden rounded-2xl border bg-white shadow-sm">
-                    <div className="relative aspect-video bg-slate-100">
+                    <div className="relative aspect-[4/3] bg-slate-100 sm:aspect-video">
                       <img src={item.preview} alt="Upload preview" className="h-full w-full object-cover" />
                       <Button type="button" size="icon" variant="secondary" className="absolute right-2 top-2 h-9 w-9 rounded-full" onClick={() => removePhoto(index)}><Trash2 className="h-4 w-4" /></Button>
                     </div>
@@ -208,11 +208,11 @@ export function FieldWalkCaptureDialog({ open, onOpenChange, projectId, property
             </div>
           )}
 
-          <div className="flex flex-col-reverse gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="sticky bottom-0 -mx-4 flex flex-col-reverse gap-3 border-t bg-white/95 px-4 py-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur sm:static sm:mx-0 sm:flex-row sm:items-center sm:justify-between sm:bg-transparent sm:px-0 sm:pb-0 sm:backdrop-blur-none">
             <span className="flex items-center gap-2 text-xs text-muted-foreground"><ShieldCheck className="h-4 w-4 text-emerald-700" /> Original files stay unchanged; captions and annotations are tracked separately</span>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
-              <Button type="button" onClick={submit} disabled={submitting || !title.trim() || !hasPhotos} className="bg-[#0d6b57] hover:bg-[#095746]">
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <Button type="button" variant="outline" className="h-11 rounded-xl" onClick={() => onOpenChange(false)} disabled={submitting}>Cancel</Button>
+              <Button type="button" onClick={submit} disabled={submitting || !title.trim() || !hasPhotos} className="h-11 rounded-xl bg-[#0d6b57] hover:bg-[#095746]">
                 {submitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}
                 Save walk
               </Button>
