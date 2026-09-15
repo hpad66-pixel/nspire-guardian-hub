@@ -5,17 +5,21 @@ import {
   ArrowRight,
   Camera,
   CheckCircle2,
+  Copy,
   Clock3,
   Eye,
   Images,
   Loader2,
+  QrCode,
   ScanEye,
   ShieldCheck,
+  Smartphone,
   Sparkles,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { QRCodeGenerator } from '@/components/qr/QRCodeGenerator';
 import { useAccountabilityPortfolio, type AccountabilityProjectSummary } from '@/hooks/useFieldAccountability';
 import { useProjects, type Project } from '@/hooks/useProjects';
 import {
@@ -23,6 +27,7 @@ import {
   staffSiteAccountabilityPath,
 } from '@/lib/accountability/accountabilityNavigation';
 import { ownerPortalPath } from '@/lib/portal/ownerPortalPaths';
+import { toast } from 'sonner';
 
 type ProjectWithProgram = Project & { program_meta?: Record<string, unknown> | null };
 
@@ -121,6 +126,9 @@ function FeaturedProgram({ project, summary }: { project: ProjectWithProgram; su
     : project.name.toLowerCase().includes('glorieta')
       ? 'Chris Sullivan owner walk'
       : 'Property-wide site record';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://projos.ai';
+  const staffUrl = `${origin}${staffSiteAccountabilityPath(project.id)}`;
+  const ownerUrl = `${origin}${ownerPortalPath(project.id, '/accountability')}`;
   return (
     <section className="overflow-hidden rounded-[2rem] border border-emerald-200 bg-white shadow-[0_24px_70px_rgba(8,43,35,.10)]" data-testid="featured-site-accountability">
       <div className="grid lg:grid-cols-[1.1fr_.9fr]">
@@ -152,7 +160,85 @@ function FeaturedProgram({ project, summary }: { project: ProjectWithProgram; su
           <SummaryMetric icon={CheckCircle2} label="Verified" value={summary.verified} tone="emerald" />
         </div>
       </div>
+      <div className="border-t border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-amber-50 p-4 sm:p-6">
+        <div className="grid gap-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+          <div>
+            <div className="flex items-center gap-2 text-emerald-800">
+              <Smartphone className="h-4 w-4" />
+              <p className="text-xs font-bold uppercase tracking-[.16em]">Desktop to mobile handoff</p>
+            </div>
+            <h3 className="mt-1 font-display text-2xl text-[#082b23]">Scan and open the owner walkthrough on your phone.</h3>
+            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-600">
+              Use the staff QR to capture, triage, and manage the work. Use the owner QR to preview exactly what the client sees.
+            </p>
+          </div>
+          <HandoffQrCard
+            title="Staff mobile app"
+            eyebrow="Capture and manage"
+            url={staffUrl}
+            tone="emerald"
+          />
+          <HandoffQrCard
+            title="Owner portal"
+            eyebrow="Client-facing view"
+            url={ownerUrl}
+            tone="amber"
+          />
+        </div>
+      </div>
     </section>
+  );
+}
+
+function HandoffQrCard({
+  title,
+  eyebrow,
+  url,
+  tone,
+}: {
+  title: string;
+  eyebrow: string;
+  url: string;
+  tone: 'emerald' | 'amber';
+}) {
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(`${title} link copied`);
+    } catch {
+      toast.error('Could not copy the link');
+    }
+  };
+  const toneClasses = tone === 'emerald'
+    ? 'border-emerald-200 bg-emerald-950 text-emerald-50'
+    : 'border-amber-200 bg-amber-950 text-amber-50';
+
+  return (
+    <div className={`rounded-3xl border p-4 shadow-sm ${toneClasses}`}>
+      <div className="flex items-start gap-4">
+        <div className="rounded-2xl bg-white p-2">
+          <QRCodeGenerator value={url} size={112} className="rounded-xl" />
+        </div>
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[.14em] opacity-70">
+            <QrCode className="h-3.5 w-3.5" />
+            {eyebrow}
+          </p>
+          <h4 className="mt-1 text-base font-bold">{title}</h4>
+          <p className="mt-1 max-w-52 truncate text-xs opacity-65">{url}</p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-3 h-9 rounded-xl border-white/20 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            onClick={() => void copy()}
+          >
+            <Copy className="mr-2 h-3.5 w-3.5" />
+            Copy link
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 }
 
