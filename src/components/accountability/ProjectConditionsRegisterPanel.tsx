@@ -1,7 +1,8 @@
 import { useMemo, useState, type ComponentType } from 'react';
 import {
-  BadgeCheck, Building2, Database, Download, Eye, FileText, Filter, Loader2, LockKeyhole,
-  Mail, MessageSquareText, NotebookTabs, Search, Send, ShieldCheck, Sparkles, UploadCloud,
+  Building2, Camera, Database, Download, Eye, FileText, Filter, Loader2, LockKeyhole,
+  Mail, MapPinned, MessageSquareText, NotebookTabs, Search, Send, ShieldCheck, Sparkles, UploadCloud,
+  UserRound,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -91,7 +92,8 @@ export function ProjectConditionsRegisterPanel({
     ?? filteredRecords[0]
     ?? records[0]
     ?? null;
-  const clientVisibleRecords = records.filter(isClientVisibleCondition).length;
+  const engineerReviewRate = summary.total ? Math.round((summary.needsEngineer / summary.total) * 100) : 0;
+  const clientVisibilityRate = summary.total ? Math.round((summary.clientVisible / summary.total) * 100) : 0;
 
   if (!items.length && !records.length) {
     return (
@@ -107,116 +109,148 @@ export function ProjectConditionsRegisterPanel({
   }
 
   return (
-    <section className="space-y-5" data-testid="project-conditions-register-panel">
-      <div className="overflow-hidden rounded-[2rem] border border-emerald-200 bg-white shadow-[0_24px_70px_rgba(8,43,35,.10)]">
-        <div className="grid lg:grid-cols-[1.05fr_1.35fr]">
-          <div className="bg-[#082b23] p-6 text-white sm:p-8">
-            <p className="text-xs font-black uppercase tracking-[.2em] text-amber-300">APAS Consulting LLC / APAS.ai</p>
-            <h2 className="mt-3 font-display text-4xl leading-tight">Project Conditions Register</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-emerald-50/75">
-              Native Proj OS view for observed conditions, structural review gates, owner-safe publication, reporting, and audit.
-            </p>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
-              <Button className="rounded-xl bg-amber-300 text-amber-950 hover:bg-amber-200" onClick={onStartWalk}>Add field evidence</Button>
-              <Button variant="outline" className="rounded-xl border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => downloadClientReport(projectName, records)}>Client report</Button>
-              <Button variant="outline" className="rounded-xl border-white/25 bg-white/10 text-white hover:bg-white/20 hover:text-white" onClick={() => exportRegister(projectName, records)}>Export JSON</Button>
+    <section className="overflow-hidden rounded-lg border border-slate-200 bg-[#f7f5ef] shadow-[0_16px_40px_rgba(24,31,38,.12)]" data-testid="project-conditions-register-panel">
+      <div className="grid min-h-[720px] lg:grid-cols-[300px_minmax(0,1fr)]">
+        <aside className="flex flex-col gap-5 bg-[#17212b] p-5 text-slate-50">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 place-items-center rounded bg-[#d6a21b] font-black text-[#111827]">AW</span>
+            <div>
+              <h2 className="text-lg font-black leading-tight">Project Conditions</h2>
+              <p className="text-xs text-slate-300">APAS Consulting LLC</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-px bg-slate-200 md:grid-cols-4">
+
+          <div className="grid gap-2 rounded-lg border border-white/10 bg-white/[.06] p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="grid h-8 min-w-14 place-items-center rounded bg-slate-50 text-xs font-black tracking-wider text-[#111827]">APAS</span>
+              <span className="text-sm font-black text-slate-100">APAS.ai</span>
+            </div>
+            <p className="text-xs leading-relaxed text-slate-300">Native Proj OS register with APAS/AW branding, internal/client boundaries, and owner-ready publication.</p>
+          </div>
+
+          <div className="grid gap-3 rounded-lg border border-white/10 bg-white/[.06] p-3">
+            <p className="text-[11px] font-black uppercase text-slate-400">Signed in</p>
+            <div className="grid grid-cols-[34px_minmax(0,1fr)] items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-full bg-[#d6a21b] font-black text-[#111827]"><UserRound className="h-4 w-4" /></span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold">APAS project team</p>
+                <p className="truncate text-xs text-slate-300">Google, Microsoft, or magic-link auth</p>
+              </div>
+            </div>
+          </div>
+
+          <RailFilter
+            label="Buildings"
+            options={BUILDING_FILTERS.map((building) => ({
+              label: building === 'All' ? 'All Buildings' : building.replace('Building ', 'Bldg '),
+              value: building,
+              count: building === 'All' ? records.length : records.filter((record) => record.buildingOrArea === building).length,
+            }))}
+            value={buildingFilter}
+            onChange={setBuildingFilter}
+          />
+
+          <RailFilter
+            label="Queues"
+            options={QUEUE_FILTERS.map((queue) => ({
+              label: queue.label,
+              value: queue.value,
+              count: queue.value === 'all' ? records.length : records.filter((record) => record.status === queue.value).length,
+            }))}
+            value={queueFilter}
+            onChange={(value) => setQueueFilter(value as 'all' | ProjectConditionStatus)}
+          />
+
+          <div className="mt-auto grid gap-3">
+            <BoundaryCard
+              icon={LockKeyhole}
+              title="Internal by default"
+              body="AI review notes and APAS working comments stay inside the staff layer until published."
+              dark
+            />
+            <BoundaryCard
+              icon={ShieldCheck}
+              title="Engineer governs"
+              body="Structural classifications remain review-gated before owner-facing release."
+              dark
+            />
+          </div>
+        </aside>
+
+        <div className="grid min-w-0 grid-rows-[auto_auto_auto_minmax(0,1fr)]">
+          <div className="flex flex-col gap-4 border-b border-slate-200 bg-white p-5 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <h2 className="text-2xl font-black text-[#1c2024]">Project Conditions Register</h2>
+              <p className="mt-1 text-sm text-slate-500">{projectName}</p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="border-[#b88700]/30 bg-[#fff8df] text-[#9a6700]">
+                {viewSource === 'durable-register' ? 'Proj OS durable records' : 'Field evidence preview'}
+              </Badge>
+              <Button variant="outline" className="rounded-md bg-white" onClick={onOpenReport}><FileText className="mr-2 h-4 w-4" />Photo scope</Button>
+              <Button variant="outline" className="rounded-md bg-white" onClick={() => exportEmailPackage(projectName, records)}><Mail className="mr-2 h-4 w-4" />Email package</Button>
+              <Button variant="outline" className="rounded-md bg-white" onClick={() => exportRegister(projectName, records)}><UploadCloud className="mr-2 h-4 w-4" />Proj OS JSON</Button>
+              <Button className="rounded-md bg-[#234e70] hover:bg-[#1c405d]" onClick={() => downloadClientReport(projectName, records)}><Download className="mr-2 h-4 w-4" />Client report</Button>
+              <Button className="rounded-md bg-[#d6a21b] font-black text-[#111827] hover:bg-[#c89517]" onClick={onStartWalk}>New record</Button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-px border-b border-slate-200 bg-slate-200 md:grid-cols-4">
             <Metric label="Records" value={summary.total} />
             <Metric label="Client-visible" value={summary.clientVisible} tone="emerald" />
             <Metric label="Engineer gate" value={summary.needsEngineer} tone="amber" />
             <Metric label="Hidden notes" value={summary.hiddenInternalNotes} tone="slate" />
           </div>
-        </div>
-      </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="overflow-hidden rounded-3xl border bg-white shadow-sm">
-          <div className="flex flex-col gap-2 border-b p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[.16em] text-slate-500">Register schedule</p>
-              <h3 className="mt-1 font-display text-2xl text-[#082b23]">{projectName}</h3>
-            </div>
-            <Badge variant="outline" className="w-fit border-emerald-200 bg-emerald-50 text-emerald-800">
-              {viewSource === 'durable-register' ? 'Proj OS durable records' : 'Field evidence preview'}
-            </Badge>
+          <div className="grid gap-px border-b border-slate-200 bg-slate-200 md:grid-cols-3">
+            <ConfidenceItem title="AI review boundary" body={`${summary.hiddenInternalNotes} internal notes withheld from client output`} />
+            <ConfidenceItem title="Engineer review load" body={`${engineerReviewRate}% of records held for classification review`} />
+            <ConfidenceItem title="Publication posture" body={`${clientVisibilityRate}% staged for owner/client visibility`} />
           </div>
-          {viewSource === 'field-accountability-preview' && onPromoteFieldItems && (
-            <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 sm:px-5">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
+          <div className="grid min-h-0 gap-4 p-4 xl:grid-cols-[minmax(360px,.92fr)_minmax(0,1.25fr)]">
+            <div className="min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <div className="flex min-h-14 flex-col gap-3 border-b border-slate-200 p-4 md:flex-row md:items-center md:justify-between">
                 <div>
-                  <p className="flex items-center gap-2 text-sm font-semibold text-amber-950"><Database className="h-4 w-4" />Activate the durable register</p>
-                  <p className="mt-0.5 text-xs leading-relaxed text-amber-900/75">
-                    These rows are currently previewed from Field Accountability. Promote them to create auditable PCR records with client/internal boundaries.
-                  </p>
+                  <h3 className="text-base font-black text-[#1c2024]">Site register</h3>
+                  <p className="text-xs text-slate-500">{filteredRecords.length} visible records after filters</p>
                 </div>
-                <Button
-                  className="w-full rounded-xl bg-amber-400 text-amber-950 hover:bg-amber-300 sm:w-auto"
-                  onClick={onPromoteFieldItems}
-                  disabled={isPromoting}
-                >
-                  {isPromoting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
-                  Activate register
-                </Button>
+                <div className="relative w-full md:w-56">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Input
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                    placeholder="Search records"
+                    className="h-10 rounded-md bg-white pl-9"
+                  />
+                </div>
               </div>
-            </div>
-          )}
-          <div className="space-y-4 border-b bg-slate-50/70 p-4 sm:p-5">
-            <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_240px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search records, locations, summaries"
-                  className="h-11 rounded-xl bg-white pl-9"
-                />
-              </div>
-              <Button variant="outline" className="h-11 rounded-xl bg-white" onClick={onOpenReport}>
-                <FileText className="mr-2 h-4 w-4" />Photo scope report
-              </Button>
-            </div>
-
-            <div className="grid gap-3 xl:grid-cols-[1.1fr_.9fr]">
-              <FilterGroup
-                label="Building"
-                options={BUILDING_FILTERS.map((building) => ({
-                  label: building === 'All' ? 'All Buildings' : building.replace('Building ', 'Bldg '),
-                  value: building,
-                  count: building === 'All' ? records.length : records.filter((record) => record.buildingOrArea === building).length,
-                }))}
-                value={buildingFilter}
-                onChange={setBuildingFilter}
+              <SitePlan
+                records={records}
+                activeBuilding={buildingFilter}
+                onSelectBuilding={setBuildingFilter}
               />
-              <FilterGroup
-                label="Queues"
-                options={QUEUE_FILTERS.map((queue) => ({
-                  label: queue.label,
-                  value: queue.value,
-                  count: queue.value === 'all' ? records.length : records.filter((record) => record.status === queue.value).length,
-                }))}
-                value={queueFilter}
-                onChange={(value) => setQueueFilter(value as 'all' | ProjectConditionStatus)}
-              />
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
-              <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-[.12em] text-slate-500">
-                <tr>
-                  <th className="px-4 py-3">ID</th>
-                  <th className="px-4 py-3">Condition</th>
-                  <th className="px-4 py-3">Class</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Permit / owner</th>
-                  <th className="px-4 py-3">Visibility</th>
-                  <th className="px-4 py-3" />
-                </tr>
-              </thead>
-              <tbody className="divide-y">
+              {viewSource === 'field-accountability-preview' && onPromoteFieldItems && (
+                <div className="border-b border-[#d6a21b]/30 bg-[#fff8df] px-4 py-3">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <p className="flex items-center gap-2 text-sm font-semibold text-[#9a6700]"><Database className="h-4 w-4" />Activate durable register</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-[#9a6700]/80">Preview rows can be promoted into auditable PCR records.</p>
+                    </div>
+                    <Button
+                      className="rounded-md bg-[#d6a21b] font-black text-[#111827] hover:bg-[#c89517]"
+                      onClick={onPromoteFieldItems}
+                      disabled={isPromoting}
+                    >
+                      {isPromoting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
+                      Activate
+                    </Button>
+                  </div>
+                </div>
+              )}
+              <div className="max-h-[620px] overflow-auto">
                 {filteredRecords.map((record) => (
-                  <RegisterRow
+                  <RecordCard
                     key={record.id}
                     record={record}
                     active={selectedRecord?.id === record.id}
@@ -224,69 +258,43 @@ export function ProjectConditionsRegisterPanel({
                     onOpen={record.fieldItemId ? () => onSelectItem(record.fieldItemId!) : undefined}
                   />
                 ))}
-              </tbody>
-            </table>
-            {!filteredRecords.length && (
-              <div className="p-8 text-center text-sm text-slate-500">No records match the current filters.</div>
-            )}
-          </div>
-        </div>
+                {!filteredRecords.length && (
+                  <div className="p-8 text-center text-sm text-slate-500">No records match the current filters.</div>
+                )}
+              </div>
+            </div>
 
-        <aside className="space-y-4">
-          <div className="rounded-3xl border bg-white p-5 shadow-sm">
-            <p className="text-xs font-bold uppercase tracking-[.16em] text-slate-500">Client package</p>
-            <p className="mt-2 text-3xl font-bold text-[#082b23]">{clientVisibleRecords}</p>
-            <p className="mt-1 text-xs leading-relaxed text-slate-500">Client-visible records available for branded report and Resend package.</p>
-            <div className="mt-4 grid gap-2">
-              <Button className="justify-start rounded-xl bg-[#0d6b57] hover:bg-[#095746]" onClick={() => downloadClientReport(projectName, records)}>
-                <Download className="mr-2 h-4 w-4" />Download client report
-              </Button>
-              <Button variant="outline" className="justify-start rounded-xl" onClick={() => exportEmailPackage(projectName, records)}>
-                <Mail className="mr-2 h-4 w-4" />Email package
-              </Button>
-              <Button variant="outline" className="justify-start rounded-xl" onClick={() => exportRegister(projectName, records)}>
-                <UploadCloud className="mr-2 h-4 w-4" />Proj OS JSON
-              </Button>
+            <div className="min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              <div className="flex min-h-14 items-center justify-between gap-3 border-b border-slate-200 p-4">
+                <div>
+                  <h3 className="text-base font-black text-[#1c2024]">Observed condition</h3>
+                  <p className="text-xs text-slate-500">Internal review, owner-safe summary, and audit context</p>
+                </div>
+                <Badge className="bg-[#eef2f7] text-[#344054] hover:bg-[#eef2f7]">APAS controlled</Badge>
+              </div>
+              {selectedRecord && (
+                <RecordDetail
+                  record={selectedRecord}
+                  onOpenSource={selectedRecord.fieldItemId ? () => onSelectItem(selectedRecord.fieldItemId!) : undefined}
+                  onSendToOwner={onUpdateRecord && selectedRecord.databaseId ? () => onUpdateRecord(selectedRecord.databaseId!, {
+                    status: 'ready_for_owner',
+                    ownerSignoffStatus: 'ready_for_owner',
+                    clientPublishStatus: 'ready_to_publish',
+                    clientSummary: selectedRecord.clientSummary?.trim() || selectedRecord.observedCondition,
+                  }) : undefined}
+                  onHoldPermit={onUpdateRecord && selectedRecord.databaseId ? () => onUpdateRecord(selectedRecord.databaseId!, {
+                    status: 'held_pending_permit',
+                    permitStatus: 'held_pending_permit',
+                  }) : undefined}
+                  onPublishSummary={onUpdateRecord && selectedRecord.databaseId ? () => onUpdateRecord(selectedRecord.databaseId!, {
+                    clientPublishStatus: 'published_to_client',
+                    clientSummary: selectedRecord.clientSummary?.trim() || selectedRecord.observedCondition,
+                  }) : undefined}
+                />
+              )}
             </div>
           </div>
-
-          {selectedRecord && (
-            <RecordDetail
-              record={selectedRecord}
-              onOpenSource={selectedRecord.fieldItemId ? () => onSelectItem(selectedRecord.fieldItemId!) : undefined}
-              onSendToOwner={onUpdateRecord && selectedRecord.databaseId ? () => onUpdateRecord(selectedRecord.databaseId!, {
-                status: 'ready_for_owner',
-                ownerSignoffStatus: 'ready_for_owner',
-                clientPublishStatus: 'ready_to_publish',
-                clientSummary: selectedRecord.clientSummary?.trim() || selectedRecord.observedCondition,
-              }) : undefined}
-              onHoldPermit={onUpdateRecord && selectedRecord.databaseId ? () => onUpdateRecord(selectedRecord.databaseId!, {
-                status: 'held_pending_permit',
-                permitStatus: 'held_pending_permit',
-              }) : undefined}
-              onPublishSummary={onUpdateRecord && selectedRecord.databaseId ? () => onUpdateRecord(selectedRecord.databaseId!, {
-                clientPublishStatus: 'published_to_client',
-                clientSummary: selectedRecord.clientSummary?.trim() || selectedRecord.observedCondition,
-              }) : undefined}
-            />
-          )}
-
-          <BoundaryCard
-            icon={LockKeyhole}
-            title="Internal by default"
-            body="AI review notes, APAS comments, and unresolved engineering questions stay inside the staff layer until APAS publishes a clean client summary."
-          />
-          <BoundaryCard
-            icon={ShieldCheck}
-            title="Engineer governs classification"
-            body="Concrete, slab, balcony, rebar, stair, and structural keywords are treated as engineer-review gates rather than automatic client conclusions."
-          />
-          <BoundaryCard
-            icon={BadgeCheck}
-            title="Owner-safe reporting"
-            body="The report view uses only owner-visible records and client-visible comments, preserving the Proj OS audit trail beneath it."
-          />
-        </aside>
+        </div>
       </div>
     </section>
   );
@@ -347,7 +355,7 @@ function Metric({ label, value, tone = 'white' }: { label: string; value: number
   );
 }
 
-function FilterGroup<T extends string>({ label, options, value, onChange }: {
+function RailFilter<T extends string>({ label, options, value, onChange }: {
   label: string;
   options: { label: string; value: T; count: number }[];
   value: T;
@@ -355,68 +363,109 @@ function FilterGroup<T extends string>({ label, options, value, onChange }: {
 }) {
   return (
     <div>
-      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[.14em] text-slate-500"><Filter className="h-3.5 w-3.5" />{label}</p>
-      <div className="flex flex-wrap gap-2">
+      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-black uppercase text-slate-400"><Filter className="h-3.5 w-3.5" />{label}</p>
+      <div className="grid gap-2">
         {options.map((option) => (
-          <Button
+          <button
             key={option.value}
             type="button"
-            variant={option.value === value ? 'default' : 'outline'}
-            size="sm"
-            className={cn('h-9 rounded-xl', option.value === value && 'bg-[#0d6b57] hover:bg-[#095746]')}
+            className={cn(
+              'flex min-h-10 w-full items-center justify-between rounded-md border px-3 text-left text-sm transition',
+              option.value === value
+                ? 'border-slate-50 bg-slate-50 font-bold text-[#101820]'
+                : 'border-white/10 bg-white/[.07] text-slate-200 hover:border-white/20 hover:bg-white/[.10]',
+            )}
             onClick={() => onChange(option.value)}
           >
-            {option.label}
-            <span className={cn('ml-2 rounded-full px-1.5 py-0.5 text-[10px]', option.value === value ? 'bg-white/20' : 'bg-slate-100 text-slate-500')}>
-              {option.count}
-            </span>
-          </Button>
+            <span>{option.label}</span>
+            <span className="text-xs opacity-70">{option.count}</span>
+          </button>
         ))}
       </div>
     </div>
   );
 }
 
-function RegisterRow({ record, active, onSelect, onOpen }: { record: ProjectConditionRecord; active: boolean; onSelect: () => void; onOpen?: () => void }) {
+function ConfidenceItem({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="bg-white px-5 py-3">
+      <p className="text-sm font-black text-[#1c2024]">{title}</p>
+      <p className="mt-1 text-xs text-slate-500">{body}</p>
+    </div>
+  );
+}
+
+function SitePlan({
+  records,
+  activeBuilding,
+  onSelectBuilding,
+}: {
+  records: ProjectConditionRecord[];
+  activeBuilding: string;
+  onSelectBuilding: (building: string) => void;
+}) {
+  const buildings = BUILDING_FILTERS.filter((building) => building !== 'All');
+  return (
+    <div className="grid grid-cols-2 gap-2 border-b border-slate-200 bg-[#e9edf0] p-3 sm:grid-cols-5">
+      {buildings.map((building) => {
+        const count = records.filter((record) => record.buildingOrArea === building).length;
+        return (
+          <button
+            key={building}
+            type="button"
+            className={cn(
+              'min-h-20 rounded-md border bg-[#fffdf6] p-2 text-center transition hover:border-[#b88700]',
+              activeBuilding === building && 'border-[#b88700] shadow-[inset_0_0_0_2px_#b88700]',
+            )}
+            onClick={() => onSelectBuilding(building)}
+          >
+            <MapPinned className="mx-auto h-4 w-4 text-[#234e70]" />
+            <strong className="mt-1 block text-sm text-[#1c2024]">{building.replace('Building ', 'Bldg ')}</strong>
+            <span className="text-xs text-slate-500">{count} records</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function RecordCard({ record, active, onSelect, onOpen }: { record: ProjectConditionRecord; active: boolean; onSelect: () => void; onOpen?: () => void }) {
   const engineerGate = record.classification === 'needs_engineer_determination';
   const clientVisible = record.clientPublishStatus !== 'internal_only';
   return (
-    <tr className={cn('align-top transition hover:bg-emerald-50/35', active && 'bg-amber-50/70')}>
-      <td className="px-4 py-4 font-mono text-xs text-slate-500">
-        <button type="button" className="font-mono underline-offset-4 hover:underline" onClick={onSelect}>{record.id}</button>
-      </td>
-      <td className="max-w-[360px] px-4 py-4">
-        <button type="button" className="block text-left" onClick={onSelect}>
-          <p className="font-semibold text-[#082b23]">{record.element}</p>
-          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">{record.observedCondition}</p>
+    <div className={cn('grid grid-cols-[78px_minmax(0,1fr)] gap-3 border-b border-slate-200 p-4 transition hover:bg-[#fff9e8]', active && 'bg-[#fff9e8]')}>
+      <button
+        type="button"
+        className="relative aspect-square w-[78px] overflow-hidden rounded-md border border-slate-300 bg-[repeating-linear-gradient(45deg,#d9dde2_0_8px,#c3cbd3_8px_16px)]"
+        onClick={onSelect}
+        aria-label={`Select ${record.id}`}
+      >
+        <span className="absolute inset-x-3 bottom-5 block h-1.5 rotate-[-13deg] bg-[#9d2f2f]/75" />
+        <Camera className="absolute bottom-2 right-2 h-4 w-4 rounded bg-white/80 p-0.5 text-slate-600" />
+      </button>
+      <div className="min-w-0">
+        <button type="button" className="block w-full text-left" onClick={onSelect}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-mono text-[11px] font-bold text-slate-500">{record.id}</p>
+              <h4 className="mt-1 truncate text-sm font-black text-[#1c2024]">{record.element}</h4>
+            </div>
+            <span className={cn('shrink-0 rounded-full px-2 py-1 text-[10px] font-black', clientVisible ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-600')}>
+              {clientVisible ? 'Client' : 'Internal'}
+            </span>
+          </div>
+          <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-slate-500">{record.observedCondition}</p>
           <p className="mt-2 flex items-center gap-1 text-[11px] text-slate-400"><Building2 className="h-3.5 w-3.5" />{record.locationLabel || record.buildingOrArea}</p>
         </button>
-      </td>
-      <td className="px-4 py-4">
-        <Badge className={engineerGate ? 'bg-amber-100 text-amber-800 hover:bg-amber-100' : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-100'}>
-          {formatProjectConditionClassification(record.classification)}
-        </Badge>
-      </td>
-      <td className="px-4 py-4 text-xs text-slate-600">{formatProjectConditionStatus(record.status)}</td>
-      <td className="px-4 py-4 text-xs text-slate-600">
-        <p>{formatProjectConditionStatus(record.permitStatus)}</p>
-        <p className="mt-1">{formatProjectConditionStatus(record.ownerSignoffStatus)}</p>
-      </td>
-      <td className="px-4 py-4">
-        <span className={cn(
-          'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold uppercase',
-          clientVisible ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-600',
-        )}>
-          {clientVisible ? <Eye className="h-3 w-3" /> : <LockKeyhole className="h-3 w-3" />}
-          {formatProjectConditionPublishStatus(record.clientPublishStatus)}
-        </span>
-      </td>
-      <td className="px-4 py-4 text-right">
-        <Button variant="outline" size="sm" className="rounded-xl" onClick={onOpen} disabled={!onOpen}>
-          {onOpen ? 'Open source' : 'Record'}
-        </Button>
-      </td>
-    </tr>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <Badge className={engineerGate ? 'bg-[#fff2cc] text-[#9a6700] hover:bg-[#fff2cc]' : 'bg-[#e5f6ed] text-[#2d6a4f] hover:bg-[#e5f6ed]'}>
+            {formatProjectConditionClassification(record.classification)}
+          </Badge>
+          <Badge variant="outline" className="bg-white text-slate-600">{formatProjectConditionStatus(record.status)}</Badge>
+          {onOpen && <Button variant="outline" size="sm" className="h-7 rounded-md bg-white px-2 text-xs" onClick={onOpen}>Open source</Button>}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -445,34 +494,48 @@ function RecordDetail({
   const visibleNotations = record.notations.slice(0, 4);
 
   return (
-    <div className="rounded-3xl border bg-white p-5 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-mono text-xs font-semibold text-slate-500">{record.id}</p>
-          <h3 className="mt-1 text-lg font-semibold leading-snug text-[#082b23]">{record.element}</h3>
-          <p className="mt-1 text-xs text-slate-500">{buildLocationLabel(record)}</p>
+    <div className="max-h-[760px] overflow-auto p-4">
+      <div className="grid gap-4 2xl:grid-cols-[minmax(240px,.85fr)_minmax(0,1fr)]">
+        <div
+          className="relative min-h-64 overflow-hidden rounded-lg border border-slate-200 bg-[repeating-linear-gradient(135deg,#dce2e8_0_12px,#c5ced8_12px_24px)]"
+          aria-label="Photo evidence placeholder"
+        >
+          <span className="absolute left-[28%] top-[20%] h-[54%] w-[42%] rotate-[10deg] border-b-8 border-l-[12px] border-[#9d2f2f]/75" />
+          <span className="absolute bottom-3 left-3 rounded-md bg-white/90 px-2.5 py-2 text-xs font-black text-slate-700">{record.id} / Photo Evidence</span>
         </div>
-        <Badge className={isClientVisibleCondition(record) ? 'bg-sky-100 text-sky-800 hover:bg-sky-100' : 'bg-slate-100 text-slate-700 hover:bg-slate-100'}>
-          {formatProjectConditionPublishStatus(record.clientPublishStatus)}
-        </Badge>
+
+        <div>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-mono text-xs font-bold text-slate-500">{record.id}</p>
+              <h3 className="mt-1 text-2xl font-black leading-tight text-[#1c2024]">{record.element}</h3>
+              <p className="mt-2 text-sm text-slate-500">{buildLocationLabel(record)}</p>
+            </div>
+            <Badge className={isClientVisibleCondition(record) ? 'bg-sky-100 text-sky-800 hover:bg-sky-100' : 'bg-slate-100 text-slate-700 hover:bg-slate-100'}>
+              {formatProjectConditionPublishStatus(record.clientPublishStatus)}
+            </Badge>
+          </div>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+            <DetailField label="Class" value={formatProjectConditionClassification(record.classification)} />
+            <DetailField label="Severity" value={formatProjectConditionSeverity(record.severity)} />
+            <DetailField label="Status" value={formatProjectConditionStatus(record.status)} />
+            <DetailField label="Quantity" value={record.quantity ? `${record.quantity} ${record.quantityUnit ?? ''}` : 'TBD'} />
+            <DetailField label="Permit" value={formatProjectConditionStatus(record.permitStatus)} />
+            <DetailField label="Owner" value={formatProjectConditionStatus(record.ownerSignoffStatus)} />
+          </div>
+        </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-        <DetailField label="Class" value={formatProjectConditionClassification(record.classification)} />
-        <DetailField label="Severity" value={formatProjectConditionSeverity(record.severity)} />
-        <DetailField label="Status" value={formatProjectConditionStatus(record.status)} />
-        <DetailField label="Quantity" value={record.quantity ? `${record.quantity} ${record.quantityUnit ?? ''}` : 'TBD'} />
-      </div>
-
-      <div className="mt-4 grid grid-cols-5 gap-1.5">
+      <div className="mt-4 grid grid-cols-5 gap-2">
         {workflow.map((step, index) => (
           <div
             key={step.status}
             className={cn(
-              'min-h-20 rounded-xl border p-2',
-              index < currentIndex && 'border-emerald-200 bg-emerald-50',
-              index === currentIndex && 'border-amber-300 bg-amber-50',
-              index > currentIndex && 'bg-slate-50',
+              'min-h-20 rounded-lg border p-2',
+              index < currentIndex && 'border-[#2d6a4f]/30 bg-[#f0faf4]',
+              index === currentIndex && 'border-[#b88700]/50 bg-[#fff8df]',
+              index > currentIndex && 'bg-[#fbfbf8]',
             )}
           >
             <p className="text-[10px] font-bold text-slate-800">{step.label}</p>
@@ -481,31 +544,31 @@ function RecordDetail({
         ))}
       </div>
 
-      <div className="mt-4 rounded-2xl border-l-4 border-sky-500 bg-sky-50 p-3">
+      <div className="mt-4 rounded-r-lg border-l-4 border-[#186879] bg-[#eff9fb] p-4">
         <p className="flex items-center gap-1.5 text-sm font-semibold text-sky-950"><Sparkles className="h-4 w-4" />Internal AI review</p>
         <p className="mt-1 text-xs leading-relaxed text-sky-900/75">{record.aiSuggestion || 'No AI review note has been recorded yet.'}</p>
         {typeof record.aiConfidence === 'number' && <p className="mt-2 text-[11px] font-semibold text-sky-800">Confidence {Math.round(record.aiConfidence * 100)}%</p>}
       </div>
 
-      <div className="mt-4 rounded-2xl border-l-4 border-emerald-600 bg-emerald-50 p-3">
+      <div className="mt-4 rounded-r-lg border-l-4 border-[#2d6a4f] bg-[#e5f6ed] p-4">
         <p className="flex items-center gap-1.5 text-sm font-semibold text-emerald-950"><NotebookTabs className="h-4 w-4" />Client summary</p>
         <p className="mt-1 text-xs leading-relaxed text-emerald-900/75">{record.clientSummary || 'No owner-facing summary has been published for this condition.'}</p>
       </div>
 
-      <div className="mt-4 grid gap-2">
-        <Button className="justify-start rounded-xl bg-[#0d6b57] hover:bg-[#095746]" onClick={onSendToOwner} disabled={!onSendToOwner}>
+      <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+        <Button className="justify-start rounded-md bg-[#234e70] hover:bg-[#1c405d]" onClick={onSendToOwner} disabled={!onSendToOwner}>
           <Send className="mr-2 h-4 w-4" />Send to owner queue
         </Button>
-        <Button variant="outline" className="justify-start rounded-xl" onClick={onHoldPermit} disabled={!onHoldPermit}>
+        <Button variant="outline" className="justify-start rounded-md" onClick={onHoldPermit} disabled={!onHoldPermit}>
           <ShieldCheck className="mr-2 h-4 w-4" />Hold pending permit
         </Button>
-        <Button variant="outline" className="justify-start rounded-xl" onClick={onPublishSummary} disabled={!onPublishSummary}>
+        <Button variant="outline" className="justify-start rounded-md" onClick={onPublishSummary} disabled={!onPublishSummary}>
           <Eye className="mr-2 h-4 w-4" />Publish client summary
         </Button>
-        {onOpenSource && <Button variant="ghost" className="justify-start rounded-xl" onClick={onOpenSource}>Open source item</Button>}
+        {onOpenSource && <Button variant="ghost" className="justify-start rounded-md" onClick={onOpenSource}>Open source item</Button>}
       </div>
 
-      <div className="mt-5 space-y-3">
+      <div className="mt-5 grid gap-4 xl:grid-cols-2">
         <DetailList icon={MessageSquareText} title="Comments" items={visibleComments.map((comment) => ({
           id: comment.id,
           meta: `${comment.createdBy} / ${comment.role ?? 'Team'} / ${comment.audience.replace(/_/g, ' ')}`,
@@ -546,14 +609,14 @@ function DetailList({ icon: Icon, title, items }: { icon: ComponentType<{ classN
   );
 }
 
-function BoundaryCard({ icon: Icon, title, body }: { icon: ComponentType<{ className?: string }>; title: string; body: string }) {
+function BoundaryCard({ icon: Icon, title, body, dark = false }: { icon: ComponentType<{ className?: string }>; title: string; body: string; dark?: boolean }) {
   return (
-    <div className="rounded-3xl border bg-white p-5 shadow-sm">
+    <div className={cn('rounded-lg border p-4 shadow-sm', dark ? 'border-white/10 bg-white/[.06]' : 'bg-white')}>
       <div className="flex items-start gap-3">
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><Icon className="h-5 w-5" /></span>
+        <span className={cn('grid h-9 w-9 shrink-0 place-items-center rounded', dark ? 'bg-white/10 text-[#d6a21b]' : 'bg-emerald-50 text-emerald-700')}><Icon className="h-5 w-5" /></span>
         <div>
-          <h3 className="font-semibold text-[#082b23]">{title}</h3>
-          <p className="mt-1 text-xs leading-relaxed text-slate-500">{body}</p>
+          <h3 className={cn('font-semibold', dark ? 'text-slate-50' : 'text-[#082b23]')}>{title}</h3>
+          <p className={cn('mt-1 text-xs leading-relaxed', dark ? 'text-slate-300' : 'text-slate-500')}>{body}</p>
         </div>
       </div>
     </div>
