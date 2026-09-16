@@ -3,8 +3,10 @@ import {
   buildClientVisibleProjectConditions,
   buildLocationLabel,
   buildProjectConditionsSummary,
+  buildProjectConditionRecordUpsertRow,
   buildProjOsConditionIngestPayload,
   classifyFieldItemAsProjectCondition,
+  mapProjectConditionDbRowsToRecords,
   mapFieldStatusToProjectConditionStatus,
   type ProjectConditionRecord,
 } from '../projectConditionsRegister';
@@ -167,5 +169,106 @@ describe('project conditions register', () => {
     })).toBe('non_structural');
     expect(mapFieldStatusToProjectConditionStatus('ready_for_review')).toBe('ready_for_owner');
     expect(mapFieldStatusToProjectConditionStatus('verified')).toBe('verified_complete');
+  });
+
+  it('hydrates durable Supabase rows into branded register records', () => {
+    const records = mapProjectConditionDbRowsToRecords({
+      projectName: baseRecord.projectName,
+      records: [{
+        id: '11111111-1111-4111-8111-111111111111',
+        project_id: baseRecord.projectId,
+        field_item_id: '22222222-2222-4222-8222-222222222222',
+        condition_number: 7,
+        source_system: 'field-accountability',
+        source_record_id: '22222222-2222-4222-8222-222222222222',
+        building_or_area: 'Building 4',
+        element: 'Exterior stair landing',
+        classification: 'needs_engineer_determination',
+        classification_status: 'needs_review',
+        observed_condition: 'Cracked landing edge observed during walk.',
+        condition_category: 'concrete',
+        severity: 'high',
+        permit_status: 'permit_required',
+        owner_signoff_status: 'not_ready',
+        status: 'needs_engineer_review',
+        human_review_required: true,
+        client_publish_status: 'internal_only',
+        client_summary: null,
+        updated_at: '2026-09-16T04:00:00Z',
+      }],
+      comments: [{
+        id: '33333333-3333-4333-8333-333333333333',
+        condition_id: '11111111-1111-4111-8111-111111111111',
+        body: 'Hold for engineer review before publishing.',
+        audience: 'internal',
+        created_by: '44444444-4444-4444-8444-444444444444',
+        created_at: '2026-09-16T04:01:00Z',
+      }],
+    });
+
+    expect(records[0]).toMatchObject({
+      id: 'PCR-0007',
+      databaseId: '11111111-1111-4111-8111-111111111111',
+      fieldItemId: '22222222-2222-4222-8222-222222222222',
+      buildingOrArea: 'Building 4',
+      comments: [expect.objectContaining({ audience: 'internal' })],
+    });
+  });
+
+  it('builds durable register rows from Field Accountability items', () => {
+    const row = buildProjectConditionRecordUpsertRow({
+      tenantId: '55555555-5555-4555-8555-555555555555',
+      userId: '66666666-6666-4666-8666-666666666666',
+      projectName: baseRecord.projectName,
+      item: {
+        id: '77777777-7777-4777-8777-777777777777',
+        tenant_id: '55555555-5555-4555-8555-555555555555',
+        project_id: baseRecord.projectId,
+        property_id: null,
+        visit_id: null,
+        item_number: 12,
+        title: 'Stucco coating loose at breezeway',
+        description: 'Loose stucco finish observed.',
+        category: 'stucco',
+        severity: 'medium',
+        location_label: 'Building 5 / Breezeway',
+        lat: null,
+        lng: null,
+        status: 'ready_for_review',
+        ball_in_court: 'apas',
+        responsible_user_id: null,
+        responsible_contact_id: null,
+        responsible_organization_id: null,
+        work_order_id: null,
+        source_type: null,
+        source_record_id: null,
+        due_date: null,
+        repeat_count: 0,
+        owner_visible: true,
+        owner_verification_required: true,
+        ready_for_review_at: null,
+        verified_at: null,
+        verified_by: null,
+        reopened_at: null,
+        archived_at: null,
+        created_by: '66666666-6666-4666-8666-666666666666',
+        created_at: '2026-09-16T04:00:00Z',
+        updated_at: '2026-09-16T04:00:00Z',
+        photos: [],
+        annotations: [],
+        comments: [],
+        events: [],
+      },
+    });
+
+    expect(row).toMatchObject({
+      source_system: 'field-accountability',
+      source_record_id: '77777777-7777-4777-8777-777777777777',
+      field_item_id: '77777777-7777-4777-8777-777777777777',
+      classification: 'non_structural',
+      client_publish_status: 'published_to_client',
+      client_summary: 'Loose stucco finish observed.',
+      severity: 'moderate',
+    });
   });
 });

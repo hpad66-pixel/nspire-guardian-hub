@@ -21,6 +21,7 @@ import { FieldAccountabilityDetail } from '@/components/accountability/FieldAcco
 import { FieldWalkCaptureDialog } from '@/components/accountability/FieldWalkCaptureDialog';
 import { OwnerWalkPunchCaptureFeature } from '@/components/accountability/OwnerWalkPunchCaptureFeature';
 import { useFieldAccountability, type FieldItem, type FieldStatus } from '@/hooks/useFieldAccountability';
+import { useProjectConditionsRegister } from '@/hooks/useProjectConditionsRegister';
 import { useProject } from '@/hooks/useProjects';
 import { openFieldPhotoScopeReport } from '@/lib/accountability/photoScopeReport';
 import { ownerPortalPath } from '@/lib/portal/ownerPortalPaths';
@@ -40,7 +41,9 @@ export default function FieldAccountabilityPage() {
   const params = useParams<{ projectId?: string; id?: string }>();
   const projectId = params.projectId || params.id || null;
   const { data: project } = useProject(projectId);
+  const projectName = project?.name || 'Project Conditions Register';
   const { data, isLoading, error, analyzePhoto, updatePhotoCaption, updatePhotoReview, addAnnotation } = useFieldAccountability(projectId);
+  const conditionsRegister = useProjectConditionsRegister(projectId, projectName);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [createPhotoId, setCreatePhotoId] = useState<string | null>(null);
@@ -73,6 +76,16 @@ export default function FieldAccountabilityPage() {
   }), [items, query, status, ball]);
 
   if (!projectId) return null;
+
+  async function promoteFieldItemsToRegister() {
+    if (!items.length) return;
+    try {
+      await conditionsRegister.promoteFieldItems.mutateAsync(items);
+      toast.success('Project Conditions Register activated');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Could not activate the durable register');
+    }
+  }
 
   async function organizeOne(photoId: string) {
     setOrganizing(photoId);
@@ -148,11 +161,15 @@ export default function FieldAccountabilityPage() {
           <TabsContent value="conditions-register" className="mt-0">
             {isLoading ? <LoadingState /> : error ? <EmptyState icon={AlertTriangle} title="Project Conditions Register is not available" body="Apply the Field Accountability database migration, then refresh this page." /> : (
               <ProjectConditionsRegisterPanel
-                projectName={project?.name || 'Project Conditions Register'}
+                projectName={projectName}
                 items={items}
+                records={conditionsRegister.data?.records}
+                source={conditionsRegister.data?.records.length ? 'durable-register' : 'field-accountability-preview'}
+                isPromoting={conditionsRegister.promoteFieldItems.isPending}
                 onSelectItem={(itemId) => setSelectedId(itemId)}
                 onStartWalk={() => setCaptureOpen(true)}
                 onOpenReport={() => void openFieldPhotoScopeReport({ projectName: project?.name || 'Project Conditions Register', photos: data?.allPhotos ?? [], items })}
+                onPromoteFieldItems={() => void promoteFieldItemsToRegister()}
               />
             )}
           </TabsContent>

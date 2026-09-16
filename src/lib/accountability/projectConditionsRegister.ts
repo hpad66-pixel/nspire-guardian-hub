@@ -56,8 +56,13 @@ export interface ProjectConditionAuditEvent {
 
 export interface ProjectConditionRecord {
   id: string;
+  databaseId?: string | null;
   projectId: string;
   projectName: string;
+  fieldItemId?: string | null;
+  conditionNumber?: number | null;
+  sourceSystem?: string | null;
+  sourceRecordId?: string | null;
   buildingOrArea: string;
   elevation?: string | null;
   floor?: string | null;
@@ -81,9 +86,72 @@ export interface ProjectConditionRecord {
   humanReviewRequired: boolean;
   clientPublishStatus: ProjectConditionPublishStatus;
   clientSummary?: string | null;
+  updatedAt?: string | null;
   comments: ProjectConditionComment[];
   notations: ProjectConditionNotation[];
   audit: ProjectConditionAuditEvent[];
+}
+
+export interface ProjectConditionDbRecordRow {
+  id: string;
+  project_id: string;
+  field_item_id?: string | null;
+  condition_number?: number | null;
+  source_system?: string | null;
+  source_record_id?: string | null;
+  building_or_area: string;
+  elevation?: string | null;
+  floor?: string | null;
+  unit?: string | null;
+  element: string;
+  location_label?: string | null;
+  classification: ProjectConditionClassification;
+  classification_status: ProjectConditionRecord['classificationStatus'];
+  observed_condition: string;
+  condition_category: string;
+  severity: ProjectConditionSeverity;
+  quantity?: number | null;
+  quantity_unit?: string | null;
+  repair_type?: string | null;
+  spec_reference?: string | null;
+  permit_status: ProjectConditionRecord['permitStatus'];
+  owner_signoff_status: ProjectConditionRecord['ownerSignoffStatus'];
+  status: ProjectConditionStatus;
+  ai_suggestion?: string | null;
+  ai_confidence?: number | null;
+  human_review_required: boolean;
+  client_publish_status: ProjectConditionPublishStatus;
+  client_summary?: string | null;
+  updated_at?: string | null;
+}
+
+export interface ProjectConditionDbCommentRow {
+  id: string;
+  condition_id: string;
+  body: string;
+  role?: string | null;
+  audience: ProjectConditionAudience;
+  created_by: string;
+  created_at: string;
+}
+
+export interface ProjectConditionDbNotationRow {
+  id: string;
+  condition_id: string;
+  notation_type: string;
+  body: string;
+  audience: ProjectConditionAudience;
+  created_by: string;
+  created_at: string;
+}
+
+export interface ProjectConditionDbAuditRow {
+  id: string;
+  condition_id: string;
+  event_type: string;
+  note?: string | null;
+  actor_id?: string | null;
+  created_at: string;
 }
 
 export interface ClientVisibleProjectCondition {
@@ -129,6 +197,10 @@ export function buildLocationLabel(record: Pick<ProjectConditionRecord, 'buildin
   return [record.buildingOrArea, record.elevation, record.floor, record.unit, record.element]
     .filter((part) => typeof part === 'string' && part.trim().length > 0)
     .join(' / ');
+}
+
+export function formatProjectConditionNumber(conditionNumber?: number | null) {
+  return conditionNumber ? `PCR-${String(conditionNumber).padStart(4, '0')}` : null;
 }
 
 export function isClientVisibleCondition(record: Pick<ProjectConditionRecord, 'clientPublishStatus'>) {
@@ -264,6 +336,116 @@ export function buildProjOsConditionIngestPayload(input: {
         note: event.note,
       })),
     })),
+  };
+}
+
+export function mapProjectConditionDbRowsToRecords(input: {
+  projectName: string;
+  records: ProjectConditionDbRecordRow[];
+  comments?: ProjectConditionDbCommentRow[];
+  notations?: ProjectConditionDbNotationRow[];
+  audit?: ProjectConditionDbAuditRow[];
+}): ProjectConditionRecord[] {
+  const comments = input.comments ?? [];
+  const notations = input.notations ?? [];
+  const audit = input.audit ?? [];
+
+  return input.records.map((record) => ({
+    id: formatProjectConditionNumber(record.condition_number) ?? record.id,
+    databaseId: record.id,
+    projectId: record.project_id,
+    projectName: input.projectName,
+    fieldItemId: record.field_item_id,
+    conditionNumber: record.condition_number,
+    sourceSystem: record.source_system,
+    sourceRecordId: record.source_record_id,
+    buildingOrArea: record.building_or_area,
+    elevation: record.elevation,
+    floor: record.floor,
+    unit: record.unit,
+    element: record.element,
+    locationLabel: record.location_label,
+    classification: record.classification,
+    classificationStatus: record.classification_status,
+    observedCondition: record.observed_condition,
+    conditionCategory: record.condition_category,
+    severity: record.severity,
+    quantity: record.quantity,
+    quantityUnit: record.quantity_unit,
+    repairType: record.repair_type,
+    specReference: record.spec_reference,
+    permitStatus: record.permit_status,
+    ownerSignoffStatus: record.owner_signoff_status,
+    status: record.status,
+    aiSuggestion: record.ai_suggestion,
+    aiConfidence: record.ai_confidence,
+    humanReviewRequired: record.human_review_required,
+    clientPublishStatus: record.client_publish_status,
+    clientSummary: record.client_summary,
+    updatedAt: record.updated_at,
+    comments: comments.filter((comment) => comment.condition_id === record.id).map((comment) => ({
+      id: comment.id,
+      body: comment.body,
+      createdBy: comment.created_by,
+      createdAt: comment.created_at,
+      role: comment.role ?? undefined,
+      audience: comment.audience,
+    })),
+    notations: notations.filter((notation) => notation.condition_id === record.id).map((notation) => ({
+      id: notation.id,
+      type: notation.notation_type,
+      body: notation.body,
+      createdBy: notation.created_by,
+      createdAt: notation.created_at,
+      audience: notation.audience,
+    })),
+    audit: audit.filter((event) => event.condition_id === record.id).map((event) => ({
+      id: event.id,
+      event: event.event_type,
+      actor: event.actor_id ?? 'system',
+      at: event.created_at,
+      note: event.note ?? event.event_type,
+    })),
+  }));
+}
+
+export function buildProjectConditionRecordUpsertRow(input: {
+  item: FieldItem;
+  tenantId: string;
+  userId: string;
+  projectName: string;
+}) {
+  const record = mapFieldItemToProjectConditionRecord(input.item, input.projectName);
+  return {
+    tenant_id: input.tenantId,
+    project_id: input.item.project_id,
+    field_item_id: input.item.id,
+    source_system: 'field-accountability',
+    source_record_id: input.item.id,
+    building_or_area: record.buildingOrArea,
+    elevation: record.elevation ?? null,
+    floor: record.floor ?? null,
+    unit: record.unit ?? null,
+    element: record.element,
+    location_label: record.locationLabel ?? null,
+    classification: record.classification,
+    classification_status: record.classificationStatus,
+    observed_condition: record.observedCondition,
+    condition_category: record.conditionCategory,
+    severity: record.severity,
+    quantity: record.quantity ?? null,
+    quantity_unit: record.quantityUnit ?? null,
+    repair_type: record.repairType ?? null,
+    spec_reference: record.specReference ?? null,
+    permit_status: record.permitStatus,
+    owner_signoff_status: record.ownerSignoffStatus,
+    status: record.status,
+    ai_suggestion: record.aiSuggestion ?? null,
+    ai_confidence: record.aiConfidence ?? null,
+    human_review_required: record.humanReviewRequired,
+    client_publish_status: record.clientPublishStatus,
+    client_summary: record.clientSummary ?? null,
+    created_by: input.userId,
   };
 }
 

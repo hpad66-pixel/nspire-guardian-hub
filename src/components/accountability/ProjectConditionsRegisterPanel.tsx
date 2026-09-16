@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react';
-import { AlertTriangle, BadgeCheck, Building2, Eye, FileText, LockKeyhole, ShieldCheck } from 'lucide-react';
+import { BadgeCheck, Building2, Database, Eye, FileText, Loader2, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { FieldItem } from '@/hooks/useFieldAccountability';
@@ -14,9 +14,13 @@ import { cn } from '@/lib/utils';
 interface ProjectConditionsRegisterPanelProps {
   projectName: string;
   items: FieldItem[];
+  records?: ProjectConditionRecord[];
+  source?: 'durable-register' | 'field-accountability-preview';
+  isPromoting?: boolean;
   onSelectItem: (itemId: string) => void;
   onStartWalk: () => void;
   onOpenReport: () => void;
+  onPromoteFieldItems?: () => void;
 }
 
 const CLASS_LABELS: Record<ProjectConditionClassification, string> = {
@@ -29,14 +33,20 @@ const CLASS_LABELS: Record<ProjectConditionClassification, string> = {
 export function ProjectConditionsRegisterPanel({
   projectName,
   items,
+  records: liveRecords,
+  source,
+  isPromoting = false,
   onSelectItem,
   onStartWalk,
   onOpenReport,
+  onPromoteFieldItems,
 }: ProjectConditionsRegisterPanelProps) {
-  const records = mapFieldItemsToProjectConditions(items, projectName);
+  const usingLiveRecords = Boolean(liveRecords?.length);
+  const records = usingLiveRecords ? liveRecords ?? [] : mapFieldItemsToProjectConditions(items, projectName);
   const summary = buildProjectConditionsSummary(records);
+  const viewSource = source ?? (usingLiveRecords ? 'durable-register' : 'field-accountability-preview');
 
-  if (!items.length) {
+  if (!items.length && !records.length) {
     return (
       <section className="overflow-hidden rounded-[2rem] border border-dashed bg-white p-10 text-center sm:p-16" data-testid="project-conditions-register-panel">
         <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><FileText className="h-6 w-6" /></span>
@@ -81,9 +91,29 @@ export function ProjectConditionsRegisterPanel({
               <h3 className="mt-1 font-display text-2xl text-[#082b23]">{projectName}</h3>
             </div>
             <Badge variant="outline" className="w-fit border-emerald-200 bg-emerald-50 text-emerald-800">
-              Proj OS native records
+              {viewSource === 'durable-register' ? 'Proj OS durable records' : 'Field evidence preview'}
             </Badge>
           </div>
+          {viewSource === 'field-accountability-preview' && onPromoteFieldItems && (
+            <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 sm:px-5">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="flex items-center gap-2 text-sm font-semibold text-amber-950"><Database className="h-4 w-4" />Activate the durable register</p>
+                  <p className="mt-0.5 text-xs leading-relaxed text-amber-900/75">
+                    These rows are currently previewed from Field Accountability. Promote them to create auditable PCR records with client/internal boundaries.
+                  </p>
+                </div>
+                <Button
+                  className="w-full rounded-xl bg-amber-400 text-amber-950 hover:bg-amber-300 sm:w-auto"
+                  onClick={onPromoteFieldItems}
+                  disabled={isPromoting}
+                >
+                  {isPromoting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
+                  Activate register
+                </Button>
+              </div>
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-left text-sm">
               <thead className="bg-slate-50 text-[11px] font-bold uppercase tracking-[.12em] text-slate-500">
@@ -102,7 +132,7 @@ export function ProjectConditionsRegisterPanel({
                   <RegisterRow
                     key={record.id}
                     record={record}
-                    onOpen={() => onSelectItem(items[index].id)}
+                    onOpen={record.fieldItemId ? () => onSelectItem(record.fieldItemId!) : items[index]?.id ? () => onSelectItem(items[index].id) : undefined}
                   />
                 ))}
               </tbody>
@@ -147,7 +177,7 @@ function Metric({ label, value, tone = 'white' }: { label: string; value: number
   );
 }
 
-function RegisterRow({ record, onOpen }: { record: ProjectConditionRecord; onOpen: () => void }) {
+function RegisterRow({ record, onOpen }: { record: ProjectConditionRecord; onOpen?: () => void }) {
   const engineerGate = record.classification === 'needs_engineer_determination';
   const clientVisible = record.clientPublishStatus !== 'internal_only';
   return (
@@ -178,7 +208,9 @@ function RegisterRow({ record, onOpen }: { record: ProjectConditionRecord; onOpe
         </span>
       </td>
       <td className="px-4 py-4 text-right">
-        <Button variant="outline" size="sm" className="rounded-xl" onClick={onOpen}>Open</Button>
+        <Button variant="outline" size="sm" className="rounded-xl" onClick={onOpen} disabled={!onOpen}>
+          {onOpen ? 'Open source' : 'Record'}
+        </Button>
       </td>
     </tr>
   );
