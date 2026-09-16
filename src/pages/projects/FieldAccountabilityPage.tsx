@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AccountabilityPhotoViewer } from '@/components/accountability/AccountabilityPhotoViewer';
 import { PhotoIntelligenceWorkspace } from '@/components/accountability/PhotoIntelligenceWorkspace';
 import { OwnerPhotoScopeReport } from '@/components/accountability/OwnerPhotoScopeReport';
+import { ProjectConditionsRegisterPanel } from '@/components/accountability/ProjectConditionsRegisterPanel';
 import { CreateFieldItemDialog } from '@/components/accountability/CreateFieldItemDialog';
 import { FieldAccountabilityDetail } from '@/components/accountability/FieldAccountabilityDetail';
 import { FieldWalkCaptureDialog } from '@/components/accountability/FieldWalkCaptureDialog';
@@ -47,7 +48,7 @@ export default function FieldAccountabilityPage() {
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('all');
   const [ball, setBall] = useState('all');
-  const [activeTab, setActiveTab] = useState('owner-capture');
+  const [activeTab, setActiveTab] = useState('conditions-register');
   const [organizing, setOrganizing] = useState<string | null>(null);
   const [organizeProgress, setOrganizeProgress] = useState<{ done: number; total: number } | null>(null);
 
@@ -130,6 +131,7 @@ export default function FieldAccountabilityPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-5">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <TabsList className="grid h-auto w-full grid-cols-1 gap-1 rounded-2xl bg-slate-200/70 p-1 sm:grid-cols-2 xl:flex xl:w-auto">
+              <TabsTrigger value="conditions-register" className="h-10 rounded-xl px-4 lg:flex-none"><FileText className="mr-2 h-4 w-4" />Conditions register</TabsTrigger>
               <TabsTrigger value="owner-capture" className="h-10 rounded-xl px-4 lg:flex-none"><Camera className="mr-2 h-4 w-4" />Owner punch capture</TabsTrigger>
               <TabsTrigger value="board" className="h-10 rounded-xl px-4 lg:flex-none">Accountability board</TabsTrigger>
               <TabsTrigger value="inbox" className="h-10 rounded-xl px-4 lg:flex-none"><Inbox className="mr-2 h-4 w-4" />Walk inbox <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-800">{data?.untriagedPhotos.length ?? 0}</span></TabsTrigger>
@@ -142,6 +144,18 @@ export default function FieldAccountabilityPage() {
               <Select value={ball} onValueChange={setBall}><SelectTrigger className="h-11 w-full rounded-xl bg-white sm:w-48"><UserRound className="mr-2 h-4 w-4" /><SelectValue /></SelectTrigger><SelectContent><SelectItem value="all">Everyone</SelectItem>{Object.entries(BALL_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select>
             </div>}
           </div>
+
+          <TabsContent value="conditions-register" className="mt-0">
+            {isLoading ? <LoadingState /> : error ? <EmptyState icon={AlertTriangle} title="Project Conditions Register is not available" body="Apply the Field Accountability database migration, then refresh this page." /> : (
+              <ProjectConditionsRegisterPanel
+                projectName={project?.name || 'Project Conditions Register'}
+                items={items}
+                onSelectItem={(itemId) => setSelectedId(itemId)}
+                onStartWalk={() => setCaptureOpen(true)}
+                onOpenReport={() => void openFieldPhotoScopeReport({ projectName: project?.name || 'Project Conditions Register', photos: data?.allPhotos ?? [], items })}
+              />
+            )}
+          </TabsContent>
 
           <TabsContent value="owner-capture" className="mt-0">
             {isLoading ? <LoadingState /> : error ? <EmptyState icon={AlertTriangle} title="Owner punch capture is not available" body="Apply the Field Accountability database migration, then refresh this page." /> : (

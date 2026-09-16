@@ -4,6 +4,8 @@ import {
   buildLocationLabel,
   buildProjectConditionsSummary,
   buildProjOsConditionIngestPayload,
+  classifyFieldItemAsProjectCondition,
+  mapFieldStatusToProjectConditionStatus,
   type ProjectConditionRecord,
 } from '../projectConditionsRegister';
 
@@ -150,5 +152,20 @@ describe('project conditions register', () => {
       comment_id: 'C-0001',
       audience: 'internal',
     });
+  });
+
+  it('maps existing Field Accountability concepts into project-condition language', () => {
+    expect(classifyFieldItemAsProjectCondition({
+      category: 'structural',
+      title: 'Spalled concrete at balcony slab edge',
+      description: 'Visible reinforcing steel',
+    })).toBe('needs_engineer_determination');
+    expect(classifyFieldItemAsProjectCondition({
+      category: 'landscaping',
+      title: 'Mulch washout',
+      description: 'Landscape restoration item',
+    })).toBe('non_structural');
+    expect(mapFieldStatusToProjectConditionStatus('ready_for_review')).toBe('ready_for_owner');
+    expect(mapFieldStatusToProjectConditionStatus('verified')).toBe('verified_complete');
   });
 });

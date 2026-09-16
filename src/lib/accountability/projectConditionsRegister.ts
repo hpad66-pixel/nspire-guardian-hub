@@ -1,3 +1,5 @@
+import type { FieldItem } from '@/hooks/useFieldAccountability';
+
 export type ProjectConditionClassification =
   | 'structural'
   | 'non_structural'
@@ -263,4 +265,100 @@ export function buildProjOsConditionIngestPayload(input: {
       })),
     })),
   };
+}
+
+function normalize(value: unknown) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+export function classifyFieldItemAsProjectCondition(item: Pick<FieldItem, 'category' | 'title' | 'description'>): ProjectConditionClassification {
+  const text = normalize(`${item.category} ${item.title} ${item.description ?? ''}`);
+  if (/\b(structural|concrete|spall|spalling|rebar|reinforcing|slab|beam|column|stair|landing|balcony|soffit|crack|cracking|delamination)\b/.test(text)) {
+    return 'needs_engineer_determination';
+  }
+  if (/\b(stucco|sealant|joint|coating|paint|finish|landscape|landscaping|sod|mulch|irrigation|lighting|gate|access-control)\b/.test(text)) {
+    return 'non_structural';
+  }
+  return 'needs_engineer_determination';
+}
+
+export function mapFieldStatusToProjectConditionStatus(status: FieldItem['status']): ProjectConditionStatus {
+  switch (status) {
+    case 'needs_triage':
+      return 'needs_apas_review';
+    case 'assigned':
+    case 'in_progress':
+    case 'reopened':
+      return 'in_construction';
+    case 'ready_for_review':
+      return 'ready_for_owner';
+    case 'verified':
+      return 'verified_complete';
+    case 'deferred':
+      return 'held_pending_permit';
+    case 'rejected':
+      return 'void';
+    default:
+      return 'draft';
+  }
+}
+
+export function mapFieldItemToProjectConditionRecord(item: FieldItem, projectName: string): ProjectConditionRecord {
+  const classification = classifyFieldItemAsProjectCondition(item);
+  const clientPublishStatus: ProjectConditionPublishStatus = item.owner_visible
+    ? item.status === 'ready_for_review' || item.status === 'verified'
+      ? 'published_to_client'
+      : 'ready_to_publish'
+    : 'internal_only';
+
+  return {
+    id: `FA-${String(item.item_number).padStart(4, '0')}`,
+    projectId: item.project_id,
+    projectName,
+    buildingOrArea: item.location_label?.split('/')[0]?.trim() || 'Project area',
+    element: item.title,
+    locationLabel: item.location_label,
+    classification,
+    classificationStatus: classification === 'needs_engineer_determination' ? 'needs_review' : 'engineer_approved',
+    observedCondition: item.description || item.title,
+    conditionCategory: item.category,
+    severity: item.severity === 'medium' ? 'moderate' : item.severity,
+    quantity: null,
+    quantityUnit: null,
+    repairType: item.category,
+    specReference: null,
+    permitStatus: classification === 'needs_engineer_determination' ? 'permit_required' : 'not_determined',
+    ownerSignoffStatus: item.owner_verification_required
+      ? item.status === 'ready_for_review'
+        ? 'ready_for_owner'
+        : item.status === 'verified'
+          ? 'approved'
+          : 'not_ready'
+      : 'not_ready',
+    status: mapFieldStatusToProjectConditionStatus(item.status),
+    aiSuggestion: null,
+    aiConfidence: null,
+    humanReviewRequired: true,
+    clientPublishStatus,
+    clientSummary: item.owner_visible ? item.description || item.title : null,
+    comments: item.comments.map((comment) => ({
+      id: comment.id,
+      body: comment.body,
+      createdBy: comment.author_id,
+      createdAt: comment.created_at,
+      audience: comment.visibility === 'owner' ? 'client_visible' : 'internal',
+    })),
+    notations: [],
+    audit: item.events.map((event) => ({
+      id: event.id,
+      event: event.action,
+      actor: event.actor_id,
+      at: event.created_at,
+      note: event.note || `${event.from_status ?? 'new'} -> ${event.to_status ?? 'updated'}`,
+    })),
+  };
+}
+
+export function mapFieldItemsToProjectConditions(items: FieldItem[], projectName: string) {
+  return items.map((item) => mapFieldItemToProjectConditionRecord(item, projectName));
 }
