@@ -85,6 +85,7 @@ serve(async (req) => {
     switch (resource) {
       case "client-meetings": response = await routeClientMeetings(req, ctx, url); break;
       case "projects": response = await routeProjects(req.method, ctx, id, req, url); break;
+      case "project-conditions": response = await routeProjectConditions(req.method, ctx, id, req, url); break;
       case "project-updates": response = await routeProjectUpdates(req.method, ctx, req, url); break;
       case "contacts": response = await routeContacts(req.method, ctx, id, req, url); break;
       case "project-directory": response = await routeProjectDirectory(req.method, ctx, req, url); break;
@@ -326,6 +327,82 @@ async function routeActionItems(method: string, ctx: RequestContext, id: string 
     await auditWrite(ctx, "project_action_item", id, "update", existing.project_id);
     return json({ data });
   }
+  throw new ApiError(405, "method_not_allowed");
+}
+
+async function routeProjectConditions(method: string, ctx: RequestContext, id: string | undefined, req: Request, url: URL) {
+  if (method === "GET") {
+    const clientVisible = url.searchParams.get("client_visible") === "true";
+    if (id) {
+      const { data, error } = await admin.from("project_condition_records")
+        .select(PROJECT_CONDITION_SELECT)
+        .eq("id", id)
+        .eq("tenant_id", ctx.tenantId)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new ApiError(404, "project_condition_not_found");
+      await requireProject(ctx.tenantId, data.project_id);
+      if (clientVisible && !isProjectConditionClientVisible(data)) throw new ApiError(404, "project_condition_not_found");
+      return json({ data: clientVisible ? sanitizeClientVisibleProjectCondition(data) : data });
+    }
+
+    const projectId = requiredUuid(url.searchParams.get("project_id"), "project_id");
+    await requireProject(ctx.tenantId, projectId);
+    let query = admin.from("project_condition_records")
+      .select(PROJECT_CONDITION_SELECT)
+      .eq("tenant_id", ctx.tenantId)
+      .eq("project_id", projectId)
+      .order("condition_number", { ascending: true });
+    const status = cleanOptionalText(url.searchParams.get("status"), 60);
+    const classification = cleanOptionalText(url.searchParams.get("classification"), 60);
+    if (status) query = query.eq("status", status);
+    if (classification) query = query.eq("classification", classification);
+    if (clientVisible) {
+      query = query.in("client_publish_status", ["ready_to_publish", "published_to_client"]);
+    }
+    const { data, error } = await query.limit(boundedLimit(url, 200));
+    if (error) throw error;
+    return json({ data: clientVisible ? (data ?? []).map(sanitizeClientVisibleProjectCondition) : data ?? [] });
+  }
+
+  requireActor(ctx);
+  if (method === "POST") {
+    const body = asObject(await req.json());
+    const inheritedProjectId = optionalUuid(body.project_id, "project_id");
+    const sourceSystem = cleanOptionalText(body.source_system, 80) ?? "external";
+    const records = Array.isArray(body.records) ? body.records : [body];
+    if (records.length < 1 || records.length > 200) throw new ApiError(400, "invalid_project_condition_batch_size");
+    const data = [];
+    for (let index = 0; index < records.length; index += 1) {
+      data.push(await createProjectCondition(req, ctx, asObject(records[index]), {
+        projectId: inheritedProjectId,
+        sourceSystem,
+        index,
+        batch: records.length > 1,
+      }));
+    }
+    return json({ data }, records.length === 1 ? 201 : 207);
+  }
+
+  if (method === "PATCH" && id) {
+    const { data: existing, error: findError } = await admin.from("project_condition_records")
+      .select("id, project_id").eq("id", id).eq("tenant_id", ctx.tenantId).maybeSingle();
+    if (findError) throw findError;
+    if (!existing) throw new ApiError(404, "project_condition_not_found");
+    await requireProject(ctx.tenantId, existing.project_id);
+    const patch = projectConditionPatch(asObject(await req.json()), false);
+    if (Object.keys(patch).length === 0) throw new ApiError(400, "empty_patch");
+    validateProjectConditionPatch(patch);
+    const { data, error } = await admin.from("project_condition_records").update(patch)
+      .eq("id", id)
+      .eq("tenant_id", ctx.tenantId)
+      .select(PROJECT_CONDITION_SELECT)
+      .single();
+    if (error) throw error;
+    await auditWrite(ctx, "project_condition", id, "update", existing.project_id);
+    return json({ data });
+  }
+
   throw new ApiError(405, "method_not_allowed");
 }
 
@@ -967,6 +1044,195 @@ async function routeProjectUpdates(method: string, ctx: RequestContext, req: Req
   return json({ data }, 201);
 }
 
+async function createProjectCondition(
+  req: Request,
+  ctx: RequestContext & { actorUserId: string },
+  body: Record<string, any>,
+  inherited: { projectId: string | null; sourceSystem: string; index: number; batch: boolean },
+) {
+  const projectId = requiredUuid(body.project_id ?? inherited.projectId, "project_id");
+  await requireProject(ctx.tenantId, projectId);
+  const insert = projectConditionPatch(body, true);
+  insert.id = await idempotentUuid(req, ctx.apiClient.id, inherited.batch ? `project-conditions:${inherited.index}` : "project-conditions");
+  insert.tenant_id = ctx.tenantId;
+  insert.project_id = projectId;
+  insert.source_system = cleanOptionalText(body.source_system, 80) ?? inherited.sourceSystem;
+  insert.source_record_id = cleanOptionalText(body.source_record_id ?? body.deficiency_id, 160);
+  insert.created_by = ctx.actorUserId;
+  validateProjectConditionPatch(insert);
+
+  const { data, error } = await admin.from("project_condition_records")
+    .insert(insert)
+    .select(PROJECT_CONDITION_SELECT)
+    .single();
+
+  if (error?.code === "23505") {
+    const { data: existing } = await admin.from("project_condition_records")
+      .select(PROJECT_CONDITION_SELECT)
+      .eq("id", insert.id)
+      .eq("tenant_id", ctx.tenantId)
+      .maybeSingle();
+    if (!existing) throw error;
+    await auditWrite(ctx, "project_condition", existing.id, "create", projectId);
+    return { ...existing, idempotent_replay: true };
+  }
+  if (error) throw error;
+
+  await insertProjectConditionChildren(ctx, data.id, projectId, body);
+  await auditWrite(ctx, "project_condition", data.id, "create", projectId);
+  const { data: hydrated, error: hydrateError } = await admin.from("project_condition_records")
+    .select(PROJECT_CONDITION_SELECT)
+    .eq("id", data.id)
+    .eq("tenant_id", ctx.tenantId)
+    .single();
+  if (hydrateError) throw hydrateError;
+  return hydrated;
+}
+
+async function insertProjectConditionChildren(
+  ctx: RequestContext & { actorUserId: string },
+  conditionId: string,
+  projectId: string,
+  body: Record<string, any>,
+) {
+  const comments = Array.isArray(body.comments) ? body.comments.slice(0, 200) : [];
+  if (comments.length) {
+    const rows = comments.map((comment: any) => ({
+      tenant_id: ctx.tenantId,
+      project_id: projectId,
+      condition_id: conditionId,
+      body: requiredText(comment?.body, "comments.body", 10000),
+      role: cleanOptionalText(comment?.role, 120),
+      audience: normalizeConditionAudience(comment?.audience),
+      created_by: ctx.actorUserId,
+    }));
+    const { error } = await admin.from("project_condition_comments").insert(rows);
+    if (error) throw error;
+  }
+
+  const notations = Array.isArray(body.notations) ? body.notations.slice(0, 200) : [];
+  if (notations.length) {
+    const rows = notations.map((notation: any) => ({
+      tenant_id: ctx.tenantId,
+      project_id: projectId,
+      condition_id: conditionId,
+      notation_type: cleanOptionalText(notation?.notation_type ?? notation?.type, 120) ?? "observed_condition",
+      body: requiredText(notation?.body, "notations.body", 10000),
+      audience: normalizeConditionAudience(notation?.audience),
+      created_by: ctx.actorUserId,
+    }));
+    const { error } = await admin.from("project_condition_notations").insert(rows);
+    if (error) throw error;
+  }
+
+  const photos = Array.isArray(body.photos) ? body.photos.slice(0, 200) : [];
+  if (photos.length) {
+    const rows = photos.map((photo: any, index: number) => ({
+      tenant_id: ctx.tenantId,
+      project_id: projectId,
+      condition_id: conditionId,
+      field_photo_id: optionalUuid(photo?.field_photo_id, "photos.field_photo_id"),
+      photo_id: optionalUuid(photo?.photo_id, "photos.photo_id"),
+      evidence_type: normalizeConditionEvidenceType(photo?.evidence_type),
+      audience: normalizeConditionAudience(photo?.audience),
+      sort_order: Number.isFinite(Number(photo?.sort_order)) ? Math.floor(Number(photo.sort_order)) : index,
+      created_by: ctx.actorUserId,
+    }));
+    const { error } = await admin.from("project_condition_photos").insert(rows);
+    if (error) throw error;
+  }
+}
+
+function projectConditionPatch(body: Record<string, any>, creating: boolean) {
+  const patch = pick(body, PROJECT_CONDITION_WRITE_FIELDS);
+  if (body.deficiency_id !== undefined && body.source_record_id === undefined) {
+    patch.source_record_id = cleanOptionalText(body.deficiency_id, 160);
+  }
+  if (creating) {
+    patch.field_item_id = optionalUuid(body.field_item_id, "field_item_id");
+    patch.building_or_area = requiredText(body.building_or_area ?? body.buildingOrArea ?? "Project area", "building_or_area", 180);
+    patch.element = requiredText(body.element ?? body.title, "element", 240);
+    patch.observed_condition = requiredText(body.observed_condition ?? body.observedCondition ?? body.description, "observed_condition", 12000);
+    patch.condition_category = requiredText(body.condition_category ?? body.conditionCategory ?? body.category ?? "other", "condition_category", 120);
+  }
+  if (patch.field_item_id !== undefined) patch.field_item_id = optionalUuid(patch.field_item_id, "field_item_id");
+  for (const key of ["building_or_area", "element", "observed_condition", "condition_category"] as const) {
+    const max = key === "observed_condition" ? 12000 : key === "element" ? 240 : key === "condition_category" ? 120 : 180;
+    if (patch[key] !== undefined) patch[key] = requiredText(patch[key], key, max);
+  }
+  for (const key of ["elevation", "floor", "unit", "location_label", "quantity_unit", "repair_type", "spec_reference", "ai_suggestion", "client_summary", "source_record_id"] as const) {
+    if (patch[key] !== undefined) patch[key] = cleanOptionalText(patch[key], key === "ai_suggestion" || key === "client_summary" ? 12000 : 240);
+  }
+  if (patch.quantity !== undefined && patch.quantity !== null) {
+    const quantity = Number(patch.quantity);
+    if (!Number.isFinite(quantity)) throw new ApiError(400, "invalid_quantity");
+    patch.quantity = quantity;
+  }
+  if (patch.ai_confidence !== undefined && patch.ai_confidence !== null) {
+    const confidence = Number(patch.ai_confidence);
+    if (!Number.isFinite(confidence) || confidence < 0 || confidence > 1) throw new ApiError(400, "invalid_ai_confidence");
+    patch.ai_confidence = confidence;
+  }
+  if (patch.human_review_required !== undefined) patch.human_review_required = patch.human_review_required !== false;
+  return patch;
+}
+
+function validateProjectConditionPatch(input: Record<string, any>) {
+  if (input.classification && !["structural", "non_structural", "mixed", "needs_engineer_determination"].includes(input.classification)) {
+    throw new ApiError(400, "invalid_project_condition_classification");
+  }
+  if (input.classification_status && !["draft", "needs_review", "engineer_approved", "returned"].includes(input.classification_status)) {
+    throw new ApiError(400, "invalid_project_condition_classification_status");
+  }
+  if (input.severity && !["low", "moderate", "high", "critical", "to_be_determined"].includes(input.severity)) {
+    throw new ApiError(400, "invalid_project_condition_severity");
+  }
+  if (input.permit_status && !["not_determined", "no_permit_expected", "permit_required", "held_pending_permit", "permit_issued"].includes(input.permit_status)) {
+    throw new ApiError(400, "invalid_project_condition_permit_status");
+  }
+  if (input.owner_signoff_status && !["not_ready", "ready_for_owner", "pending", "approved", "returned"].includes(input.owner_signoff_status)) {
+    throw new ApiError(400, "invalid_project_condition_owner_signoff_status");
+  }
+  if (input.status && !["draft", "needs_apas_review", "needs_engineer_review", "ready_for_owner", "held_pending_permit", "released_for_contractor_pricing", "in_construction", "verified_complete", "closed", "void"].includes(input.status)) {
+    throw new ApiError(400, "invalid_project_condition_status");
+  }
+  if (input.client_publish_status && !["internal_only", "ready_to_publish", "published_to_client", "returned_before_publish"].includes(input.client_publish_status)) {
+    throw new ApiError(400, "invalid_project_condition_publish_status");
+  }
+}
+
+function normalizeConditionAudience(value: unknown) {
+  return value === "client_visible" ? "client_visible" : "internal";
+}
+
+function normalizeConditionEvidenceType(value: unknown) {
+  const text = String(value ?? "observation");
+  return ["observation", "before", "progress", "after", "reference"].includes(text) ? text : "observation";
+}
+
+function isProjectConditionClientVisible(record: any) {
+  return ["ready_to_publish", "published_to_client"].includes(String(record?.client_publish_status));
+}
+
+function sanitizeClientVisibleProjectCondition(record: any) {
+  return {
+    ...record,
+    observed_condition: record?.client_summary || record?.observed_condition,
+    ai_suggestion: null,
+    ai_confidence: null,
+    human_review_required: false,
+    project_condition_comments: Array.isArray(record?.project_condition_comments)
+      ? record.project_condition_comments.filter((comment: any) => comment?.audience === "client_visible")
+      : [],
+    project_condition_notations: Array.isArray(record?.project_condition_notations)
+      ? record.project_condition_notations.filter((notation: any) => notation?.audience === "client_visible")
+      : [],
+    project_condition_photos: Array.isArray(record?.project_condition_photos)
+      ? record.project_condition_photos.filter((photo: any) => photo?.audience === "client_visible")
+      : [],
+  };
+}
+
 function projectSearchHaystack(project: any): string {
   const meta = project?.program_meta && typeof project.program_meta === "object" ? project.program_meta : {};
   return [
@@ -1200,6 +1466,34 @@ const CONTACT_WRITE_FIELDS = ["first_name", "last_name", "company_name", "job_ti
 const DIRECTORY_SELECT = "id, project_id, contact_id, organization_id, role_label, is_key_contact, created_at";
 const ACTION_ITEM_SELECT = "id, project_id, title, description, status, priority, assigned_to, created_by, due_date, completed_at, tags, linked_entity_type, linked_entity_id, sort_order, created_at, updated_at";
 const ACTION_ITEM_WRITE_FIELDS = ["project_id", "title", "description", "status", "priority", "assigned_to", "due_date", "completed_at", "tags", "sort_order"] as const;
+const PROJECT_CONDITION_SELECT = "id, tenant_id, project_id, field_item_id, condition_number, source_system, source_record_id, building_or_area, elevation, floor, unit, element, location_label, classification, classification_status, observed_condition, condition_category, severity, quantity, quantity_unit, repair_type, spec_reference, permit_status, owner_signoff_status, status, ai_suggestion, ai_confidence, human_review_required, client_publish_status, client_summary, created_by, created_at, updated_at, project_condition_comments(id, body, role, audience, created_by, created_at), project_condition_notations(id, notation_type, body, audience, created_by, created_at), project_condition_photos(id, field_photo_id, photo_id, evidence_type, audience, sort_order, created_by, created_at)";
+const PROJECT_CONDITION_WRITE_FIELDS = [
+  "field_item_id",
+  "source_record_id",
+  "building_or_area",
+  "elevation",
+  "floor",
+  "unit",
+  "element",
+  "location_label",
+  "classification",
+  "classification_status",
+  "observed_condition",
+  "condition_category",
+  "severity",
+  "quantity",
+  "quantity_unit",
+  "repair_type",
+  "spec_reference",
+  "permit_status",
+  "owner_signoff_status",
+  "status",
+  "ai_suggestion",
+  "ai_confidence",
+  "human_review_required",
+  "client_publish_status",
+  "client_summary",
+] as const;
 const CHANGE_ORDER_SELECT = "id, project_id, prime_contract_id, commitment_id, co_type, co_no, title, description, amount, days_impact, status, created_at, updated_at";
 const CHANGE_ORDER_WRITE_FIELDS = ["title", "description", "amount", "days_impact", "status"] as const;
 const PROPOSAL_SELECT = "id, project_id, proposal_no, title, client_name, client_email, valid_until, status, notes, terms, scope_bullets, deliverables, markup_pct, overhead_pct, profit_pct, revision_no, locked, created_at, updated_at, proposal_lines(id, line_no, category, description, quantity, unit, unit_cost, markup_pct)";
