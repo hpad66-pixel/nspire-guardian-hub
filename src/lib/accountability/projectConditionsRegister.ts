@@ -187,6 +187,20 @@ export interface ProjectConditionsSummary {
   hiddenInternalNotes: number;
 }
 
+export interface ProjectConditionsReportInput {
+  projectName: string;
+  records: ProjectConditionRecord[];
+  generatedAt?: Date;
+}
+
+export interface ProjectConditionsExportInput extends ProjectConditionsReportInput {
+  actor?: {
+    email?: string | null;
+    role?: string | null;
+    identityProvider?: string | null;
+  };
+}
+
 const CLIENT_VISIBLE_PUBLISH_STATES = new Set<ProjectConditionPublishStatus>([
   'ready_to_publish',
   'published_to_client',
@@ -247,6 +261,28 @@ export function buildClientVisibleProjectConditions(records: ProjectConditionRec
     .filter((record): record is ClientVisibleProjectCondition => Boolean(record));
 }
 
+export function formatProjectConditionClassification(classification: ProjectConditionClassification) {
+  const labels: Record<ProjectConditionClassification, string> = {
+    structural: 'Structural',
+    non_structural: 'Non-Structural',
+    mixed: 'Mixed',
+    needs_engineer_determination: 'Needs Engineer Determination',
+  };
+  return labels[classification];
+}
+
+export function formatProjectConditionStatus(status: string) {
+  return status.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+}
+
+export function formatProjectConditionSeverity(severity: ProjectConditionSeverity) {
+  return severity === 'to_be_determined' ? 'To Be Determined' : severity.charAt(0).toUpperCase() + severity.slice(1);
+}
+
+export function formatProjectConditionPublishStatus(status: ProjectConditionPublishStatus) {
+  return status.split('_').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+}
+
 export function buildProjectConditionsSummary(records: ProjectConditionRecord[]): ProjectConditionsSummary {
   return records.reduce<ProjectConditionsSummary>((summary, record) => {
     const clientVisible = isClientVisibleCondition(record);
@@ -274,6 +310,159 @@ export function buildProjectConditionsSummary(records: ProjectConditionRecord[])
     readyForOwner: 0,
     hiddenInternalNotes: 0,
   });
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;',
+  }[char] ?? char));
+}
+
+export function buildProjectConditionsExportPayload(input: ProjectConditionsExportInput) {
+  const clientVisibleRecords = buildClientVisibleProjectConditions(input.records);
+  return {
+    schema: 'apas.project-conditions-register.v1',
+    project_name: input.projectName,
+    generated_at: (input.generatedAt ?? new Date()).toISOString(),
+    generated_by: input.actor ? {
+      email: input.actor.email ?? null,
+      role: input.actor.role ?? null,
+      identity_provider: input.actor.identityProvider ?? null,
+    } : null,
+    counts: buildProjectConditionsSummary(input.records),
+    client_visible_records: clientVisibleRecords,
+    records: input.records.map((record) => ({
+      condition_id: record.id,
+      database_id: record.databaseId ?? null,
+      project_id: record.projectId,
+      building_or_area: record.buildingOrArea,
+      elevation: record.elevation ?? null,
+      floor: record.floor ?? null,
+      unit: record.unit ?? null,
+      element: record.element,
+      location_label: buildLocationLabel(record),
+      classification: record.classification,
+      classification_status: record.classificationStatus,
+      observed_condition: record.observedCondition,
+      condition_category: record.conditionCategory,
+      severity: record.severity,
+      quantity: record.quantity ?? null,
+      quantity_unit: record.quantityUnit ?? null,
+      repair_type: record.repairType ?? null,
+      spec_reference: record.specReference ?? null,
+      permit_status: record.permitStatus,
+      owner_signoff_status: record.ownerSignoffStatus,
+      status: record.status,
+      ai_suggestion: record.aiSuggestion ?? null,
+      ai_confidence: record.aiConfidence ?? null,
+      human_review_required: record.humanReviewRequired,
+      client_publish_status: record.clientPublishStatus,
+      client_summary: record.clientSummary ?? null,
+      comments: record.comments,
+      notations: record.notations,
+      audit: record.audit,
+    })),
+  };
+}
+
+export function buildClientProjectConditionsReportHtml(input: ProjectConditionsReportInput) {
+  const records = buildClientVisibleProjectConditions(input.records);
+  const generatedAt = (input.generatedAt ?? new Date()).toLocaleString();
+  const structural = records.filter((record) => record.classification === 'structural').length;
+  const nonStructural = records.filter((record) => record.classification === 'non_structural').length;
+  const permitHeld = records.filter((record) => record.permitStatus === 'held_pending_permit' || record.permitStatus === 'permit_required').length;
+  const rows = records.map((record) => `
+    <tr>
+      <td>${escapeHtml(record.id)}</td>
+      <td>${escapeHtml(record.buildingOrArea)}</td>
+      <td>${escapeHtml(record.locationLabel)}</td>
+      <td>${escapeHtml(record.element)}</td>
+      <td>${escapeHtml(formatProjectConditionClassification(record.classification))}</td>
+      <td>${escapeHtml(formatProjectConditionSeverity(record.severity))}</td>
+      <td>${escapeHtml(record.clientSummary || record.observedCondition)}</td>
+    </tr>
+  `).join('');
+
+  return `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>${escapeHtml(input.projectName)} Project Conditions Report</title>
+    <style>
+      body { margin: 0; color: #1c2024; font-family: Arial, sans-serif; background: #f7f5ef; }
+      .page { max-width: 1080px; margin: 0 auto; background: #fff; min-height: 100vh; }
+      header { padding: 30px 36px; border-bottom: 4px solid #b88700; display: flex; justify-content: space-between; gap: 24px; align-items: center; }
+      .brand { display: flex; gap: 14px; align-items: center; }
+      .aw { width: 62px; height: 42px; display: grid; place-items: center; background: #111827; color: #d6a21b; font-weight: 900; letter-spacing: .08em; }
+      h1 { margin: 0; font-size: 25px; }
+      .domain { color: #b88700; font-weight: 800; }
+      .meta { text-align: right; color: #687076; font-size: 13px; }
+      section { padding: 24px 36px; }
+      .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+      .metric { border: 1px solid #d8dee4; padding: 14px; border-radius: 8px; }
+      .metric span { display: block; color: #687076; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+      .metric strong { display: block; font-size: 28px; margin-top: 4px; }
+      table { width: 100%; border-collapse: collapse; margin-top: 14px; font-size: 13px; }
+      th { text-align: left; background: #17212b; color: #fff; }
+      th, td { border: 1px solid #d8dee4; padding: 10px; vertical-align: top; }
+      footer { padding: 20px 36px; border-top: 1px solid #d8dee4; color: #687076; font-size: 12px; }
+      @media print { body { background: #fff; } .page { max-width: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <div class="brand">
+          <div class="aw">APAS</div>
+          <div>
+            <h1>${escapeHtml(input.projectName)} Project Conditions Report</h1>
+            <div class="domain">APAS Consulting LLC / APAS.ai</div>
+          </div>
+        </div>
+        <div class="meta">
+          <div>Prepared by APAS</div>
+          <div>${escapeHtml(generatedAt)}</div>
+        </div>
+      </header>
+      <section>
+        <p>This report includes only APAS-published, client-visible project condition records. Internal AI review notes, APAS working comments, and unpublished draft records are excluded.</p>
+        <div class="metrics">
+          <div class="metric"><span>Client-visible records</span><strong>${records.length}</strong></div>
+          <div class="metric"><span>Structural</span><strong>${structural}</strong></div>
+          <div class="metric"><span>Non-structural</span><strong>${nonStructural}</strong></div>
+          <div class="metric"><span>Permit held</span><strong>${permitHeld}</strong></div>
+        </div>
+        <table>
+          <thead>
+            <tr><th>ID</th><th>Area</th><th>Location</th><th>Element</th><th>Class</th><th>Severity</th><th>Client Summary</th></tr>
+          </thead>
+          <tbody>${rows || '<tr><td colspan="7">No client-visible records are published.</td></tr>'}</tbody>
+        </table>
+      </section>
+      <footer>
+        APAS Consulting LLC / APAS.ai - Project Conditions Register. Generated from the client-visible register layer.
+      </footer>
+    </div>
+  </body>
+</html>`;
+}
+
+export function buildProjectConditionsResendEmailPayload(input: ProjectConditionsReportInput & { to: string; from?: string }) {
+  const html = buildClientProjectConditionsReportHtml(input);
+  return {
+    from: input.from ?? 'APAS Project Conditions Register <reports@apas.ai>',
+    to: [input.to],
+    subject: `${input.projectName} Project Conditions Report`,
+    html,
+    tags: [
+      { name: 'project', value: input.projectName },
+      { name: 'report_type', value: 'project_conditions_register' },
+    ],
+  };
 }
 
 export function buildProjOsConditionIngestPayload(input: {
@@ -497,6 +686,10 @@ export function mapFieldItemToProjectConditionRecord(item: FieldItem, projectNam
     id: `FA-${String(item.item_number).padStart(4, '0')}`,
     projectId: item.project_id,
     projectName,
+    fieldItemId: item.id,
+    conditionNumber: item.item_number,
+    sourceSystem: 'field-accountability',
+    sourceRecordId: item.id,
     buildingOrArea: item.location_label?.split('/')[0]?.trim() || 'Project area',
     element: item.title,
     locationLabel: item.location_label,

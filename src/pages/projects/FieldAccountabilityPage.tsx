@@ -87,6 +87,18 @@ export default function FieldAccountabilityPage() {
     }
   }
 
+  async function updateProjectCondition(
+    conditionId: string,
+    patch: Parameters<typeof conditionsRegister.updateCondition.mutateAsync>[0]['patch'],
+  ) {
+    try {
+      await conditionsRegister.updateCondition.mutateAsync({ conditionId, patch });
+      toast.success('Project condition updated');
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : 'Could not update this project condition');
+    }
+  }
+
   async function organizeOne(photoId: string) {
     setOrganizing(photoId);
     try {
@@ -170,6 +182,7 @@ export default function FieldAccountabilityPage() {
                 onStartWalk={() => setCaptureOpen(true)}
                 onOpenReport={() => void openFieldPhotoScopeReport({ projectName: project?.name || 'Project Conditions Register', photos: data?.allPhotos ?? [], items })}
                 onPromoteFieldItems={() => void promoteFieldItemsToRegister()}
+                onUpdateRecord={(conditionId, patch) => void updateProjectCondition(conditionId, patch)}
               />
             )}
           </TabsContent>

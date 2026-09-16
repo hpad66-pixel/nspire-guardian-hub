@@ -116,8 +116,38 @@ export function useProjectConditionsRegister(projectId: string | null, projectNa
     },
   });
 
+  const updateCondition = useMutation({
+    mutationFn: async ({ conditionId, patch }: {
+      conditionId: string;
+      patch: Partial<Pick<ProjectConditionRecord,
+        'status' | 'permitStatus' | 'ownerSignoffStatus' | 'clientPublishStatus' | 'clientSummary'
+      >>;
+    }) => {
+      const dbPatch: Record<string, unknown> = {};
+      if (patch.status) dbPatch.status = patch.status;
+      if (patch.permitStatus) dbPatch.permit_status = patch.permitStatus;
+      if (patch.ownerSignoffStatus) dbPatch.owner_signoff_status = patch.ownerSignoffStatus;
+      if (patch.clientPublishStatus) dbPatch.client_publish_status = patch.clientPublishStatus;
+      if (typeof patch.clientSummary === 'string') dbPatch.client_summary = patch.clientSummary;
+      if (!Object.keys(dbPatch).length) return null;
+
+      const { data, error } = await (supabase as any).from('project_condition_records')
+        .update(dbPatch)
+        .eq('id', conditionId)
+        .eq('project_id', projectId)
+        .select('id')
+        .single();
+      if (error) throw error;
+      return data as { id: string };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: key });
+    },
+  });
+
   return {
     ...list,
     promoteFieldItems,
+    updateCondition,
   };
 }

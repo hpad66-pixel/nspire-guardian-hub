@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildClientProjectConditionsReportHtml,
   buildClientVisibleProjectConditions,
   buildLocationLabel,
+  buildProjectConditionsExportPayload,
   buildProjectConditionsSummary,
   buildProjectConditionRecordUpsertRow,
   buildProjOsConditionIngestPayload,
@@ -105,6 +107,64 @@ describe('project conditions register', () => {
     expect(clientVisible[0].comments).toEqual([
       expect.objectContaining({ id: 'C-0002', audience: 'client_visible' }),
     ]);
+  });
+
+  it('renders client reports without internal AI review or APAS working notes', () => {
+    const html = buildClientProjectConditionsReportHtml({
+      projectName: baseRecord.projectName,
+      generatedAt: new Date('2026-09-16T04:00:00Z'),
+      records: [
+        baseRecord,
+        {
+          ...baseRecord,
+          id: 'GG-0002',
+          classification: 'non_structural',
+          classificationStatus: 'engineer_approved',
+          permitStatus: 'no_permit_expected',
+          ownerSignoffStatus: 'ready_for_owner',
+          status: 'ready_for_owner',
+          clientPublishStatus: 'published_to_client',
+          clientSummary: 'Localized stucco finish repair is ready for owner review.',
+        },
+      ],
+    });
+
+    expect(html).toContain('Localized stucco finish repair is ready for owner review.');
+    expect(html).toContain('APAS Consulting LLC / APAS.ai');
+    expect(html).not.toContain('Do not send to owner');
+    expect(html).not.toContain('Needs close-up photo');
+    expect(html).not.toContain('Spalled concrete observed at slab edge');
+  });
+
+  it('exports the full Proj OS package while separating the client-visible layer', () => {
+    const payload = buildProjectConditionsExportPayload({
+      projectName: baseRecord.projectName,
+      generatedAt: new Date('2026-09-16T04:00:00Z'),
+      actor: {
+        email: 'apas.lead@apas.ai',
+        role: 'APAS Lead',
+        identityProvider: 'Google Workspace',
+      },
+      records: [
+        baseRecord,
+        {
+          ...baseRecord,
+          id: 'GG-0002',
+          classification: 'non_structural',
+          classificationStatus: 'engineer_approved',
+          permitStatus: 'no_permit_expected',
+          ownerSignoffStatus: 'ready_for_owner',
+          status: 'ready_for_owner',
+          clientPublishStatus: 'published_to_client',
+          clientSummary: 'Owner-safe summary.',
+        },
+      ],
+    });
+
+    expect(payload.client_visible_records).toHaveLength(1);
+    expect(payload.client_visible_records[0]).not.toHaveProperty('aiSuggestion');
+    expect(payload.records[0].ai_suggestion).toBe(baseRecord.aiSuggestion);
+    expect(payload.records[0].comments[0]).toMatchObject({ audience: 'internal' });
   });
 
   it('summarizes internal and client-visible state for dashboards', () => {
