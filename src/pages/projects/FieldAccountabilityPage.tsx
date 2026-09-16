@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { formatDistanceToNow, isBefore, startOfToday } from 'date-fns';
 import {
   AlertTriangle, ArrowLeft, Camera, CheckCircle2, ChevronRight, ClipboardCheck,
@@ -37,9 +37,22 @@ const BALL_LABELS: Record<string, string> = {
   apas: 'APAS', property_management: 'Property management', maintenance: 'Maintenance', owner: 'Owner', vendor: 'Vendor',
 };
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const PROJECT_ROUTE_ALIASES: Record<string, string> = {
+  'glorieta-gardens-concrete-stucco-repair': 'dd68476b-542f-4ddf-9d22-8052a1a84c04',
+};
+
+function resolveProjectRouteParam(value: string | null | undefined) {
+  if (!value) return null;
+  return PROJECT_ROUTE_ALIASES[value] ?? (UUID_PATTERN.test(value) ? value : null);
+}
+
 export default function FieldAccountabilityPage() {
   const params = useParams<{ projectId?: string; id?: string }>();
-  const projectId = params.projectId || params.id || null;
+  const navigate = useNavigate();
+  const projectParam = params.projectId || params.id || null;
+  const projectId = resolveProjectRouteParam(projectParam);
   const { data: project } = useProject(projectId);
   const projectName = project?.name || 'Project Conditions Register';
   const { data, isLoading, error, analyzePhoto, updatePhotoCaption, updatePhotoReview, addAnnotation } = useFieldAccountability(projectId);
@@ -54,6 +67,12 @@ export default function FieldAccountabilityPage() {
   const [activeTab, setActiveTab] = useState('conditions-register');
   const [organizing, setOrganizing] = useState<string | null>(null);
   const [organizeProgress, setOrganizeProgress] = useState<{ done: number; total: number } | null>(null);
+
+  useEffect(() => {
+    if (projectParam && projectId && projectParam !== projectId) {
+      navigate(`/projects/${projectId}/accountability`, { replace: true });
+    }
+  }, [navigate, projectId, projectParam]);
 
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const selected = items.find((item) => item.id === selectedId) ?? null;
@@ -75,7 +94,9 @@ export default function FieldAccountabilityPage() {
       && (ball === 'all' || item.ball_in_court === ball);
   }), [items, query, status, ball]);
 
-  if (!projectId) return null;
+  if (!projectId) {
+    return <EmptyState icon={AlertTriangle} title="Project accountability route is not available" body="Open this module from the project record so Proj OS can resolve the project ID." />;
+  }
 
   async function promoteFieldItemsToRegister() {
     if (!items.length) return;
