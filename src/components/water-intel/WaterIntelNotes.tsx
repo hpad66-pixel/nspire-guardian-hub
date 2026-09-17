@@ -41,11 +41,12 @@ export function WaterIntelNotes({
 }) {
   const addNote = useWaterNotes(scope);
   const instruct = useWaterInstruction(scope);
+  const isGlorieta = /glorieta/i.test(propertyName);
   const [body, setBody] = useState('');
   const [authorName, setAuthorName] = useState(guest ? '' : '');
   const [authorEmail, setAuthorEmail] = useState('');
   const [open, setOpen] = useState(false);
-  const [subject, setSubject] = useState(`Water Intelligence - ${propertyName}`);
+  const [subject, setSubject] = useState(`${isGlorieta ? 'Billing review' : 'Water Intelligence'} - ${propertyName}`);
   const [recipients, setRecipients] = useState('');
   const [instruction, setInstruction] = useState('');
   const [accountId, setAccountId] = useState<string>('');
@@ -74,7 +75,7 @@ export function WaterIntelNotes({
           </div>
         )}
         <Textarea
-          placeholder="Capture a decision, a question for APAS, or a follow-up for the PM..."
+          placeholder="Capture a decision, a question for the review team, or a follow-up for the PM..."
           value={body}
           onChange={(e) => setBody(e.target.value)}
           className="min-h-[88px]"

@@ -5,9 +5,9 @@ import {
   CircleDollarSign,
   Droplets,
   Gauge,
+  FileText,
   Loader2,
   Scale,
-  Sparkles,
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
@@ -167,7 +167,7 @@ export function WaterIntelDashboard({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#d5aa52]">
-              Water Intelligence - Executive
+              {isGlorieta ? 'Billing review - Executive' : 'Water Intelligence - Executive'}
             </div>
             <h1 className="mt-2 max-w-3xl font-display text-4xl font-medium leading-tight md:text-5xl">
               {propertyName}
@@ -181,7 +181,7 @@ export function WaterIntelDashboard({
             className="bg-[#d5aa52] text-[#08271f] hover:bg-[#e0c27a]"
             onClick={() => setChatOpen(true)}
           >
-            <Sparkles className="mr-1.5 h-4 w-4" /> {isGlorieta ? 'Glorieta Intelligence Brief' : "Ask what's happening"}
+            <FileText className="mr-1.5 h-4 w-4" /> {isGlorieta ? 'Glorieta billing Q&A' : "Ask what's happening"}
           </Button>
         </div>
 

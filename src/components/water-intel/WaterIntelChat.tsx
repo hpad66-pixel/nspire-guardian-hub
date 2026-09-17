@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { CheckCircle2, Copy, Loader2, Mail, Sparkles, ThumbsDown, ThumbsUp, X } from 'lucide-react';
+import { CheckCircle2, Copy, FileText, Loader2, Mail, ThumbsDown, ThumbsUp, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { localChatAnswer } from '@/lib/water-intel';
@@ -28,11 +28,11 @@ export function WaterIntelChat({
   const [copiedMessage, setCopiedMessage] = useState<number | null>(null);
   const [feedback, setFeedback] = useState<Record<number, 'up' | 'down'>>({});
   const streamRef = useRef<number | null>(null);
-  const propertyName = String(snapshot.propertyName || 'Water Intelligence');
+  const propertyName = String(snapshot.propertyName || 'Billing review');
   const isGlorieta = /glorieta/i.test(propertyName);
   const [messages, setMessages] = useState<Msg[]>([{
     role: 'assistant',
-    content: 'I am the Water Intelligence brief for this property. Ask about spend, consumption, estimates, GPCD, or what to do next on any service account.',
+    content: 'Ask about the billing records, spend, consumption, estimates, account numbers, dispute periods, or next steps.',
   }]);
 
   const starters = useMemo(
@@ -133,9 +133,9 @@ export function WaterIntelChat({
       <div className="flex items-center justify-between border-b border-[#dedbd1] px-5 py-4">
         <div>
           <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-[#C4A35A]">
-            <Sparkles className="h-3.5 w-3.5" /> {isGlorieta ? 'Glorieta Intelligence Brief' : 'Water Intelligence Brief'}
+            <FileText className="h-3.5 w-3.5" /> {isGlorieta ? 'Glorieta billing review' : 'Billing review'}
           </div>
-          <div className="font-display text-2xl text-[#08271f]">{isGlorieta ? 'Live Brief' : 'Ask Water Intel'}</div>
+          <div className="font-display text-2xl text-[#08271f]">{isGlorieta ? 'Ask the record' : 'Ask the record'}</div>
         </div>
         <button type="button" onClick={onClose} aria-label="Close chat" className="rounded-lg border border-[#dedbd1] p-2">
           <X className="h-4 w-4" />
@@ -158,7 +158,7 @@ export function WaterIntelChat({
                 content={m.content}
                 copied={copiedMessage === i}
                 feedback={feedback[i]}
-                subject={`${isGlorieta ? 'Glorieta Intelligence Brief' : 'Water Intelligence Brief'} - ${propertyName}`}
+                subject={`${isGlorieta ? 'Glorieta billing review' : 'Billing review'} - ${propertyName}`}
                 onCopy={() => void copyResponse(m.content, i)}
                 onFeedback={(value) => setFeedback((state) => ({ ...state, [i]: value }))}
               />
@@ -168,7 +168,7 @@ export function WaterIntelChat({
         {chat.isPending && (
           <div className="max-w-[92%] rounded-2xl border border-[#dedbd1] bg-white px-4 py-3 text-sm shadow-sm">
             <div className="mb-2 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[#C4A35A]">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Building live brief
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Building response
             </div>
             <div className="space-y-1">
               {stages.map((stage, index) => (
@@ -216,7 +216,7 @@ export function WaterIntelChat({
           className="min-h-[72px]"
         />
         <Button className="w-full bg-[#08271f] hover:bg-[#08271f]/90" disabled={chat.isPending} onClick={() => void ask(question)}>
-          Ask the brief
+          Ask
         </Button>
       </div>
     </aside>

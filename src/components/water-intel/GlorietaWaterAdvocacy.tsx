@@ -14,17 +14,6 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from 'lucide-react';
-import {
-  Bar,
-  BarChart,
-  CartesianGrid,
-  ComposedChart,
-  Line,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { Button } from '@/components/ui/button';
 import { ProRichTextEditor, RichTextViewer } from '@/components/ui/rich-text-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -32,44 +21,14 @@ import {
   buildGlorietaDisputeCase,
   GLORIETA_FORMAL_RETROACTIVE_REBILL,
   GLORIETA_FORMAL_UNPAID_BALANCE,
-  type GlorietaMonthlyPoint,
+  type GlorietaBuildingMonthlyRecord,
+  type GlorietaFocusedPhasePoint,
 } from '@/lib/water-intel/glorietaDispute';
 import { gallons, money, type WaterExecNote } from '@/lib/water-intel';
 import { useWaterNotes, type WaterIntelScope } from '@/hooks/useWaterIntelligence';
 
-const FOREST = '#08271f';
-const GOLD = '#C4A35A';
-const BLUE = '#1D6FE8';
-const ROSE = '#E11D48';
 export const GLORIETA_CITY_LETTER_MARKER = '[[GLORIETA_CITY_LETTER_DRAFT_V1]]';
 const GLORIETA_REVIEW_NOTE_MARKER = '[[GLORIETA_CLIENT_REVIEW_NOTE_V1]]';
-
-interface TipEntry {
-  dataKey?: string;
-  name?: string;
-  value?: number;
-}
-
-function currency(value: unknown) {
-  return money(Number(value) || 0);
-}
-
-function TrendTip({ active, payload, label }: { active?: boolean; payload?: TipEntry[]; label?: string }) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-xl border border-[#dedbd1] bg-white px-3 py-2 text-xs shadow-xl">
-      <div className="mb-1 font-semibold text-[#08271f]">{label}</div>
-      {payload.map((entry) => (
-        <div key={entry.dataKey} className="flex min-w-48 justify-between gap-4 text-[#5c6863]">
-          <span>{entry.name}</span>
-          <span className="font-mono font-semibold text-[#08271f]">
-            {String(entry.dataKey).toLowerCase().includes('gallons') ? gallons(entry.value || 0) : currency(entry.value)}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
 
 function CompactMetric({ label, value, detail, tone = 'forest' }: { label: string; value: string; detail: string; tone?: 'forest' | 'gold' | 'rose' | 'blue' }) {
   const tones = {
@@ -111,6 +70,174 @@ function CfoAnswerCard({ title, answer, accent = 'forest' }: { title: string; an
   );
 }
 
+function phaseLabel(key: 'pre' | 'vacancy' | 'current') {
+  if (key === 'pre') return 'Pre-vacancy';
+  if (key === 'vacancy') return 'Vacancy and rehab';
+  return 'Current/post-rehab';
+}
+
+function phaseDates(key: 'pre' | 'vacancy' | 'current') {
+  if (key === 'pre') return 'Before August 2023';
+  if (key === 'vacancy') return 'August 2023 through February 2025';
+  return 'March 2025 through latest indexed bills';
+}
+
+function readRange(phase: GlorietaFocusedPhasePoint['phases']['pre']) {
+  if (typeof phase.firstRead !== 'number' || typeof phase.lastRead !== 'number') return 'No read span in source';
+  return `Read ${phase.firstRead.toLocaleString()} to ${phase.lastRead.toLocaleString()}`;
+}
+
+function phaseTotal(focused: GlorietaFocusedPhasePoint[], key: 'pre' | 'vacancy' | 'current') {
+  return focused.reduce(
+    (total, account) => {
+      const phase = account.phases[key];
+      total.charges += phase.charges;
+      total.gallons += phase.gallons;
+      total.billCount += phase.billCount;
+      return total;
+    },
+    { charges: 0, gallons: 0, billCount: 0 },
+  );
+}
+
+function PhaseBracketCard({
+  focused,
+  phaseKey,
+  tone,
+}: {
+  focused: GlorietaFocusedPhasePoint[];
+  phaseKey: 'pre' | 'vacancy' | 'current';
+  tone: 'slate' | 'rose' | 'forest';
+}) {
+  const total = phaseTotal(focused, phaseKey);
+  const toneClasses = {
+    slate: 'border-slate-300 bg-slate-50 text-slate-800',
+    rose: 'border-rose-300 bg-rose-50 text-rose-950',
+    forest: 'border-emerald-900/25 bg-emerald-50 text-[#08271f]',
+  };
+  const bracketColor = tone === 'rose' ? 'border-rose-400' : tone === 'forest' ? 'border-[#08271f]' : 'border-slate-400';
+  return (
+    <article className={`relative rounded-3xl border p-4 shadow-sm ${toneClasses[tone]}`}>
+      <div className={`pointer-events-none absolute -top-3 left-6 right-6 h-6 border-x-4 border-t-4 ${bracketColor}`} aria-hidden="true" />
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h4 className="font-display text-xl text-[#08271f]">{phaseLabel(phaseKey)}</h4>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[#6d746f]">{phaseDates(phaseKey)}</p>
+        </div>
+        {phaseKey === 'vacancy' && (
+          <span className="rounded-full bg-white px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-rose-800 ring-1 ring-rose-200">
+            Dispute period
+          </span>
+        )}
+      </div>
+      <div className="mt-4 rounded-2xl bg-white/80 p-3 ring-1 ring-black/5">
+        <div className="text-[10px] font-black uppercase tracking-[0.14em] text-[#6d746f]">Buildings 7 and 8 total</div>
+        <div className="mt-1 font-mono text-2xl font-black text-[#08271f]">{money(total.charges)}</div>
+        <p className="text-xs font-semibold text-[#3d4a45]">{gallons(total.gallons)} across {total.billCount} bill records</p>
+      </div>
+      <div className="mt-3 grid gap-2">
+        {focused.map((account) => {
+          const phase = account.phases[phaseKey];
+          return (
+            <div key={`${account.accountNumber}-${phaseKey}`} className="rounded-2xl bg-white px-3 py-2 text-sm ring-1 ring-black/5">
+              <div className="flex flex-wrap justify-between gap-2">
+                <strong className="text-[#08271f]">{account.label}</strong>
+                <span className="font-mono font-bold text-[#08271f]">{phase.billCount ? money(phase.charges) : 'No indexed bills'}</span>
+              </div>
+              <p className="mt-0.5 text-xs leading-relaxed text-[#5c6863]">
+                {phase.billCount ? `${gallons(phase.gallons)} | ${readRange(phase)}` : 'Data gap in the source backup for this phase.'}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+    </article>
+  );
+}
+
+function FocusPhaseTable({ focused }: { focused: GlorietaFocusedPhasePoint[] }) {
+  const phases: Array<'pre' | 'vacancy' | 'current'> = ['pre', 'vacancy', 'current'];
+  return (
+    <div className="overflow-x-auto rounded-3xl border border-[#dedbd1] bg-white">
+      <table className="min-w-[860px] w-full border-collapse text-left text-sm">
+        <thead className="bg-[#08271f] text-white">
+          <tr>
+            <th className="px-4 py-3 font-semibold">Building and meter</th>
+            <th className="px-4 py-3 font-semibold">Unit context</th>
+            {phases.map((phase) => (
+              <th key={phase} className="px-4 py-3 font-semibold">{phaseLabel(phase)}<div className="text-[11px] font-normal text-white/75">{phaseDates(phase)}</div></th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {focused.map((account) => (
+            <tr key={account.accountNumber} className={account.accountNumber === '2745714336' ? 'bg-[#fff8e8]' : 'bg-[#f7faf8]'}>
+              <td className="border-t border-[#dedbd1] px-4 py-3 align-top">
+                <div className="font-bold text-[#08271f]">{account.label}</div>
+                <div className="text-xs text-[#5c6863]">Acct {account.accountNumber}</div>
+                <div className="text-xs text-[#5c6863]">Meter {account.meterNumber || 'not shown'}</div>
+              </td>
+              <td className="border-t border-[#dedbd1] px-4 py-3 align-top text-[#3d4a45]">{account.unitContext}</td>
+              {phases.map((phaseKey) => {
+                const phase = account.phases[phaseKey];
+                return (
+                  <td key={phaseKey} className="border-t border-[#dedbd1] px-4 py-3 align-top">
+                    <div className="font-mono font-bold text-[#08271f]">{phase.billCount ? money(phase.charges) : 'No indexed bills'}</div>
+                    <div className="text-xs text-[#3d4a45]">{phase.billCount ? gallons(phase.gallons) : 'No gallons stated'}</div>
+                    <div className="text-xs text-[#5c6863]">{phase.billCount ? `${phase.billCount} bill records` : 'Data gap'}</div>
+                    <div className="mt-1 text-[11px] text-[#6d746f]">{readRange(phase)}</div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function BuildingMonthlyTable({
+  title,
+  rows,
+}: {
+  title: string;
+  rows: GlorietaBuildingMonthlyRecord[];
+}) {
+  return (
+    <section className="rounded-3xl border border-[#dedbd1] bg-white p-5">
+      <h3 className="font-display text-2xl text-[#08271f]">{title}</h3>
+      <p className="mt-1 text-sm leading-relaxed text-[#5c6863]">
+        Every row below comes from a canonical bill record. Current charges are the dollar amount for that service period; gallons are the stated consumption; meter reads show the register movement when the bill contains both reads.
+      </p>
+      <div className="mt-4 max-h-[560px] overflow-auto rounded-2xl border border-[#dedbd1]">
+        <table className="min-w-[760px] w-full border-collapse text-left text-sm">
+          <thead className="sticky top-0 bg-[#08271f] text-white">
+            <tr>
+              <th className="px-3 py-2 font-semibold">Service period</th>
+              <th className="px-3 py-2 font-semibold">Gallons</th>
+              <th className="px-3 py-2 font-semibold">Current charges</th>
+              <th className="px-3 py-2 font-semibold">Meter reads</th>
+              <th className="px-3 py-2 font-semibold">Phase</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.accountNumber}-${row.servicePeriod}`} className={row.phase === 'Vacancy/rehab' ? 'bg-rose-50/60' : row.phase === 'Current/post-rehab' ? 'bg-emerald-50/40' : 'bg-white'}>
+                <td className="border-t border-[#dedbd1] px-3 py-2">{row.servicePeriod}</td>
+                <td className="border-t border-[#dedbd1] px-3 py-2 font-mono font-semibold text-[#08271f]">{gallons(row.gallons)}</td>
+                <td className="border-t border-[#dedbd1] px-3 py-2 font-mono font-semibold text-[#08271f]">{money(row.spend)}</td>
+                <td className="border-t border-[#dedbd1] px-3 py-2">{typeof row.priorReading === 'number' && typeof row.currentReading === 'number' ? `${row.priorReading.toLocaleString()} to ${row.currentReading.toLocaleString()}` : 'Not shown'}</td>
+                <td className="border-t border-[#dedbd1] px-3 py-2">{row.phase}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function extractSavedLetter(note: WaterExecNote | undefined) {
   if (!note?.body.includes(GLORIETA_CITY_LETTER_MARKER)) return null;
   const html = note.body.split(GLORIETA_CITY_LETTER_MARKER)[1]?.trim();
@@ -143,7 +270,7 @@ export function GlorietaWaterAdvocacy({
   const reviewNotes = savedReviewNotes(notes);
   const [letterHtml, setLetterHtml] = useState(dispute.draftLetterHtml);
   const [reviewNote, setReviewNote] = useState('');
-  const [reviewerName, setReviewerName] = useState(mode === 'magic' ? '' : 'APAS Water Intelligence');
+  const [reviewerName, setReviewerName] = useState(mode === 'magic' ? '' : 'R4 reviewer');
   const [reviewerEmail, setReviewerEmail] = useState('');
   const [copied, setCopied] = useState(false);
   const [lastLoadedDraftId, setLastLoadedDraftId] = useState<string | null>(null);
@@ -166,8 +293,8 @@ export function GlorietaWaterAdvocacy({
 
   function persistLetter() {
     savePortalNote.mutate({
-      body: `Glorieta City Letter Draft\nSaved from Water Intelligence on ${new Date().toLocaleString()}\n\n${GLORIETA_CITY_LETTER_MARKER}\n${letterHtml}`,
-      authorName: mode === 'magic' ? 'Magic-link reviewer' : 'APAS Water Intelligence',
+      body: `Glorieta City Letter Draft\nSaved from R4 billing review on ${new Date().toLocaleString()}\n\n${GLORIETA_CITY_LETTER_MARKER}\n${letterHtml}`,
+      authorName: mode === 'magic' ? 'Magic-link reviewer' : 'R4 reviewer',
       authorEmail: undefined,
     });
   }
@@ -176,20 +303,20 @@ export function GlorietaWaterAdvocacy({
     savePortalNote.mutate(
       {
         body: `${GLORIETA_REVIEW_NOTE_MARKER}\n${reviewNote}`,
-        authorName: reviewerName.trim() || (mode === 'magic' ? 'Magic-link reviewer' : 'APAS Water Intelligence'),
+        authorName: reviewerName.trim() || (mode === 'magic' ? 'Magic-link reviewer' : 'R4 reviewer'),
         authorEmail: reviewerEmail.trim() || undefined,
       },
       { onSuccess: () => setReviewNote('') },
     );
   }
 
-  const recentDispute = dispute.disputeMonthly.slice(-12);
   const extracted = dispute.summary.disputeCurrentCharges;
   const complexSpend = dispute.accounts.reduce((sum, account) => sum + account.spend, 0);
   const complexGallons = dispute.accounts.reduce((sum, account) => sum + account.gallons, 0);
   const vacancyComplexSpend = dispute.meterTimeline.reduce((sum, account) => sum + account.vacancySpend, 0);
   const disputeShare = complexSpend > 0 ? (extracted / complexSpend) * 100 : 0;
-  const topContextMeter = dispute.meterTimeline.find((account) => !account.isDispute);
+  const building7Rows = dispute.focusedMonthly.filter((row) => row.accountNumber === '1692380502');
+  const building8Rows = dispute.focusedMonthly.filter((row) => row.accountNumber === String(dispute.summary.disputeAccount));
   const mailSubject = encodeURIComponent(`Glorieta Gardens billing dispute - Account ${dispute.summary.disputeAccount}`);
   const mailBody = encodeURIComponent(letterHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
 
@@ -202,15 +329,15 @@ export function GlorietaWaterAdvocacy({
               <LockKeyhole className="h-3.5 w-3.5" /> Confidential for our use and analysis
             </div>
             <h2 className="mt-3 font-display text-3xl font-medium leading-tight md:text-4xl">
-              Glorieta Gardens Water Intelligence dispute workspace
+              Glorieta Gardens billing evidence workspace
             </h2>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-[#c5d2cd]">
-              Powered by ProjOS for APAS Consulting. This workspace turns the WASD bills, Building 8 vacancy record, trend analytics, and draft city letter into one reviewable client link.
+              Prepared for R4. This workspace organizes the WASD bills, Building 7 and Building 8 period comparison, Building 8 vacancy record, and draft city letter into one reviewable client link.
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-xs text-[#d8e2de]">
             <div className="font-semibold text-white">Client-ready magic-link posture</div>
-            <div>No login required when opened through the Water Intelligence secure token.</div>
+            <div>No login required when opened through the secure review link.</div>
           </div>
         </div>
       </div>
@@ -218,14 +345,14 @@ export function GlorietaWaterAdvocacy({
       <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4 md:p-6">
         <CompactMetric label="Formal rebill cited" value={money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} detail="Retroactive back-bill amount cited in the July 23, 2026 dispute package." tone="rose" />
         <CompactMetric label="Unpaid balance cited" value={money(GLORIETA_FORMAL_UNPAID_BALANCE)} detail="Balance cited in the formal dispute package for Account 2745714336." tone="gold" />
-        <CompactMetric label="Indexed bill subtotal" value={money(extracted)} detail="Current charges extracted from Building 8 records inside the dispute window." tone="blue" />
-        <CompactMetric label="Indexed source files" value={String(dispute.summary.sourceFileCount)} detail={`${dispute.summary.canonicalBillCount} canonical records after duplicate control.`} tone="blue" />
+        <CompactMetric label="Building 8 support" value={money(extracted)} detail="Current charges from Building 8 records inside the dispute window." tone="blue" />
+        <CompactMetric label="Reviewed source files" value={String(dispute.summary.sourceFileCount)} detail={`${dispute.summary.canonicalBillCount} canonical records after duplicate control.`} tone="blue" />
       </div>
 
       <Tabs defaultValue="case" className="px-4 pb-5 md:px-6">
         <div className="sticky top-2 z-20 mt-1 rounded-[28px] border-2 border-[#d5aa52] bg-[#061f1a] p-2 shadow-2xl shadow-[#08271f]/25" data-testid="glorieta-popped-nav">
           <div className="mb-2 flex items-center justify-between gap-3 px-2 text-white">
-            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#f6df9c]">Start here - Water Intelligence navigation</div>
+            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#f6df9c]">Start here - review navigation</div>
             <div className="hidden items-center gap-2 rounded-full bg-[#d5aa52] px-3 py-1 text-[11px] font-black uppercase text-[#08271f] md:flex">
               Use tabs <ArrowRight className="h-4 w-4 animate-pulse" />
             </div>
@@ -251,7 +378,7 @@ export function GlorietaWaterAdvocacy({
                 <ExplanationCard title="The disputed account is Building 8" body={`Account ${dispute.summary.disputeAccount}, Meter ${dispute.summary.disputeMeter}, Building 8 / 13200 Alexandria Drive is the account being challenged.`} />
                 <ExplanationCard title="The dispute is about a back-bill, not a broad damages claim" body={`The formal dispute package cites a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill, a ${money(GLORIETA_FORMAL_UNPAID_BALANCE)} unpaid balance, and estimated usage of about 216,000 gallons per month.`} />
                 <ExplanationCard title="The vacancy record matters" body="Building 8 was red-tagged, condemned, vacated, and under rehabilitation during the core dispute window. That is why occupied-building estimated usage needs to be corrected to actual reads or a reasonable vacant-building basis." />
-                <ExplanationCard title="The dashboard stays bill-backed" body={`ProjOS shows the extracted Building 8 dispute-window subtotal as ${money(extracted)} in current charges and ${dispute.summary.disputeGallons.toLocaleString()} gallons. It does not add speculative numbers to the case.`} />
+                <ExplanationCard title="The review stays bill-backed" body={`The reviewed Building 8 dispute-window subtotal is ${money(extracted)} in current charges and ${dispute.summary.disputeGallons.toLocaleString()} gallons. This page does not add speculative numbers to the case.`} />
               </div>
             </section>
 
@@ -286,73 +413,52 @@ export function GlorietaWaterAdvocacy({
         </TabsContent>
 
         <TabsContent value="analytics" className="mt-4 space-y-4">
-          <Tabs defaultValue="trend">
-            <TabsList className="h-auto flex-wrap rounded-2xl bg-white p-1">
-              <TabsTrigger value="trend" className="rounded-xl">Trend</TabsTrigger>
-              <TabsTrigger value="accounts" className="rounded-xl">Meters</TabsTrigger>
-              <TabsTrigger value="dispute" className="rounded-xl">Dispute window</TabsTrigger>
-            </TabsList>
-            <TabsContent value="trend" className="mt-4">
-              <section className="rounded-3xl border border-[#dedbd1] bg-white p-5">
-                <h3 className="font-display text-2xl text-[#08271f]">Spend and gallons over time</h3>
-                <p className="mt-1 text-sm text-[#5c6863]">The blue line is gallons. The dark line is current charges. This lets the owner see whether charges are tracking real usage or diverging from the meter story.</p>
-                <div className="mt-4 h-[320px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={dispute.monthly} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-                      <CartesianGrid stroke="#efe9da" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#8a8478' }} axisLine={false} tickLine={false} />
-                      <YAxis yAxisId="spend" tick={{ fontSize: 11, fill: '#8a8478' }} axisLine={false} tickLine={false} tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
-                      <YAxis yAxisId="gallons" orientation="right" tick={{ fontSize: 11, fill: '#8a8478' }} axisLine={false} tickLine={false} tickFormatter={(value) => `${Math.round(Number(value) / 1000)}k`} />
-                      <Tooltip content={<TrendTip />} />
-                      <Line yAxisId="spend" type="monotone" dataKey="spend" name="Current charges" stroke={FOREST} strokeWidth={2.25} dot={false} />
-                      <Line yAxisId="gallons" type="monotone" dataKey="gallons" name="Gallons" stroke={BLUE} strokeWidth={2.25} dot={false} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </section>
-            </TabsContent>
-            <TabsContent value="accounts" className="mt-4">
-              <section className="rounded-3xl border border-[#dedbd1] bg-white p-5">
-                <h3 className="font-display text-2xl text-[#08271f]">Pre / vacancy / post-rehab meter comparison</h3>
-                <p className="mt-1 text-sm text-[#5c6863]">Each row is a meter/account. Building 8 is highlighted because Account {dispute.summary.disputeAccount} is the disputed back-bill account.</p>
-                <div className="mt-4 h-[340px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dispute.meterTimeline} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
-                      <CartesianGrid stroke="#efe9da" horizontal={false} />
-                      <XAxis type="number" tick={{ fontSize: 11, fill: '#8a8478' }} axisLine={false} tickLine={false} tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
-                      <YAxis type="category" dataKey="label" width={145} tick={{ fontSize: 11, fill: '#08271f' }} axisLine={false} tickLine={false} />
-                      <Tooltip content={<TrendTip />} />
-                      <Bar dataKey="preVacancySpend" name="Pre-vacancy" stackId="period" fill="#94A3B8" radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="vacancySpend" name="Vacancy/rehab" stackId="period" fill={ROSE} radius={[0, 0, 0, 0]} />
-                      <Bar dataKey="postRehabSpend" name="Post-rehab" stackId="period" fill={FOREST} radius={[0, 8, 8, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#5c6863]">
-                  <span className="rounded-full bg-slate-100 px-3 py-1">Pre-vacancy</span>
-                  <span className="rounded-full bg-rose-100 px-3 py-1 text-rose-900">Vacancy/rehab disputed period</span>
-                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">Post-rehab</span>
-                </div>
-              </section>
-            </TabsContent>
-            <TabsContent value="dispute" className="mt-4">
-              <section className="rounded-3xl border border-[#dedbd1] bg-white p-5">
-                <h3 className="font-display text-2xl text-[#08271f]">Building 8 dispute-window pulse</h3>
-                <p className="mt-1 text-sm text-[#5c6863]">These are the latest extracted Building 8 monthly records inside the disputed vacancy/rehab window.</p>
-                <div className="mt-4 h-[320px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <ComposedChart data={recentDispute as GlorietaMonthlyPoint[]} margin={{ top: 10, right: 8, left: 0, bottom: 0 }}>
-                      <CartesianGrid stroke="#efe9da" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#8a8478' }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 11, fill: '#8a8478' }} axisLine={false} tickLine={false} tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
-                      <Tooltip content={<TrendTip />} />
-                      <Bar dataKey="disputeSpend" name="Disputed charges" fill={ROSE} radius={[8, 8, 0, 0]} />
-                    </ComposedChart>
-                  </ResponsiveContainer>
-                </div>
-              </section>
-            </TabsContent>
-          </Tabs>
+          <section className="rounded-3xl border border-[#dedbd1] bg-white p-5">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">
+              <AlertTriangle className="h-4 w-4 text-rose-600" /> Bracketed comparison
+            </div>
+            <h3 className="mt-2 font-display text-3xl text-[#08271f]">Pre, vacancy, and current billing periods</h3>
+            <p className="mt-2 max-w-5xl text-sm leading-relaxed text-[#5c6863]">
+              This is the same structure used in the evidence packet. The rose bracket is the disputed vacancy and rehabilitation period: August 2023 through February 2025. The dollars are current charges from canonical WASD bill records. The gallons are the stated consumption on those bills. The meter reads are copied from the bill when both the prior and current register reads are present.
+            </p>
+            <div className="mt-5 grid gap-4 xl:grid-cols-3">
+              <PhaseBracketCard focused={dispute.focusedPhase} phaseKey="pre" tone="slate" />
+              <PhaseBracketCard focused={dispute.focusedPhase} phaseKey="vacancy" tone="rose" />
+              <PhaseBracketCard focused={dispute.focusedPhase} phaseKey="current" tone="forest" />
+            </div>
+          </section>
+
+          <section className="rounded-3xl border border-rose-200 bg-rose-50 p-5 text-rose-950">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-black uppercase tracking-[0.16em] text-rose-700">Amount to keep front and center</div>
+                <h3 className="mt-1 font-display text-3xl text-[#08271f]">The Building 8 dispute is in the approximately $100,000 range</h3>
+                <p className="mt-2 max-w-4xl text-sm leading-relaxed text-[#4f2027]">
+                  The formal package cites a {money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill and a {money(GLORIETA_FORMAL_UNPAID_BALANCE)} unpaid balance. The reviewed Building 8 bill records inside the dispute window total {money(extracted)} in current charges and {dispute.summary.disputeGallons.toLocaleString()} gallons. That is why the analysis should stay focused on the Building 8 back-bill, not any speculative or unrelated number.
+                </p>
+              </div>
+              <div className="min-w-56 rounded-2xl bg-white p-4 text-center ring-1 ring-rose-200">
+                <div className="text-[10px] font-black uppercase tracking-[0.14em] text-rose-700">Reviewed support</div>
+                <div className="mt-1 font-mono text-3xl font-black text-[#08271f]">{money(extracted)}</div>
+                <div className="mt-1 text-xs font-semibold text-[#5c6863]">Building 8 dispute-window current charges</div>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-4 rounded-3xl border border-[#dedbd1] bg-white p-5">
+            <div>
+              <h3 className="font-display text-2xl text-[#08271f]">Building 7 and Building 8 phase table</h3>
+              <p className="mt-1 text-sm leading-relaxed text-[#5c6863]">
+                Building 7 is included because it is part of the same vacancy and rehabilitation story. Building 8 is the disputed account. A data gap means the current source backup did not include a canonical bill for that building and phase.
+              </p>
+            </div>
+            <FocusPhaseTable focused={dispute.focusedPhase} />
+          </section>
+
+          <div className="grid gap-4 xl:grid-cols-2">
+            <BuildingMonthlyTable title="Building 7 source rows" rows={building7Rows} />
+            <BuildingMonthlyTable title="Building 8 source rows" rows={building8Rows} />
+          </div>
         </TabsContent>
 
         <TabsContent value="regulatory" className="mt-4">
@@ -403,7 +509,7 @@ export function GlorietaWaterAdvocacy({
               </div>
               {savedDraft && (
                 <p className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs leading-relaxed text-emerald-900">
-                  Saved draft loaded from the Water Intelligence record. Last saved {new Date(savedDraft.created_at).toLocaleString()} by {savedDraft.author_name || 'reviewer'}.
+                  Saved draft loaded from the shared billing review record. Last saved {new Date(savedDraft.created_at).toLocaleString()} by {savedDraft.author_name || 'reviewer'}.
                 </p>
               )}
               <ProRichTextEditor content={letterHtml} onChange={setLetterHtml} minHeight="520px" />
@@ -441,7 +547,7 @@ export function GlorietaWaterAdvocacy({
                 <textarea
                   value={reviewNote}
                   onChange={(event) => setReviewNote(event.target.value)}
-                  placeholder="Add redline notes or client comments here. Save them and APAS will see the comment in the portal record."
+                  placeholder="Add redline notes or client comments here. Save them and the review team will see the comment in the portal record."
                   className="mt-3 min-h-[150px] w-full rounded-2xl border border-[#dedbd1] bg-[#fcfbf7] p-3 text-sm outline-none focus:ring-2 focus:ring-[#C4A35A]"
                 />
                 <Button
@@ -452,7 +558,7 @@ export function GlorietaWaterAdvocacy({
                   {savePortalNote.isPending ? 'Saving comment...' : 'Save client comment to portal'}
                 </Button>
                 <p className="mt-2 text-xs leading-relaxed text-[#6d746f]">
-                  {confidential ? 'Magic-link comments save into the same Water Intelligence record APAS sees in the portal.' : 'Staff and client comments are part of the shared Water Intelligence note trail.'}
+                  {confidential ? 'Magic-link comments save into the same billing review record visible in the portal.' : 'Staff and client comments are part of the shared billing review note trail.'}
                 </p>
                 <div className="mt-4 space-y-2">
                   {reviewNotes.length > 0 && (
@@ -503,12 +609,12 @@ export function GlorietaWaterAdvocacy({
               <CfoAnswerCard
                 accent="rose"
                 title="1. What is the approximately $100k problem?"
-                answer={`The issue is a Building 8 back-bill. The formal dispute package cites a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill, while ProjOS has indexed ${money(extracted)} in Building 8 current charges inside the dispute window. Those figures are close enough that the CFO should treat this as one bill-backed dispute workstream, not a broad unsupported damages number.`}
+                answer={`The issue is a Building 8 back-bill. The formal dispute package cites a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill, while the reviewed Building 8 bill records show ${money(extracted)} in current charges inside the dispute window. Those figures are close enough that the CFO should treat this as one bill-backed dispute workstream, not a broad unsupported damages number.`}
               />
               <CfoAnswerCard
                 accent="gold"
                 title="2. Is this one meter or the whole complex?"
-                answer={`The challenged account is one meter: Building 8, Account ${dispute.summary.disputeAccount}, Meter ${dispute.summary.disputeMeter}. The whole complex data still matters because ProjOS compares this account against ${dispute.summary.accountCount} total service accounts to show whether the disputed period stands out from the rest of Glorieta.`}
+                answer={`The challenged account is one meter: Building 8, Account ${dispute.summary.disputeAccount}, Meter ${dispute.summary.disputeMeter}. The whole complex data still matters because it lets the reviewer compare this account against ${dispute.summary.accountCount} total service accounts and see whether the disputed period stands out from the rest of Glorieta.`}
               />
               <CfoAnswerCard
                 accent="blue"
@@ -517,7 +623,7 @@ export function GlorietaWaterAdvocacy({
               />
               <CfoAnswerCard
                 title="4. What does the entire complex data show?"
-                answer={`ProjOS has indexed ${dispute.summary.sourceFileCount} WASD PDFs into ${dispute.summary.canonicalBillCount} canonical account-period records across ${dispute.summary.accountCount} service accounts. Across the indexed complex ledger, current charges total ${money(complexSpend)} and consumption totals ${complexGallons.toLocaleString()} gallons, so the CFO can see Building 8 in context instead of as an isolated PDF.`}
+                answer={`${dispute.summary.sourceFileCount} WASD PDFs were reviewed into ${dispute.summary.canonicalBillCount} canonical account-period records across ${dispute.summary.accountCount} service accounts. Across the reviewed complex ledger, current charges total ${money(complexSpend)} and consumption totals ${complexGallons.toLocaleString()} gallons, so the CFO can see Building 8 in context instead of as an isolated PDF.`}
               />
               <CfoAnswerCard
                 accent="rose"
@@ -536,7 +642,7 @@ export function GlorietaWaterAdvocacy({
               />
               <CfoAnswerCard
                 title="8. Which comparison should leadership look at first?"
-                answer={`Start with the pre/vacancy/post-rehab meter comparison. Building 8 is highlighted, and ${topContextMeter ? `${topContextMeter.label} is shown as complex context` : 'the other meters are shown as complex context'}, so leadership can see whether the charge pattern is isolated to the disputed account.`}
+                answer="Start with the pre-vacancy, vacancy/rehab, and current Building 7 and Building 8 comparison. Building 8 is the disputed account, and Building 7 helps leadership see the same property period in context."
               />
             </div>
 
@@ -546,7 +652,7 @@ export function GlorietaWaterAdvocacy({
                 ['Which account and meter are actually disputed?', `Building 8, Account ${dispute.summary.disputeAccount}, Meter ${dispute.summary.disputeMeter}. Keep the case focused there unless another statement shows the same problem.`],
                 ['What period should be challenged?', 'The vacancy/rehab window is the central period: August 2023 through February 2025, with the indexed dispute ledger running April 2024 through January 2026.'],
                 ['What dollar amount is supported by the formal dispute?', `The formal package cites a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill and a ${money(GLORIETA_FORMAL_UNPAID_BALANCE)} unpaid balance.`],
-                ['What does ProjOS extract from the bill archive?', `The indexed Building 8 dispute-window subtotal is ${money(extracted)} in current charges and ${dispute.summary.disputeGallons.toLocaleString()} gallons.`],
+                ['What does the bill archive show?', `The reviewed Building 8 dispute-window subtotal is ${money(extracted)} in current charges and ${dispute.summary.disputeGallons.toLocaleString()} gallons.`],
                 ['Why is the estimate suspect?', 'Because the building was red-tagged, vacated, and under rehabilitation while the billing record refers to large estimated usage.'],
                 ['What proof should the City or WASD produce?', 'Actual reads, meter-change work orders, starting register reads, estimate worksheets, adjustment worksheets, payment ledger, late-charge ledger, and investigation notes.'],
                 ['What would justify killing the charge?', 'A record showing that the rebilled usage is not supported by actual consumption, actual reads, or a reasonable vacant-building consumption basis.'],

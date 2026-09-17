@@ -32,11 +32,47 @@ export interface GlorietaMeterTimelinePoint {
   isDispute: boolean;
 }
 
+export interface GlorietaFocusedPhasePoint {
+  accountNumber: string;
+  label: string;
+  meterNumber?: string;
+  unitContext: string;
+  phases: {
+    pre: GlorietaPhaseSummary;
+    vacancy: GlorietaPhaseSummary;
+    current: GlorietaPhaseSummary;
+  };
+}
+
+export interface GlorietaPhaseSummary {
+  charges: number;
+  gallons: number;
+  billCount: number;
+  firstRead?: number;
+  lastRead?: number;
+  firstPeriod?: string;
+  lastPeriod?: string;
+}
+
+export interface GlorietaBuildingMonthlyRecord {
+  accountNumber: string;
+  label: string;
+  servicePeriod: string;
+  periodStart: string;
+  gallons: number;
+  spend: number;
+  priorReading?: number;
+  currentReading?: number;
+  phase: 'Pre-vacancy' | 'Vacancy/rehab' | 'Current/post-rehab';
+}
+
 export interface GlorietaDisputeCase {
   summary: typeof GLORIETA_CORPUS_SUMMARY;
   monthly: GlorietaMonthlyPoint[];
   accounts: GlorietaAccountPoint[];
   meterTimeline: GlorietaMeterTimelinePoint[];
+  focusedPhase: GlorietaFocusedPhasePoint[];
+  focusedMonthly: GlorietaBuildingMonthlyRecord[];
   disputeMonthly: GlorietaMonthlyPoint[];
   evidenceFacts: string[];
   regulatoryPoints: Array<{
@@ -49,6 +85,12 @@ export interface GlorietaDisputeCase {
 
 export const GLORIETA_FORMAL_RETROACTIVE_REBILL = 95017.57;
 export const GLORIETA_FORMAL_UNPAID_BALANCE = 113874.41;
+export const GLORIETA_BUILDING_7_ACCOUNT = '1692380502';
+export const GLORIETA_BUILDING_8_ACCOUNT = GLORIETA_CORPUS_SUMMARY.disputeAccount;
+export const GLORIETA_BUILDING_UNITS: Record<string, string> = {
+  [GLORIETA_BUILDING_7_ACCOUNT]: '63 visible units from 07-W123 through 07-W345',
+  [GLORIETA_BUILDING_8_ACCOUNT]: '58 visible units from 08-W103 through 08-W322',
+};
 
 const MONTH_FORMAT = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -90,6 +132,83 @@ function phaseFor(periodStart?: string) {
   if (start < '2023-08-01') return 'pre' as const;
   if (start <= '2025-02-28') return 'vacancy' as const;
   return 'post' as const;
+}
+
+function phaseName(periodStart?: string): GlorietaBuildingMonthlyRecord['phase'] {
+  const phase = phaseFor(periodStart);
+  if (phase === 'pre') return 'Pre-vacancy';
+  if (phase === 'vacancy') return 'Vacancy/rehab';
+  return 'Current/post-rehab';
+}
+
+function blankPhase(): GlorietaPhaseSummary {
+  return {
+    charges: 0,
+    gallons: 0,
+    billCount: 0,
+  };
+}
+
+function addPhaseBill(phase: GlorietaPhaseSummary, bill: (typeof GLORIETA_CANONICAL_BILLS)[number]) {
+  const start = String(bill.periodStart || '');
+  const end = String(bill.periodEnd || '');
+  phase.charges += number(bill.currentCharges || bill.amountDue);
+  phase.gallons += number(bill.consumptionGallons);
+  phase.billCount += 1;
+  if (!phase.firstPeriod || start < phase.firstPeriod) {
+    phase.firstPeriod = start;
+    phase.firstRead = typeof bill.priorReading === 'number' ? bill.priorReading : undefined;
+  }
+  if (!phase.lastPeriod || end > phase.lastPeriod) {
+    phase.lastPeriod = end;
+    phase.lastRead = typeof bill.currentReading === 'number' ? bill.currentReading : undefined;
+  }
+}
+
+function buildFocusedPhase(canonical: ReturnType<typeof corpusRecords>): GlorietaFocusedPhasePoint[] {
+  const focusOrder = [GLORIETA_BUILDING_7_ACCOUNT, GLORIETA_BUILDING_8_ACCOUNT];
+  const map = new Map<string, GlorietaFocusedPhasePoint>();
+
+  for (const bill of canonical) {
+    const accountNumber = String(bill.accountNumber || '');
+    if (!focusOrder.includes(accountNumber)) continue;
+    const existing =
+      map.get(accountNumber)
+      ?? {
+        accountNumber,
+        label: bill.buildingLabel || titleCaseAddress(bill.serviceAddress) || accountNumber,
+        meterNumber: bill.meterNumber,
+        unitContext: GLORIETA_BUILDING_UNITS[accountNumber] || '',
+        phases: {
+          pre: blankPhase(),
+          vacancy: blankPhase(),
+          current: blankPhase(),
+        },
+      };
+    if (!existing.meterNumber && bill.meterNumber) existing.meterNumber = bill.meterNumber;
+    const phase = phaseFor(bill.periodStart);
+    addPhaseBill(phase === 'post' ? existing.phases.current : existing.phases[phase], bill);
+    map.set(accountNumber, existing);
+  }
+
+  return focusOrder.map((accountNumber) => map.get(accountNumber)).filter(Boolean) as GlorietaFocusedPhasePoint[];
+}
+
+function buildFocusedMonthly(canonical: ReturnType<typeof corpusRecords>): GlorietaBuildingMonthlyRecord[] {
+  return canonical
+    .filter((bill) => [GLORIETA_BUILDING_7_ACCOUNT, GLORIETA_BUILDING_8_ACCOUNT].includes(String(bill.accountNumber || '')))
+    .map((bill) => ({
+      accountNumber: String(bill.accountNumber || ''),
+      label: bill.buildingLabel || titleCaseAddress(bill.serviceAddress) || String(bill.accountNumber || ''),
+      servicePeriod: `${bill.periodStart || ''} to ${bill.periodEnd || ''}`,
+      periodStart: String(bill.periodStart || ''),
+      gallons: number(bill.consumptionGallons),
+      spend: number(bill.currentCharges || bill.amountDue),
+      priorReading: typeof bill.priorReading === 'number' ? bill.priorReading : undefined,
+      currentReading: typeof bill.currentReading === 'number' ? bill.currentReading : undefined,
+      phase: phaseName(bill.periodStart),
+    }))
+    .sort((a, b) => a.accountNumber.localeCompare(b.accountNumber) || a.periodStart.localeCompare(b.periodStart));
 }
 
 export function buildGlorietaDisputeCase(): GlorietaDisputeCase {
@@ -179,6 +298,8 @@ export function buildGlorietaDisputeCase(): GlorietaDisputeCase {
     if (a.isDispute !== b.isDispute) return a.isDispute ? -1 : 1;
     return b.vacancySpend - a.vacancySpend;
   });
+  const focusedPhase = buildFocusedPhase(canonical);
+  const focusedMonthly = buildFocusedMonthly(canonical);
   const disputeMonthly = monthly.filter((row) => row.disputeSpend > 0 || row.disputeGallons > 0);
 
   const summary = GLORIETA_CORPUS_SUMMARY;
@@ -189,9 +310,11 @@ export function buildGlorietaDisputeCase(): GlorietaDisputeCase {
     monthly,
     accounts,
     meterTimeline,
+    focusedPhase,
+    focusedMonthly,
     disputeMonthly,
     evidenceFacts: [
-      `${summary.sourceFileCount} WASD PDFs were indexed from the Water Meter Files folder; ${summary.canonicalBillCount} account-period records are usable for trends after duplicate control.`,
+      `${summary.sourceFileCount} WASD PDFs were reviewed from the Water Meter Files folder; ${summary.canonicalBillCount} account-period records are usable for trends after duplicate control.`,
       `${reviewCount} records remain in the review queue because the account or service-period line needs human confirmation before it should drive the client-facing billing position.`,
       `Account ${summary.disputeAccount}, meter ${summary.disputeMeter}, is the Building 8 dispute account for the April 2024 through January 2026 vacant or rehab window.`,
       `The extracted Building 8 dispute-window subtotal is ${money(summary.disputeCurrentCharges)} in current charges, ${summary.disputeGallons.toLocaleString()} gallons, ${money(summary.disputeWaterCharges)} water, and ${money(summary.disputeSewerCharges)} sewer.`,
@@ -237,11 +360,11 @@ function buildDraftLetterHtml() {
     <p><strong>Re:</strong> Glorieta Gardens - Account ${summary.disputeAccount}, Meter ${summary.disputeMeter}, Building 8 / 13200 Alexandria Drive</p>
     <p>Dear Public Works and WASD Billing Review Team,</p>
     <p>We are requesting a corrected billing review and credit for the Building 8 water and sewer account at Glorieta Gardens. The disputed period covers the vacancy and rehabilitation window beginning in April 2024 and continuing through January 2026, when Building 8 was not operating as an occupied residential building.</p>
-    <p>The owner-side record shows that the account was billed using estimated usage of approximately 216,000 gallons per month during a period when ordinary residential consumption could not have occurred. The July 23, 2026 dispute letter identifies a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill and a ${money(GLORIETA_FORMAL_UNPAID_BALANCE)} unpaid balance. ProjOS Water Intelligence has indexed the available WASD statement backup and currently shows ${summary.disputeGallons.toLocaleString()} gallons and ${money(summary.disputeCurrentCharges)} in current charges tied to Account ${summary.disputeAccount} within the dispute window.</p>
+    <p>The owner-side record shows that the account was billed using estimated usage of approximately 216,000 gallons per month during a period when ordinary residential consumption could not have occurred. The July 23, 2026 dispute letter identifies a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill and a ${money(GLORIETA_FORMAL_UNPAID_BALANCE)} unpaid balance. The available billing backup currently shows ${summary.disputeGallons.toLocaleString()} gallons and ${money(summary.disputeCurrentCharges)} in current charges tied to Account ${summary.disputeAccount} within the dispute window.</p>
     <p>Our request is straightforward: please remove charges that are not supported by actual consumption, actual meter reads, or a reasonable service-location consumption basis for the period when the building was condemned, vacant, and under rehabilitation. Where actual reads are unavailable, please apply the corrected-billing principles in WASD's rules using actual consumption from a comparable service-location period or average anticipated consumption appropriate to a vacant building, not an occupied multifamily building.</p>
     <p>We also request the meter-change work order, installation date, starting register reading, read history, estimate basis, adjustment worksheet, payment ledger, late charge ledger, and any internal investigation notes used to support the rebill.</p>
     <p>Until the review is complete, please suspend any past-due classification, late charge escalation, collection action, discontinuance process, or adverse account action related to the disputed estimated amount.</p>
     <p>Respectfully,</p>
-    <p><strong>APAS Consulting LLC</strong><br />Powered by ProjOS Water Intelligence</p>
+    <p><strong>R4</strong></p>
   `;
 }

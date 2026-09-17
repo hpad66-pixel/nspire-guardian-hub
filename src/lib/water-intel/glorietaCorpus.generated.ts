@@ -1,7 +1,7 @@
 /* eslint-disable */
 /**
  * Generated from /Water Meter Files with scripts/water-intel/build-glorieta-corpus.py.
- * Source PDFs are local evidence; this file is the browser-safe fact index for Water Intelligence.
+ * Source PDFs are local evidence; this file is the browser-safe fact index for the Glorieta billing review.
  */
 
 export interface GlorietaCorpusBill {
