@@ -25,6 +25,7 @@ import {
   defaultInvoiceSubject,
   type ProposalBillingRow,
 } from '@/lib/consulting/billing';
+import { APAS_COMPANY_BRANDS } from '@/lib/financial/apasCompanyBranding';
 import { money } from './invoiceMeta';
 
 export interface InvoiceClientSeed {
@@ -309,6 +310,7 @@ export function ConsultingInvoiceBuilder({
 
   const approvedCount = proposals.filter((p) => p.status === 'approved').length;
   const saving = create.isPending || update.isPending;
+  const consultingBrand = APAS_COMPANY_BRANDS.apas_consulting;
 
   const buildHeader = (): InvoiceHeaderInput => ({
     issue_date: issueDate,
@@ -364,7 +366,7 @@ export function ConsultingInvoiceBuilder({
             {editing ? `Edit invoice #${existing?.invoice_no ?? ''}` : 'New client invoice'}
           </DialogTitle>
           <DialogDescription>
-            Fully editable corporate invoice. Prior billed and paid amounts for each proposal stay connected automatically.
+            {consultingBrand.legalName} professional-services invoice. Prior billed and paid amounts for each proposal stay connected automatically.
             {approvedCount > 0 && (
               <span className="block mt-1 text-foreground">
                 {approvedCount} approved proposal{approvedCount === 1 ? '' : 's'}
@@ -373,6 +375,21 @@ export function ConsultingInvoiceBuilder({
             )}
           </DialogDescription>
         </DialogHeader>
+
+        <div
+          className="rounded-lg border p-3"
+          style={{ borderColor: `${consultingBrand.accent}66`, background: consultingBrand.surface, color: consultingBrand.ink, fontFamily: consultingBrand.fontFamily }}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: consultingBrand.accent }}>{consultingBrand.wordmark}</p>
+              <p className="text-sm font-black">{consultingBrand.documentLabel}</p>
+            </div>
+            <p className="text-xs" style={{ color: consultingBrand.muted }}>
+              Branded PDF, account tab, client sign-off, and delivery email.
+            </p>
+          </div>
+        </div>
 
         <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
           <TabsList className="grid w-full grid-cols-3">

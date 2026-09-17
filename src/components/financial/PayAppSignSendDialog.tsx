@@ -22,6 +22,7 @@ import { usePayAppAttachments, type PayAppAttachment } from "@/hooks/usePayAppAt
 import { useCoSettings } from "@/hooks/useCoSettings";
 import { useSendEmail } from "@/hooks/useSendEmail";
 import { supabase } from "@/integrations/supabase/client";
+import { APAS_COMPANY_BRANDS, coSettingsForCompanyBrand } from "@/lib/financial/apasCompanyBranding";
 import { PayApplicationDocument } from "@/lib/payApp/PayApplicationDocument";
 import { buildPayAppSpec } from "@/lib/payApp/buildSpec";
 import { payAppPdfBlob, blobToBase64 } from "@/lib/payApp/payAppPdf";
@@ -61,13 +62,15 @@ export function PayAppSignSendDialog({
   const [busy, setBusy] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
+  const buildBrand = APAS_COMPANY_BRANDS.apas_build;
+  const buildSettings = coSettingsForCompanyBrand(buildBrand, coSettings ?? {});
 
   // Off-screen DRAFT document, stamped with the just-typed signature.
   const spec = useMemo(
-    () => (pa ? buildPayAppSpec(pa, contract, coSettings ?? {}, g702, lines, {
+    () => (pa ? buildPayAppSpec(pa, contract, buildSettings, g702, lines, {
       signatureUrl, signedName, signedDate: today, draft: true,
     }) : null),
-    [pa, contract, coSettings, g702, lines, signatureUrl, signedName, today],
+    [pa, contract, buildSettings, g702, lines, signatureUrl, signedName, today],
   );
 
   async function signAndSend() {
@@ -114,15 +117,21 @@ export function PayAppSignSendDialog({
       toast.loading("Sending to the client…", { id: t });
       await sendEmail.mutateAsync({
         recipients,
-        subject: `DRAFT for review — Pay Application #${pa.pay_app_no} · ${contract.title}`,
+        subject: `DRAFT for review - Pay Application #${pa.pay_app_no} - ${contract.title}`,
         bodyHtml: `
+          <div style="font-family:Arial,sans-serif;color:#17191d;max-width:620px">
+          <div style="border-left:6px solid ${buildBrand.accent};padding:6px 0 10px 16px;margin-bottom:18px">
+            <div style="font-size:11px;font-weight:900;letter-spacing:1.8px;text-transform:uppercase;color:${buildBrand.accent}">${buildBrand.wordmark}</div>
+            <div style="font-size:22px;font-weight:900;color:${buildBrand.primary};margin-top:4px">Pay Application #${pa.pay_app_no}</div>
+            <div style="font-size:13px;color:${buildBrand.muted}">Sent by ${buildBrand.senderName} · ${buildBrand.legalName}</div>
+          </div>
           <p>Hello,</p>
-          <p>Please find attached <strong>Pay Application #${pa.pay_app_no}</strong> (period ending ${pa.period_end}) for
-          <strong>${contract.title}</strong>, sent as a <strong>DRAFT for your review</strong>. This is not yet a formal
-          request for payment.</p>
+          <p>${buildBrand.emailOpening}</p>
+          <p>This package is for <strong>${contract.title}</strong>, period ending <strong>${pa.period_end}</strong>, and is sent as a <strong>DRAFT for your review</strong>. This is not yet a formal request for payment.</p>
           ${message.trim() ? `<p>${message.trim().replace(/\n/g, "<br/>")}</p>` : ""}
           <p>Please review and let us know of any questions.</p>
-          <p>Regards,<br/>${signedName || contract.contractor_name || "APAS Consulting LLC"}</p>`,
+          <p>Regards,<br/>${buildBrand.senderName}<br/><span style="color:${buildBrand.muted}">${buildBrand.legalName}</span></p>
+          </div>`,
         bodyText: `Pay Application #${pa.pay_app_no} (period ending ${pa.period_end}) for ${contract.title} — DRAFT for your review. ${message.trim()}`,
         attachments: [{ filename, contentBase64: finalBase64, contentType: "application/pdf", size: sizeApprox }],
       });
@@ -157,13 +166,14 @@ export function PayAppSignSendDialog({
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Sign &amp; send draft for review</DialogTitle>
+          <DialogTitle>Sign &amp; send APAS Build package</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground">
-            Your typed signature is stamped onto the G702 with a <strong>DRAFT — for owner review</strong> banner,
-            then emailed to the client. It does not submit or approve the pay app.
+          <div className="rounded-md border p-3 text-xs" style={{ borderColor: `${buildBrand.accent}66`, background: buildBrand.surface, color: buildBrand.ink }}>
+            <strong>{buildBrand.legalName}</strong> pay applications go out from <strong>{buildBrand.senderName}</strong>.
+            The typed signature is stamped onto the G702 with a <strong>DRAFT - for owner review</strong> banner,
+            then emailed as one client-ready package. It does not submit or approve the pay app.
           </div>
 
           {/* TypedSignaturePad is loaded lazily to avoid the handwriting fonts on every page */}
@@ -193,7 +203,17 @@ export function PayAppSignSendDialog({
               <div className="divide-y">
                 {attachments.map((a, i) => (
                   <div key={a.id} className="flex items-center gap-2 py-1.5 text-xs">
-                    <input type="checkbox" className="h-3.5 w-3.5" checked={!excluded.has(a.id)} onChange={(e) => setExcluded((s) => { const n = new Set(s); e.target.checked ? n.delete(a.id) : n.add(a.id); return n; })} />
+                    <input
+                      type="checkbox"
+                      className="h-3.5 w-3.5"
+                      checked={!excluded.has(a.id)}
+                      onChange={(e) => setExcluded((s) => {
+                        const n = new Set(s);
+                        if (e.target.checked) n.delete(a.id);
+                        else n.add(a.id);
+                        return n;
+                      })}
+                    />
                     <span className="flex-1 truncate" title={a.label}>{a.label}</span>
                     <span className="shrink-0 rounded bg-muted px-1.5 py-0.5 text-[10px] capitalize text-muted-foreground">{a.kind.replace("lien_", "lien ").replace("_", " ")}</span>
                     <button onClick={() => moveAtt(a.id, -1)} disabled={i === 0} className="text-muted-foreground hover:text-foreground disabled:opacity-30"><ArrowUp className="h-3.5 w-3.5" /></button>

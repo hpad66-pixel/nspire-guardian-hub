@@ -411,7 +411,7 @@ export function SendExternalEmailDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-2xl gap-0 overflow-hidden p-0">
+      <DialogContent className="max-h-[92vh] max-w-5xl gap-0 overflow-hidden p-0">
         {/* Header */}
         <DialogHeader className="border-b bg-[#f7faf8] px-6 pb-4 pt-5">
           <div className="flex items-center gap-3">
@@ -433,7 +433,8 @@ export function SendExternalEmailDialog({
         </DialogHeader>
 
         <ScrollArea className="max-h-[70vh]">
-          <div className="px-6 py-5 space-y-5">
+          <div className="grid gap-5 px-6 py-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+            <div className="space-y-5">
             {/* Document preview */}
             <div className="grid gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 sm:grid-cols-2">
               <div className="flex items-start gap-2.5 rounded-xl bg-white p-3">
@@ -548,6 +549,28 @@ export function SendExternalEmailDialog({
                 className="text-sm resize-none"
               />
             </div>
+            </div>
+
+            <aside className="lg:sticky lg:top-0 lg:self-start">
+              <div className="overflow-hidden rounded-2xl border bg-white shadow-sm">
+                <div className="border-b bg-slate-50 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Client preview</p>
+                  <p className="mt-0.5 truncate text-sm font-semibold text-slate-900">{subject}</p>
+                </div>
+                <div className="max-h-[520px] overflow-auto p-4">
+                  <div
+                    className="origin-top-left scale-[0.82] rounded-xl border bg-white"
+                    style={{ width: '122%', transformOrigin: 'top left' }}
+                    dangerouslySetInnerHTML={{ __html: buildEmailBody() }}
+                  />
+                </div>
+                <div className="border-t bg-slate-50 px-4 py-3 text-xs text-slate-500">
+                  {pdfAttachment
+                    ? `Attachment: ${pdfAttachment.filename}`
+                    : 'No PDF attachment is currently bundled.'}
+                </div>
+              </div>
+            </aside>
           </div>
         </ScrollArea>
 

@@ -15,6 +15,7 @@ import { useCoSettings } from '@/hooks/useCoSettings';
 import { SendExternalEmailDialog } from '@/components/projects/SendExternalEmailDialog';
 import { ConsultingInvoiceBuilder, type InvoiceClientSeed } from './ConsultingInvoiceBuilder';
 import { buildProposalAccountSummaries, type ProposalBillingRow } from '@/lib/consulting/billing';
+import { APAS_COMPANY_BRANDS, invoicePackageSubject } from '@/lib/financial/apasCompanyBranding';
 import { INVOICE_STATUS_META, money } from './invoiceMeta';
 import { cn } from '@/lib/utils';
 
@@ -54,6 +55,7 @@ export function InvoiceDetailDialog({
   >();
 
   const inv: ConsultingInvoice | undefined = data?.invoice;
+  const consultingBrand = APAS_COMPANY_BRANDS.apas_consulting;
   const lines = useMemo(() => data?.lines ?? [], [data?.lines]);
   const payments = useMemo(() => data?.payments ?? [], [data?.payments]);
   const paid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
@@ -61,13 +63,13 @@ export function InvoiceDetailDialog({
   const meta = inv ? INVOICE_STATUS_META[inv.status] : null;
 
   const branding = {
-    companyName: coSettings?.company_name ?? coSettings?.wordmark ?? null,
+    companyName: coSettings?.company_name ?? consultingBrand.legalName,
     companyAddress: coSettings?.company_address ?? null,
     companyCity: coSettings?.company_city ?? null,
     companyEmail: coSettings?.company_email ?? null,
     companyContact: coSettings?.company_contact ?? null,
-    wordmark: coSettings?.wordmark ?? null,
-    footer: coSettings?.footer ?? null,
+    wordmark: coSettings?.wordmark ?? consultingBrand.wordmark,
+    footer: coSettings?.footer ?? consultingBrand.footer,
   };
 
   const accountSummaries = useMemo(() => {
@@ -155,7 +157,7 @@ export function InvoiceDetailDialog({
 
   const handleSend = () => {
     if (!inv) return;
-    const company = branding.companyName || 'APAS Consulting';
+    const company = branding.companyName || consultingBrand.legalName;
     const rows = lines
       .map(
         (l) =>
@@ -164,18 +166,19 @@ export function InvoiceDetailDialog({
       )
       .join('');
     setEmailHtml(`
-      <div style="font-family:Georgia,serif;color:#1A1714;max-width:560px">
-        <div style="border-bottom:3px solid #C4A35A;padding-bottom:12px;margin-bottom:20px">
+      <div style="font-family:Georgia,serif;color:${consultingBrand.ink};max-width:620px">
+        <div style="border-bottom:3px solid ${consultingBrand.accent};padding-bottom:12px;margin-bottom:20px">
           <div style="font-size:18px;font-weight:700">${company}</div>
-          <div style="color:#1D6FE8;font-size:14px;margin-top:4px">Invoice #${inv.invoice_no}</div>
+          <div style="color:${consultingBrand.primary};font-size:14px;margin-top:4px">Invoice package #${inv.invoice_no}</div>
         </div>
         ${inv.subject ? `<p style="color:#878581"><strong>RE:</strong> ${inv.subject}</p>` : ''}
+        <p>${consultingBrand.emailOpening}</p>
         <p>Please find Invoice #${inv.invoice_no} for <strong>${projectName}</strong>.</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0">${rows}</table>
         <p style="font-size:16px"><strong>Amount due: ${money(balance)}</strong></p>
         ${inv.due_date ? `<p style="color:#878581">Due ${inv.due_date}</p>` : ''}
         ${inv.payment_terms ? `<p style="color:#878581;font-size:13px">${inv.payment_terms}</p>` : ''}
-        <p style="color:#878581;font-size:13px">A branded PDF with client sign-off is attached for your records.</p>
+        <p style="color:#878581;font-size:13px">The attached PDF is client-ready and includes the invoice detail, running account tab, payment terms, and approval/sign-off block.</p>
       </div>
     `);
     const input = pdfInput();
@@ -239,11 +242,11 @@ export function InvoiceDetailDialog({
             <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-xl border bg-gradient-to-br from-[#FAF8F4] to-white p-4">
-                <div className="flex items-start justify-between gap-3 border-b-2 border-[#C4A35A] pb-3">
+              <div className="rounded-xl border bg-gradient-to-br from-[#FAF8F4] to-white p-4" style={{ borderColor: `${consultingBrand.accent}55` }}>
+                <div className="flex items-start justify-between gap-3 border-b-2 pb-3" style={{ borderColor: consultingBrand.accent }}>
                   <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#C4A35A]">
-                      {branding.companyName || 'APAS Consulting'}
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: consultingBrand.accent }}>
+                      {branding.companyName || consultingBrand.legalName}
                     </p>
                     <p className="mt-1 text-lg font-bold text-foreground">Invoice #{inv.invoice_no}</p>
                     {inv.subject && <p className="text-sm text-muted-foreground mt-0.5">{inv.subject}</p>}
@@ -264,6 +267,27 @@ export function InvoiceDetailDialog({
                       {money(balance)}
                     </p>
                     <p className="text-xs text-muted-foreground">amount due</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-lg border p-3 text-sm" style={{ borderColor: `${consultingBrand.accent}55`, background: consultingBrand.surface }}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: consultingBrand.accent }}>
+                      Client delivery package
+                    </div>
+                    <p className="mt-1 font-medium" style={{ color: consultingBrand.ink }}>
+                      {consultingBrand.documentLabel} from {consultingBrand.legalName}
+                    </p>
+                    <p className="text-xs" style={{ color: consultingBrand.muted }}>
+                      Emailing this invoice attaches the branded PDF and previews the client-facing note before it goes out.
+                    </p>
+                  </div>
+                  <div className="grid gap-1 text-xs">
+                    {consultingBrand.packageIncludes.slice(0, 3).map((item) => (
+                      <span key={item} className="rounded bg-white/80 px-2 py-1 font-medium" style={{ color: consultingBrand.primary }}>{item}</span>
+                    ))}
                   </div>
                 </div>
               </div>
@@ -366,8 +390,8 @@ export function InvoiceDetailDialog({
                     <Pencil className="h-4 w-4" />Edit invoice
                   </Button>
                 )}
-                <Button size="sm" variant="outline" onClick={handlePdf} className="gap-1.5"><Download className="h-4 w-4" />PDF</Button>
-                <Button size="sm" variant="outline" onClick={handleSend} className="gap-1.5"><Mail className="h-4 w-4" />Email invoice</Button>
+                <Button size="sm" variant="outline" onClick={handlePdf} className="gap-1.5"><Download className="h-4 w-4" />Download package PDF</Button>
+                <Button size="sm" variant="outline" onClick={handleSend} className="gap-1.5"><Mail className="h-4 w-4" />Preview & email package</Button>
                 {inv.status === 'draft' && (
                   <Button size="sm" onClick={markSent} disabled={setStatus.isPending} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
                     {setStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Mark as sent
@@ -405,7 +429,7 @@ export function InvoiceDetailDialog({
           documentId={inv.id}
           projectName={projectName}
           projectId={projectId}
-          defaultSubject={inv.subject || `Invoice #${inv.invoice_no} — ${projectName}`}
+          defaultSubject={inv.subject || invoicePackageSubject(consultingBrand, inv.invoice_no, projectName)}
           contentHtml={emailHtml}
           onSent={() => {
             if (inv.status === 'draft') markSent();

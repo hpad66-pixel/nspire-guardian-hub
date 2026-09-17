@@ -11,6 +11,7 @@ import { useProjectTree } from '@/hooks/useProjectTree';
 import { ModuleVisibilityPanel } from '@/components/projects/ModuleVisibilityPanel';
 import { ProjectKindBadge, ProjectTypeMissingAlert } from '@/components/projects/ProjectKindBadge';
 import { ProjectTypeDialog } from '@/components/projects/ProjectTypeDialog';
+import { companyBrandForProjectType } from '@/lib/financial/apasCompanyBranding';
 import { projectKind } from '@/lib/projectKind';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -36,6 +37,7 @@ export default function ProjectAdminPage() {
     : null;
   const children = projectId ? tree.children(projectId) : [];
   const kind = projectKind(project ?? {});
+  const brand = companyBrandForProjectType((project as { project_type?: string | null } | null)?.project_type);
 
   if (isLoading || permsLoading) {
     return (
@@ -105,31 +107,67 @@ export default function ProjectAdminPage() {
 
       <ProjectTypeMissingAlert project={project} />
 
-      {/* Type + inheritance summary */}
-      <div className="grid gap-4 md:grid-cols-2">
+      {/* Billing workflow + inheritance summary */}
+      <div className="grid gap-4 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               {kind === 'consulting' ? <Briefcase className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
-              Project type
+              Billing workflow and company
             </CardTitle>
             <CardDescription>
-              Drives billing (pay apps vs client invoices) and default modules.
+              This controls whether the project uses consulting invoices or construction pay applications.
             </CardDescription>
           </CardHeader>
-          <CardContent className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-sm font-semibold capitalize">
-                {(project as { project_type?: string }).project_type ?? 'unset'}
+          <CardContent className="space-y-4">
+            <div
+              className="rounded-xl border p-4"
+              style={{
+                borderColor: `${brand.accent}66`,
+                background: brand.surface,
+                color: brand.ink,
+                fontFamily: brand.fontFamily,
+              }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: brand.accent }}>
+                    {brand.wordmark}
+                  </div>
+                  <div className="mt-1 text-lg font-black">{brand.legalName}</div>
+                  <div className="text-sm" style={{ color: brand.muted }}>{brand.workflowDescription}</div>
+                </div>
+                <span className="rounded-lg px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white" style={{ background: brand.primary }}>
+                  {brand.workflowLabel}
+                </span>
               </div>
-              <div className="text-xs text-muted-foreground">
-                Billing mode: {kind === 'consulting' ? 'Proposals → Client invoices' : 'Pay apps → Certificates'}
+              <div className="mt-4 grid gap-2 text-xs sm:grid-cols-3">
+                <div className="rounded-lg bg-white/80 p-2">
+                  <p className="font-semibold">Project type</p>
+                  <p className="capitalize" style={{ color: brand.muted }}>{(project as { project_type?: string }).project_type ?? 'unset'}</p>
+                </div>
+                <div className="rounded-lg bg-white/80 p-2">
+                  <p className="font-semibold">Document</p>
+                  <p style={{ color: brand.muted }}>{brand.documentLabel}</p>
+                </div>
+                <div className="rounded-lg bg-white/80 p-2">
+                  <p className="font-semibold">Sender</p>
+                  <p style={{ color: brand.muted }}>{brand.senderName}</p>
+                </div>
               </div>
             </div>
-            <Button variant="outline" size="sm" onClick={() => setTypeOpen(true)}>
-              <Lightbulb className="mr-1.5 h-3.5 w-3.5" />
-              Change type
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => setTypeOpen(true)}>
+                <Lightbulb className="mr-1.5 h-3.5 w-3.5" />
+                Change type
+              </Button>
+              <Button size="sm" asChild style={{ background: brand.primary }}>
+                <Link to={`/projects/${project.id}/${brand.routePath}`}>
+                  <Wallet className="mr-1.5 h-3.5 w-3.5" />
+                  {brand.routeLabel}
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -222,9 +260,9 @@ export default function ProjectAdminPage() {
             Correspondence
           </Button>
           <Button variant="outline" className="justify-start" asChild>
-            <Link to={`/projects/${project.id}/financials/overview`}>
+            <Link to={`/projects/${project.id}/${brand.routePath}`}>
               <Wallet className="mr-2 h-4 w-4" />
-              {kind === 'consulting' ? 'Client invoices' : 'Pay apps & budget'}
+              {brand.workflowLabel}
             </Link>
           </Button>
           <Button

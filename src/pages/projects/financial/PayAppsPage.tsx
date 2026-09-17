@@ -14,6 +14,7 @@ import { PayAppStatusSelect } from "@/components/financial/PayAppStatusSelect";
 import { useCommitments } from "@/hooks/useCommitments";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { APAS_COMPANY_BRANDS } from "@/lib/financial/apasCompanyBranding";
 
 const fmt2 = (n: number | null | undefined) =>
   n == null ? "—" : new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n));
@@ -49,6 +50,7 @@ export default function PayAppsPage() {
   const generate = useGeneratePayApp(contract?.id ?? null, projectId ?? null);
   const del = useDeletePayApp();
   const [creating, setCreating] = useState(false);
+  const buildBrand = APAS_COMPANY_BRANDS.apas_build;
 
   function deleteDraft(e: React.MouseEvent, pa: any) {
     e.stopPropagation();
@@ -88,6 +90,24 @@ export default function PayAppsPage() {
             <Plus className="h-4 w-4 mr-1.5" />{creating ? "Generating…" : "Generate Pay App"}
           </Button>
         )}
+      </div>
+
+      <div
+        className="mb-4 rounded-xl border p-4"
+        style={{ borderColor: `${buildBrand.accent}66`, background: buildBrand.surface, color: buildBrand.ink, fontFamily: buildBrand.fontFamily }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: buildBrand.accent }}>{buildBrand.wordmark}</p>
+            <h2 className="mt-1 text-lg font-black">{buildBrand.documentLabel}</h2>
+            <p className="max-w-3xl text-sm" style={{ color: buildBrand.muted }}>
+              Construction progress billing uses {buildBrand.legalName} branding and sends packages from {buildBrand.senderName}. Attachments are merged with the signed G702/G703 so the client receives one clean progress invoice package.
+            </p>
+          </div>
+          <div className="rounded-lg px-3 py-2 text-xs font-black uppercase tracking-wide text-white" style={{ background: buildBrand.primary }}>
+            {buildBrand.workflowLabel}
+          </div>
+        </div>
       </div>
 
       {isLoading ? (

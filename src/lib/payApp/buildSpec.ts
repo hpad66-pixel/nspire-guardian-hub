@@ -36,14 +36,15 @@ export function buildPayAppSpec(
   // Final invoices must show Line 9 = contract − completed (unbuilt), never the
   // AIA "incl. retainage" figure left in an older snapshot.
   const resolvedG702 = withResolvedLine9(g702, isFinal);
+  const forceCompanyBranding = Boolean(s.force_company_branding);
   return {
     wordmark: s.wordmark || s.company_name || "APAS CONSULTING",
     footer: s.footer ?? null,
     contractor: {
-      name: contract.contractor_name || s.company_name || "APAS Consulting LLC",
-      address: contract.contractor_address || s.company_address || null,
-      contact: contract.contractor_contact || s.company_contact || null,
-      email: contract.contractor_email || s.company_email || null,
+      name: forceCompanyBranding ? (s.company_name || contract.contractor_name || "APAS Consulting LLC") : (contract.contractor_name || s.company_name || "APAS Consulting LLC"),
+      address: forceCompanyBranding ? (s.company_address || contract.contractor_address || null) : (contract.contractor_address || s.company_address || null),
+      contact: forceCompanyBranding ? (s.company_contact || contract.contractor_contact || null) : (contract.contractor_contact || s.company_contact || null),
+      email: forceCompanyBranding ? (s.company_email || contract.contractor_email || null) : (contract.contractor_email || s.company_email || null),
       title: s.company_title || "Authorized Representative",
     },
     owner: {

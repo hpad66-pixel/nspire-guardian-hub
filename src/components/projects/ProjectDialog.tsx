@@ -14,6 +14,7 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
+import { companyBrandForProjectType } from '@/lib/financial/apasCompanyBranding';
 import type { Database } from '@/integrations/supabase/types';
 import { z } from 'zod';
 
@@ -127,8 +128,8 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
       start_date: formData.start_date || null,
       target_end_date: formData.target_end_date || null,
       project_type: projectType,
-      // Clear whichever is not in use. Consulting engagements are client-linked
-      // (or standalone/internal) like the 'client' type — never property-linked.
+      // Clear whichever is not in use. Consulting and construction engagements
+      // are client-linked billing records, while property records stay property-linked.
       property_id: projectType === 'property' ? formData.property_id || null : null,
       client_id: projectType !== 'property' ? clientContext?.id || formData.client_id || null : null,
     };
@@ -157,11 +158,12 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
   };
 
   const isPropertyValid = projectType === 'property' ? !!formData.property_id : true;
-  const requiresClient = isClientScoped || projectType === 'client' || projectType === 'construction';
+  const requiresClient = isClientScoped || projectType === 'client' || projectType === 'construction' || projectType === 'consulting';
   const isClientValid = requiresClient ? !!(clientContext?.id || formData.client_id) : true;
   const isOwnerValid = isEditing || !!formData.owner_user_id;
   const canSubmit = !!formData.name && isPropertyValid && isClientValid && isOwnerValid;
   const isPending = createProject.isPending || updateProject.isPending;
+  const billingBrand = companyBrandForProjectType(projectType);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
@@ -196,6 +198,10 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
                       <Building2 className="h-3.5 w-3.5" />
                       Property
                     </TabsTrigger>
+                    <TabsTrigger value="construction" className="flex-1 gap-1.5">
+                      <HardHat className="h-3.5 w-3.5" />
+                      Build
+                    </TabsTrigger>
                     <TabsTrigger value="client" className="flex-1 gap-1.5">
                       <Briefcase className="h-3.5 w-3.5" />
                       Client
@@ -208,11 +214,36 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
                 </TabsTrigger>
               </TabsList>
             </Tabs>
-            {projectType === 'consulting' && (
-              <p className="text-xs text-muted-foreground">
-                A consulting engagement — scope, action items, meetings, and invoicing, without the construction modules. You can fine-tune what shows under Modules.
-              </p>
-            )}
+            <div
+              className="rounded-xl border p-3"
+              style={{
+                borderColor: `${billingBrand.accent}66`,
+                background: billingBrand.surface,
+                color: billingBrand.ink,
+                fontFamily: billingBrand.fontFamily,
+              }}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: billingBrand.accent }}>
+                    Billing identity
+                  </p>
+                  <p className="mt-1 text-sm font-black">{billingBrand.legalName}</p>
+                  <p className="text-xs" style={{ color: billingBrand.muted }}>{billingBrand.workflowDescription}</p>
+                </div>
+                <div className="rounded-lg px-2 py-1 text-right text-[11px] font-black uppercase tracking-wide text-white" style={{ background: billingBrand.primary }}>
+                  {billingBrand.workflowLabel}
+                </div>
+              </div>
+              <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                <div className="rounded-lg bg-white/75 p-2">
+                  <span className="font-semibold">Document:</span> {billingBrand.documentLabel}
+                </div>
+                <div className="rounded-lg bg-white/75 p-2">
+                  <span className="font-semibold">Sent as:</span> {billingBrand.senderName}
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Project Name */}
@@ -354,7 +385,7 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
                 </div>
               )}
               <p className="text-xs text-muted-foreground">
-                Leave blank to create an internal / standalone project with no client dependency.
+                Required for client-facing consulting invoices and construction pay applications.
               </p>
             </div>
           )}

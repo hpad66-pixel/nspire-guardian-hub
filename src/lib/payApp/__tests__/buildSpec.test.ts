@@ -36,6 +36,22 @@ describe("buildPayAppSpec", () => {
     expect(over.draft).toBe(true);
   });
 
+  it("can force APAS Build branding over older contract contractor fields", () => {
+    const pa = { pay_app_no: 7, period_end: "2026-08-31" };
+    const spec = buildPayAppSpec(pa, contract, {
+      force_company_branding: true,
+      wordmark: "APAS BUILD",
+      company_name: "APAS Build LLC",
+      company_contact: "Greg Grant",
+      company_title: "APAS Build LLC",
+      footer: "APAS Build LLC - Progress pay application",
+    }, g702, lines);
+    expect(spec.wordmark).toBe("APAS BUILD");
+    expect(spec.contractor.name).toBe("APAS Build LLC");
+    expect(spec.contractor.contact).toBe("Greg Grant");
+    expect(spec.contractor.title).toBe("APAS Build LLC");
+  });
+
   it("prefers pay_app_data.amount_certified for the G702 Amount Certified box", () => {
     const pa = {
       pay_app_no: 5,

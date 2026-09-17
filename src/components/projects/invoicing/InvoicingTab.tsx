@@ -10,6 +10,7 @@ import { useConsultingInvoices, useConsultingArLedger } from '@/hooks/useConsult
 import { useProjectScopes, summarizeScopes } from '@/hooks/useProjectScopes';
 import { useFinancialProposals } from '@/hooks/useFinancialProposals';
 import { proposalTotals } from '@/lib/financial/proposalPricing';
+import { APAS_COMPANY_BRANDS } from '@/lib/financial/apasCompanyBranding';
 import { ConsultingInvoiceBuilder, type InvoiceClientSeed } from './ConsultingInvoiceBuilder';
 import { InvoiceDetailDialog } from './InvoiceDetailDialog';
 import { INVOICE_STATUS_META, money } from './invoiceMeta';
@@ -46,6 +47,7 @@ export function InvoicingTab({
   const [editId, setEditId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [handledAutoCreate, setHandledAutoCreate] = useState<string | null>(null);
+  const consultingBrand = APAS_COMPANY_BRANDS.apas_consulting;
 
   useEffect(() => {
     if (!autoCreateProposalId || handledAutoCreate === autoCreateProposalId) return;
@@ -81,6 +83,33 @@ export function InvoicingTab({
         <Button onClick={() => { setEditId(null); setBuilderOpen(true); }} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
           <Plus className="h-4 w-4" />New invoice
         </Button>
+      </div>
+
+      <div
+        className="rounded-xl border p-4"
+        style={{
+          borderColor: `${consultingBrand.accent}66`,
+          background: consultingBrand.surface,
+          color: consultingBrand.ink,
+          fontFamily: consultingBrand.fontFamily,
+        }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: consultingBrand.accent }}>
+              {consultingBrand.wordmark}
+            </p>
+            <h3 className="mt-1 text-lg font-black">{consultingBrand.documentLabel}</h3>
+            <p className="max-w-3xl text-sm" style={{ color: consultingBrand.muted }}>
+              Consulting projects use {consultingBrand.legalName} branding, professional-services typography, invoice PDFs, report backup, and a running A/R tab.
+            </p>
+          </div>
+          <div className="grid gap-1 text-xs">
+            {consultingBrand.packageIncludes.slice(0, 3).map((item) => (
+              <span key={item} className="rounded bg-white/80 px-2 py-1 font-semibold" style={{ color: consultingBrand.primary }}>{item}</span>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

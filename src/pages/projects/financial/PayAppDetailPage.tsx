@@ -27,6 +27,7 @@ import { money } from "@/lib/pdf";
 import { supabase } from "@/integrations/supabase/client";
 import { AttachmentField } from "@/components/common/AttachmentField";
 import { Trash2 } from "lucide-react";
+import { APAS_COMPANY_BRANDS } from "@/lib/financial/apasCompanyBranding";
 
 export default function PayAppDetailPage() {
   const { projectId, payAppId } = useParams<{ projectId: string; payAppId: string }>();
@@ -42,6 +43,7 @@ export default function PayAppDetailPage() {
   const [syncing, setSyncing] = useState(false);
   const [allocPayment, setAllocPayment] = useState<any>(null);
   const { data: allocTargets } = useAllocationTargets(contract?.id ?? null);
+  const buildBrand = APAS_COMPANY_BRANDS.apas_build;
 
   const pa = detail.data;
 
@@ -181,6 +183,26 @@ export default function PayAppDetailPage() {
             )}
           </div>
         )}
+      </div>
+
+      <div
+        className="rounded-xl border p-4"
+        style={{ borderColor: `${buildBrand.accent}66`, background: buildBrand.surface, color: buildBrand.ink, fontFamily: buildBrand.fontFamily }}
+      >
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: buildBrand.accent }}>{buildBrand.wordmark}</p>
+            <h2 className="mt-1 text-lg font-black">Client pay application package</h2>
+            <p className="max-w-3xl text-sm" style={{ color: buildBrand.muted }}>
+              This construction billing package is issued by {buildBrand.legalName} and sent as {buildBrand.senderName}. The Sign &amp; send action collates the pay app PDF with selected backup into one client-ready attachment.
+            </p>
+          </div>
+          <div className="grid gap-1 text-xs">
+            {buildBrand.packageIncludes.slice(0, 3).map((item) => (
+              <span key={item} className="rounded bg-white/75 px-2 py-1 font-semibold" style={{ color: buildBrand.primary }}>{item}</span>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
