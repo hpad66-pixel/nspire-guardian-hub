@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateConsultingInvoicePdf } from "../consultingInvoice";
+import { generateConsultingInvoicePdf, invoiceFooterText } from "../consultingInvoice";
 
 describe("consulting invoice PDF", () => {
   it("builds a branded multi-line invoice without throwing", () => {
@@ -92,5 +92,17 @@ describe("consulting invoice PDF", () => {
       ],
     });
     expect(doc.getNumberOfPages()).toBeGreaterThanOrEqual(1);
+  });
+
+  it("never uses change order or proposal language as an invoice footer", () => {
+    expect(invoiceFooterText("Confidential · Change Order Proposal", "APAS CONSULTING LLC", 38)).toBe(
+      "APAS CONSULTING LLC · Invoice #38 · Thank you for your business",
+    );
+    expect(invoiceFooterText("APAS Consulting LLC · Confidential · CO Request", "APAS CONSULTING LLC", 38)).toBe(
+      "APAS CONSULTING LLC · Invoice #38 · Thank you for your business",
+    );
+    expect(invoiceFooterText("APAS Consulting LLC · Professional services invoice", "APAS CONSULTING LLC", 38)).toBe(
+      "APAS Consulting LLC · Professional services invoice",
+    );
   });
 });

@@ -102,7 +102,7 @@ export function InvoiceDetailDialog({
     companyEmail: consultingBrand.key === 'apas_consulting' ? coSettings?.company_email ?? consultingBrand.senderEmail : consultingBrand.senderEmail,
     companyContact: consultingBrand.key === 'apas_consulting' ? coSettings?.company_contact ?? consultingBrand.senderName : consultingBrand.senderName,
     wordmark: coSettings?.wordmark ?? consultingBrand.wordmark,
-    footer: coSettings?.footer ?? consultingBrand.footer,
+    footer: consultingBrand.footer,
   };
 
   const accountSummaries = useMemo(() => {

@@ -82,6 +82,20 @@ const fmtDate = (s?: string | null) =>
 
 const pct = (n: number) => `${Math.round(Number(n) || 0)}%`;
 
+export function invoiceFooterText(
+  footer: string | null | undefined,
+  company: string,
+  invoiceNo: number,
+) {
+  const trimmed = footer?.trim();
+  const safeFallback = `${company} · Invoice #${invoiceNo} · Thank you for your business`;
+  if (!trimmed) return safeFallback;
+  if (/\b(change\s*order|co\s*request|pco|proposal)\b/i.test(trimmed)) {
+    return safeFallback;
+  }
+  return trimmed;
+}
+
 export function generateConsultingInvoicePdf(input: ConsultingInvoicePdfInput): jsPDF {
   const doc = new jsPDF({ unit: 'pt', format: 'letter' });
   const W = doc.internal.pageSize.getWidth();
@@ -442,7 +456,7 @@ export function generateConsultingInvoicePdf(input: ConsultingInvoicePdfInput): 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     setColor(MUTE);
-    const foot = brand?.footer || `${company} · Invoice #${input.invoiceNo} · Thank you for your business`;
+    const foot = invoiceFooterText(brand?.footer, company, input.invoiceNo);
     doc.text(foot, M, H - 22, { maxWidth: cw * 0.7 });
     doc.text(`Page ${i} of ${pageCount}`, W - M, H - 22, { align: 'right' });
   }
