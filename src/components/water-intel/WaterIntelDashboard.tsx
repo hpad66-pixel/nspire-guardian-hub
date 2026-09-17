@@ -36,6 +36,7 @@ import { WaterMeterPerformance } from './WaterMeterPerformance';
 import { WaterDataReadiness } from './WaterDataReadiness';
 import { WaterPeriodFilter } from './WaterPeriodFilter';
 import { WaterGlossary, WaterTerm } from './WaterTerm';
+import { GlorietaWaterAdvocacy } from './GlorietaWaterAdvocacy';
 
 const SEV: Record<InsightSeverity, string> = {
   critical: 'bg-[#F43F5E]/10 text-[#9f1239] border-[#F43F5E]/30',
@@ -126,6 +127,8 @@ export function WaterIntelDashboard({
   const guest = mode === 'magic';
   const canUpload = mode !== 'magic';
   const deltaUp = (kpis.ytdDeltaPct ?? 0) > 0;
+  const isGlorieta = /glorieta/i.test(propertyName)
+    || accounts.some((account) => ['2745714336', '8082997418', '9952938168'].includes(account.account_number));
 
   if (mode === 'property_manager') {
     return (
@@ -203,6 +206,10 @@ export function WaterIntelDashboard({
       </header>
 
       <WaterIntelQaBanner report={qa} />
+
+      {isGlorieta && (
+        <GlorietaWaterAdvocacy mode={mode} />
+      )}
 
       {canUpload && meta?.property_id && (
         <WaterIntelUpload propertyId={meta.property_id} accounts={accounts} />
