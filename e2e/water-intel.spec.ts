@@ -18,6 +18,10 @@ const MIGRATION = path.resolve(
   "../supabase/migrations/20260902020000_water_intelligence_module.sql",
 );
 const APP = path.resolve(__dirname, "../src/App.tsx");
+const GLORIETA_ADVOCACY = path.resolve(
+  __dirname,
+  "../src/components/water-intel/GlorietaWaterAdvocacy.tsx",
+);
 
 test("migration creates tenant-isolated water intel tables", () => {
   const sql = fs.readFileSync(MIGRATION, "utf8");
@@ -90,6 +94,16 @@ test("bill archive and QA overlay are checked into the repo", () => {
   const appLayout = fs.readFileSync(layout, "utf8");
   expect(appLayout).not.toContain("overscroll-y-contain");
   expect(appLayout).not.toMatch(/overflow-y-auto/);
+});
+
+test("Glorieta briefing has prominent navigation and portal-saved client comments", () => {
+  const source = fs.readFileSync(GLORIETA_ADVOCACY, "utf8");
+  expect(source).toContain('data-testid="glorieta-popped-nav"');
+  expect(source).toContain("Start here - Water Intelligence navigation");
+  expect(source).toContain("Use tabs");
+  expect(source).toContain("GLORIETA_CLIENT_REVIEW_NOTE_V1");
+  expect(source).toContain("Save client comment to portal");
+  expect(source).toContain("Magic-link comments save into the same Water Intelligence record APAS sees in the portal.");
 });
 
 test("magic link page mounts for an unknown token", async ({ page }) => {

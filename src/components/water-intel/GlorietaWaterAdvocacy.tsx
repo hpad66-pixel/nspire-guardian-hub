@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  ArrowRight,
   CheckCircle2,
   Copy,
   FilePenLine,
@@ -41,6 +42,7 @@ const GOLD = '#C4A35A';
 const BLUE = '#1D6FE8';
 const ROSE = '#E11D48';
 export const GLORIETA_CITY_LETTER_MARKER = '[[GLORIETA_CITY_LETTER_DRAFT_V1]]';
+const GLORIETA_REVIEW_NOTE_MARKER = '[[GLORIETA_CLIENT_REVIEW_NOTE_V1]]';
 
 interface TipEntry {
   dataKey?: string;
@@ -119,6 +121,14 @@ function savedLetterNote(notes: WaterExecNote[]) {
   return notes.find((note) => note.body.includes(GLORIETA_CITY_LETTER_MARKER));
 }
 
+function savedReviewNotes(notes: WaterExecNote[]) {
+  return notes.filter((note) => note.body.includes(GLORIETA_REVIEW_NOTE_MARKER));
+}
+
+function cleanReviewNote(note: WaterExecNote) {
+  return note.body.replace(GLORIETA_REVIEW_NOTE_MARKER, '').trim();
+}
+
 export function GlorietaWaterAdvocacy({
   mode,
   scope,
@@ -130,12 +140,15 @@ export function GlorietaWaterAdvocacy({
 }) {
   const dispute = useMemo(() => buildGlorietaDisputeCase(), []);
   const savedDraft = savedLetterNote(notes);
+  const reviewNotes = savedReviewNotes(notes);
   const [letterHtml, setLetterHtml] = useState(dispute.draftLetterHtml);
   const [reviewNote, setReviewNote] = useState('');
+  const [reviewerName, setReviewerName] = useState(mode === 'magic' ? '' : 'APAS Water Intelligence');
+  const [reviewerEmail, setReviewerEmail] = useState('');
   const [copied, setCopied] = useState(false);
   const [lastLoadedDraftId, setLastLoadedDraftId] = useState<string | null>(null);
   const confidential = mode === 'magic';
-  const saveLetter = useWaterNotes(scope);
+  const savePortalNote = useWaterNotes(scope);
 
   useEffect(() => {
     const savedHtml = extractSavedLetter(savedDraft);
@@ -152,11 +165,22 @@ export function GlorietaWaterAdvocacy({
   }
 
   function persistLetter() {
-    saveLetter.mutate({
+    savePortalNote.mutate({
       body: `Glorieta City Letter Draft\nSaved from Water Intelligence on ${new Date().toLocaleString()}\n\n${GLORIETA_CITY_LETTER_MARKER}\n${letterHtml}`,
       authorName: mode === 'magic' ? 'Magic-link reviewer' : 'APAS Water Intelligence',
       authorEmail: undefined,
     });
+  }
+
+  function persistReviewNote() {
+    savePortalNote.mutate(
+      {
+        body: `${GLORIETA_REVIEW_NOTE_MARKER}\n${reviewNote}`,
+        authorName: reviewerName.trim() || (mode === 'magic' ? 'Magic-link reviewer' : 'APAS Water Intelligence'),
+        authorEmail: reviewerEmail.trim() || undefined,
+      },
+      { onSuccess: () => setReviewNote('') },
+    );
   }
 
   const recentDispute = dispute.disputeMonthly.slice(-12);
@@ -170,7 +194,7 @@ export function GlorietaWaterAdvocacy({
   const mailBody = encodeURIComponent(letterHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
 
   return (
-    <section className="overflow-hidden rounded-[28px] border border-[#dedbd1] bg-[#f7f3ea] shadow-sm" data-testid="glorieta-water-advocacy">
+    <section className="relative rounded-[28px] border border-[#dedbd1] bg-[#f7f3ea] shadow-sm" data-testid="glorieta-water-advocacy">
       <div className="border-b border-[#dedbd1] bg-[#061f1a] px-5 py-5 text-white md:px-7">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-end">
           <div>
@@ -199,14 +223,22 @@ export function GlorietaWaterAdvocacy({
       </div>
 
       <Tabs defaultValue="case" className="px-4 pb-5 md:px-6">
-        <TabsList className="sticky top-2 z-10 h-auto w-full flex-wrap justify-start gap-1 rounded-[22px] border border-[#08271f]/10 bg-[#08271f] p-1.5 shadow-lg shadow-[#08271f]/10">
-          <TabsTrigger value="case" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Case</TabsTrigger>
-          <TabsTrigger value="analytics" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Analytics</TabsTrigger>
-          <TabsTrigger value="regulatory" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Regulatory Basis</TabsTrigger>
-          <TabsTrigger value="letter" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">City Letter</TabsTrigger>
-          <TabsTrigger value="evidence" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Evidence</TabsTrigger>
-          <TabsTrigger value="qa" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Q&amp;A</TabsTrigger>
-        </TabsList>
+        <div className="sticky top-2 z-20 mt-1 rounded-[28px] border-2 border-[#d5aa52] bg-[#061f1a] p-2 shadow-2xl shadow-[#08271f]/25" data-testid="glorieta-popped-nav">
+          <div className="mb-2 flex items-center justify-between gap-3 px-2 text-white">
+            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-[#f6df9c]">Start here - Water Intelligence navigation</div>
+            <div className="hidden items-center gap-2 rounded-full bg-[#d5aa52] px-3 py-1 text-[11px] font-black uppercase text-[#08271f] md:flex">
+              Use tabs <ArrowRight className="h-4 w-4 animate-pulse" />
+            </div>
+          </div>
+          <TabsList className="h-auto w-full flex-wrap justify-start gap-2 rounded-[20px] border border-white/15 bg-white/10 p-1.5">
+            <TabsTrigger value="case" className="rounded-2xl border border-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm data-[state=active]:border-[#f6df9c] data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Case</TabsTrigger>
+            <TabsTrigger value="analytics" className="rounded-2xl border border-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm data-[state=active]:border-[#f6df9c] data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Analytics</TabsTrigger>
+            <TabsTrigger value="regulatory" className="rounded-2xl border border-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm data-[state=active]:border-[#f6df9c] data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Regulatory Basis</TabsTrigger>
+            <TabsTrigger value="letter" className="rounded-2xl border border-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm data-[state=active]:border-[#f6df9c] data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">City Letter</TabsTrigger>
+            <TabsTrigger value="evidence" className="rounded-2xl border border-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm data-[state=active]:border-[#f6df9c] data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Evidence</TabsTrigger>
+            <TabsTrigger value="qa" className="rounded-2xl border border-white/15 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-white shadow-sm data-[state=active]:border-[#f6df9c] data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Q&amp;A</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="case" className="mt-4 space-y-4">
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
@@ -363,10 +395,10 @@ export function GlorietaWaterAdvocacy({
                 </Button>
                 <Button
                   className="bg-[#08271f] hover:bg-[#08271f]/90"
-                  disabled={saveLetter.isPending}
+                  disabled={savePortalNote.isPending}
                   onClick={persistLetter}
                 >
-                  {saveLetter.isPending ? 'Saving...' : 'Save to portal'}
+                  {savePortalNote.isPending ? 'Saving...' : 'Save to portal'}
                 </Button>
               </div>
               {savedDraft && (
@@ -390,15 +422,52 @@ export function GlorietaWaterAdvocacy({
                 <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">
                   <FilePenLine className="h-4 w-4" /> Review comments
                 </div>
+                {mode === 'magic' && (
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <input
+                      value={reviewerName}
+                      onChange={(event) => setReviewerName(event.target.value)}
+                      placeholder="Your name"
+                      className="h-10 rounded-xl border border-[#dedbd1] bg-[#fcfbf7] px-3 text-sm outline-none focus:ring-2 focus:ring-[#C4A35A]"
+                    />
+                    <input
+                      value={reviewerEmail}
+                      onChange={(event) => setReviewerEmail(event.target.value)}
+                      placeholder="Your email"
+                      className="h-10 rounded-xl border border-[#dedbd1] bg-[#fcfbf7] px-3 text-sm outline-none focus:ring-2 focus:ring-[#C4A35A]"
+                    />
+                  </div>
+                )}
                 <textarea
                   value={reviewNote}
                   onChange={(event) => setReviewNote(event.target.value)}
-                  placeholder="Add redline notes or client comments here. This stays in the browser until copied into a formal record."
+                  placeholder="Add redline notes or client comments here. Save them and APAS will see the comment in the portal record."
                   className="mt-3 min-h-[150px] w-full rounded-2xl border border-[#dedbd1] bg-[#fcfbf7] p-3 text-sm outline-none focus:ring-2 focus:ring-[#C4A35A]"
                 />
+                <Button
+                  className="mt-3 w-full bg-[#08271f] hover:bg-[#08271f]/90"
+                  disabled={savePortalNote.isPending || reviewNote.trim().length < 2}
+                  onClick={persistReviewNote}
+                >
+                  {savePortalNote.isPending ? 'Saving comment...' : 'Save client comment to portal'}
+                </Button>
                 <p className="mt-2 text-xs leading-relaxed text-[#6d746f]">
-                  {confidential ? 'Magic-link edits are local review notes; they are not submitted unless copied into an instruction or note.' : 'Staff can move approved language into correspondence or the document studio after review.'}
+                  {confidential ? 'Magic-link comments save into the same Water Intelligence record APAS sees in the portal.' : 'Staff and client comments are part of the shared Water Intelligence note trail.'}
                 </p>
+                <div className="mt-4 space-y-2">
+                  {reviewNotes.length > 0 && (
+                    <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">Saved client comments</div>
+                  )}
+                  {reviewNotes.slice(0, 6).map((note) => (
+                    <article key={note.id} className="rounded-2xl border border-[#e8e3d8] bg-[#fcfbf7] p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-[#8a8478]">
+                        <span className="font-semibold text-[#08271f]">{note.author_name || 'Reviewer'}</span>
+                        <span>{new Date(note.created_at).toLocaleString()}</span>
+                      </div>
+                      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-[#3d4a45]">{cleanReviewNote(note)}</p>
+                    </article>
+                  ))}
+                </div>
               </section>
             </aside>
           </div>
