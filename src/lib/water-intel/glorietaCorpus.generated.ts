@@ -52,7 +52,6 @@ export const GLORIETA_CORPUS_SUMMARY = {
     "9952938168"
   ],
   "fanningHits": 0,
-  "claimedCreditTarget": 1100000,
   "disputeAccount": "2745714336",
   "disputeMeter": "61302354",
   "disputePeriodStart": "2024-04-01",

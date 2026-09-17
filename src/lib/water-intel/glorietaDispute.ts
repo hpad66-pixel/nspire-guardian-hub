@@ -13,15 +13,30 @@ export interface GlorietaMonthlyPoint {
 export interface GlorietaAccountPoint {
   accountNumber: string;
   label: string;
+  meterNumber?: string;
   gallons: number;
   spend: number;
   billCount: number;
+}
+
+export interface GlorietaMeterTimelinePoint {
+  accountNumber: string;
+  label: string;
+  meterNumber?: string;
+  preVacancySpend: number;
+  vacancySpend: number;
+  postRehabSpend: number;
+  preVacancyGallons: number;
+  vacancyGallons: number;
+  postRehabGallons: number;
+  isDispute: boolean;
 }
 
 export interface GlorietaDisputeCase {
   summary: typeof GLORIETA_CORPUS_SUMMARY;
   monthly: GlorietaMonthlyPoint[];
   accounts: GlorietaAccountPoint[];
+  meterTimeline: GlorietaMeterTimelinePoint[];
   disputeMonthly: GlorietaMonthlyPoint[];
   evidenceFacts: string[];
   regulatoryPoints: Array<{
@@ -31,6 +46,9 @@ export interface GlorietaDisputeCase {
   }>;
   draftLetterHtml: string;
 }
+
+export const GLORIETA_FORMAL_RETROACTIVE_REBILL = 95017.57;
+export const GLORIETA_FORMAL_UNPAID_BALANCE = 113874.41;
 
 const MONTH_FORMAT = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -67,10 +85,18 @@ function corpusRecords() {
     .sort((a, b) => String(a.periodStart).localeCompare(String(b.periodStart)));
 }
 
+function phaseFor(periodStart?: string) {
+  const start = String(periodStart || '');
+  if (start < '2023-08-01') return 'pre' as const;
+  if (start <= '2025-02-28') return 'vacancy' as const;
+  return 'post' as const;
+}
+
 export function buildGlorietaDisputeCase(): GlorietaDisputeCase {
   const canonical = corpusRecords();
   const monthlyMap = new Map<string, GlorietaMonthlyPoint>();
   const accountMap = new Map<string, GlorietaAccountPoint>();
+  const timelineMap = new Map<string, GlorietaMeterTimelinePoint>();
 
   for (const bill of canonical) {
     const key = monthKey(bill.periodStart);
@@ -107,6 +133,7 @@ export function buildGlorietaDisputeCase(): GlorietaDisputeCase {
       ?? {
         accountNumber,
         label: bill.buildingLabel || titleCaseAddress(bill.serviceAddress) || accountNumber,
+        meterNumber: bill.meterNumber,
         gallons: 0,
         spend: 0,
         billCount: 0,
@@ -114,11 +141,44 @@ export function buildGlorietaDisputeCase(): GlorietaDisputeCase {
     account.gallons += gallons;
     account.spend += spend;
     account.billCount += 1;
+    if (!account.meterNumber && bill.meterNumber) account.meterNumber = bill.meterNumber;
     accountMap.set(accountNumber, account);
+
+    const timeline =
+      timelineMap.get(accountNumber)
+      ?? {
+        accountNumber,
+        label: bill.buildingLabel || titleCaseAddress(bill.serviceAddress) || accountNumber,
+        meterNumber: bill.meterNumber,
+        preVacancySpend: 0,
+        vacancySpend: 0,
+        postRehabSpend: 0,
+        preVacancyGallons: 0,
+        vacancyGallons: 0,
+        postRehabGallons: 0,
+        isDispute: isDisputeAccount,
+      };
+    const phase = phaseFor(bill.periodStart);
+    if (phase === 'pre') {
+      timeline.preVacancySpend += spend;
+      timeline.preVacancyGallons += gallons;
+    } else if (phase === 'vacancy') {
+      timeline.vacancySpend += spend;
+      timeline.vacancyGallons += gallons;
+    } else {
+      timeline.postRehabSpend += spend;
+      timeline.postRehabGallons += gallons;
+    }
+    if (!timeline.meterNumber && bill.meterNumber) timeline.meterNumber = bill.meterNumber;
+    timelineMap.set(accountNumber, timeline);
   }
 
   const monthly = [...monthlyMap.values()].sort((a, b) => a.month.localeCompare(b.month));
   const accounts = [...accountMap.values()].sort((a, b) => b.spend - a.spend);
+  const meterTimeline = [...timelineMap.values()].sort((a, b) => {
+    if (a.isDispute !== b.isDispute) return a.isDispute ? -1 : 1;
+    return b.vacancySpend - a.vacancySpend;
+  });
   const disputeMonthly = monthly.filter((row) => row.disputeSpend > 0 || row.disputeGallons > 0);
 
   const summary = GLORIETA_CORPUS_SUMMARY;
@@ -128,14 +188,15 @@ export function buildGlorietaDisputeCase(): GlorietaDisputeCase {
     summary,
     monthly,
     accounts,
+    meterTimeline,
     disputeMonthly,
     evidenceFacts: [
       `${summary.sourceFileCount} WASD PDFs were indexed from the Water Meter Files folder; ${summary.canonicalBillCount} account-period records are usable for trends after duplicate control.`,
-      `${reviewCount} records remain in the review queue because the account or service-period line needs human confirmation before it should drive a client claim.`,
+      `${reviewCount} records remain in the review queue because the account or service-period line needs human confirmation before it should drive the client-facing billing position.`,
       `Account ${summary.disputeAccount}, meter ${summary.disputeMeter}, is the Building 8 dispute account for the April 2024 through January 2026 vacant or rehab window.`,
       `The extracted Building 8 dispute-window subtotal is ${money(summary.disputeCurrentCharges)} in current charges, ${summary.disputeGallons.toLocaleString()} gallons, ${money(summary.disputeWaterCharges)} water, and ${money(summary.disputeSewerCharges)} sewer.`,
-      `The formal dispute letter dated ${summary.formalDisputeDate} identifies a $95,017.57 retroactive rebill, an unpaid $113,874.41 balance, and estimated usage of about 216,000 gallons per month.`,
-      `The requested ${money(summary.claimedCreditTarget)} claim target is treated as the owner-requested full exposure placeholder until counsel and the billing authority reconcile it to final statements, damages, late charges, and credits.`,
+      `The formal dispute letter dated ${summary.formalDisputeDate} identifies a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill, an unpaid ${money(GLORIETA_FORMAL_UNPAID_BALANCE)} balance, and estimated usage of about 216,000 gallons per month.`,
+      'The billing case should stay anchored to actual statements, actual reads, the cited rebill, and the unpaid balance until the City or WASD supplies its rebill worksheet.',
     ],
     regulatoryPoints: [
       {
@@ -176,7 +237,7 @@ function buildDraftLetterHtml() {
     <p><strong>Re:</strong> Glorieta Gardens - Account ${summary.disputeAccount}, Meter ${summary.disputeMeter}, Building 8 / 13200 Alexandria Drive</p>
     <p>Dear Public Works and WASD Billing Review Team,</p>
     <p>We are requesting a corrected billing review and credit for the Building 8 water and sewer account at Glorieta Gardens. The disputed period covers the vacancy and rehabilitation window beginning in April 2024 and continuing through January 2026, when Building 8 was not operating as an occupied residential building.</p>
-    <p>The owner-side record shows that the account was billed using estimated usage of approximately 216,000 gallons per month during a period when ordinary residential consumption could not have occurred. The July 23, 2026 dispute letter identifies a $95,017.57 retroactive rebill and a $113,874.41 unpaid balance. ProjOS Water Intelligence has indexed the available WASD statement backup and currently shows ${summary.disputeGallons.toLocaleString()} gallons and ${money(summary.disputeCurrentCharges)} in current charges tied to Account ${summary.disputeAccount} within the dispute window. The owner has asked that the full disputed exposure, currently carried as ${money(summary.claimedCreditTarget)}, be reviewed and reconciled to the underlying billing record, credits, late charges, and any related service consequences.</p>
+    <p>The owner-side record shows that the account was billed using estimated usage of approximately 216,000 gallons per month during a period when ordinary residential consumption could not have occurred. The July 23, 2026 dispute letter identifies a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill and a ${money(GLORIETA_FORMAL_UNPAID_BALANCE)} unpaid balance. ProjOS Water Intelligence has indexed the available WASD statement backup and currently shows ${summary.disputeGallons.toLocaleString()} gallons and ${money(summary.disputeCurrentCharges)} in current charges tied to Account ${summary.disputeAccount} within the dispute window.</p>
     <p>Our request is straightforward: please remove charges that are not supported by actual consumption, actual meter reads, or a reasonable service-location consumption basis for the period when the building was condemned, vacant, and under rehabilitation. Where actual reads are unavailable, please apply the corrected-billing principles in WASD's rules using actual consumption from a comparable service-location period or average anticipated consumption appropriate to a vacant building, not an occupied multifamily building.</p>
     <p>We also request the meter-change work order, installation date, starting register reading, read history, estimate basis, adjustment worksheet, payment ledger, late charge ledger, and any internal investigation notes used to support the rebill.</p>
     <p>Until the review is complete, please suspend any past-due classification, late charge escalation, collection action, discontinuance process, or adverse account action related to the disputed estimated amount.</p>

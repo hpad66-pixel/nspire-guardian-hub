@@ -166,7 +166,7 @@ export function localChatAnswer(question: string, snapshot: Record<string, unkno
   const accounts = (snapshot.accounts ?? []) as Array<Record<string, unknown>>;
   const efficiency = (snapshot.efficiency ?? {}) as Record<string, number | string | null>;
   if (/dispute|building 8|216|estimate/.test(q)) {
-    return 'Building 8 (acct 2745714336) is the formal dispute. Miami-Dade estimated ~216k gallons/month while the building was vacant. Ask for actual reads and a credit memo; do not treat those estimates as consumption.';
+    return 'Dispute focus: Building 8, Account 2745714336, Meter 61302354. The formal package cites a $95,017.57 retroactive rebill, a $113,874.41 unpaid balance, and estimated usage of about 216k gallons per month during the vacancy/rehab period. Ask for actual reads, the meter-change record, the rebill worksheet, and a corrected account statement.';
   }
   if (/per capita|gpcd|per person|per unit|intensity|benchmark/.test(q)) {
     return `The latest normalized period is ${Number(efficiency.gallonsPerUnitDay || 0).toFixed(1)} gallons per connected unit per day and ${Number(efficiency.gallonsPerCapitaDay || 0).toFixed(1)} modeled gallons per capita per day. The EPA multifamily median reference is 43,600 gallons per unit per year; confirm meter mappings and resident counts before treating the modeled result as verified.`;
@@ -185,7 +185,7 @@ export function localChatAnswer(question: string, snapshot: Record<string, unkno
     }
   }
   if (/past due|open|owe|unpaid/.test(q)) {
-    return `Open / unpaid exposure is ${money(kpis.openAmount)}, of which ${money(kpis.pastDueAmount)} is past due.`;
+    return `Open / unpaid exposure is ${money(kpis.openAmount)}, of which ${money(kpis.pastDueAmount)} is past due. For Glorieta, keep the dispute narrative anchored to the cited $113,874.41 unpaid Building 8 balance until WASD provides the supporting ledger.`;
   }
   return `I can brief spend, consumption, estimates, and the Building 8 dispute. Trailing-12 spend is ${money(kpis.last12Spend)} across ${accounts.length} service accounts. Ask about a building or “what should we do next?”`;
 }

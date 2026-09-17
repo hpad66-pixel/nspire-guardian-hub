@@ -17,7 +17,7 @@ function localAnswer(question: string, snapshot: Record<string, unknown>) {
   const accounts = (snapshot.accounts ?? []) as Array<Record<string, unknown>>;
   const efficiency = (snapshot.efficiency ?? {}) as Record<string, number | string | null>;
   if (/dispute|building 8|216|estimate/.test(q)) {
-    return "Building 8 (acct 2745714336) is the formal dispute. Miami-Dade estimated ~216k gallons/month while the building was vacant. Ask for actual reads and a credit memo; do not treat those estimates as consumption.";
+    return "Dispute focus: Building 8, Account 2745714336, Meter 61302354. The formal package cites a $95,017.57 retroactive rebill, a $113,874.41 unpaid balance, and estimated usage of about 216k gallons per month during the vacancy/rehab period. Ask for actual reads, the meter-change record, the rebill worksheet, and a corrected account statement.";
   }
   if (/per capita|gpcd|per person|per unit|intensity|benchmark/.test(q)) {
     return `The latest normalized period is ${Number(efficiency.gallonsPerUnitDay || 0).toFixed(1)} gallons per connected unit per day and ${Number(efficiency.gallonsPerCapitaDay || 0).toFixed(1)} modeled GPCD. Confirm meter mappings and resident counts before treating the result as verified.`;
@@ -30,7 +30,7 @@ function localAnswer(question: string, snapshot: Record<string, unknown>) {
     return `Year-to-date water/sewer spend is $${Number(kpis.ytdSpend || 0).toLocaleString()} across ${accounts.length} service accounts. Trailing-12 is $${Number(kpis.last12Spend || 0).toLocaleString()}.`;
   }
   if (/what should|next|action/.test(q)) {
-    return "This week: (1) keep Building 8 on the dispute path with actual meter photos, (2) clear past-due before late fees, (3) ingest the newest PDFs so the executive brief stays live.";
+    return "This week: confirm the Building 8 vacancy timeline, request actual reads and the rebill worksheet from WASD, keep the disputed balance from being treated as ordinary operating usage, and attach the latest billing portfolio to the City letter.";
   }
   return `Trailing-12 spend is $${Number(kpis.last12Spend || 0).toLocaleString()} across ${accounts.length} accounts. Ask about a building, estimates, or the next action.`;
 }
@@ -87,10 +87,12 @@ serve(async (req) => {
     const sys = `You are Water Intelligence, an executive briefing partner for APAS and the property owner.
 Speak like a CFO + utility analyst. Be concise, specific, and actionable.
 Never invent meter reads. Use only the JSON snapshot.
+Do not use raw markdown symbols such as # headings or **asterisk bold**. Write short colored-card friendly headings as plain text followed by concise paragraphs.
 Distinguish billing exposure from consumption performance. Never call modeled savings verified.
 For savings, use the rate-normalized avoided-cost result in the snapshot and state its confidence status.
 For per-capita use, say whether population is verified or modeled.
-If Building 8 / account 2745714336 appears, treat estimated ~216k gal/mo during vacancy as a live dispute — recommend actual reads and a credit memo.
+If Building 8 / account 2745714336 appears, treat estimated ~216k gal/mo during vacancy as a live dispute. Focus on the $95,017.57 retroactive rebill, the $113,874.41 unpaid balance, actual reads, meter-change records, rebill worksheets, and corrected billing.
+Do not mention unsupported owner-side dollar targets. Keep the answer anchored to the bill-backed dispute facts.
 Always name the next action for the owner or consultant.
 Snapshot:\n${JSON.stringify(snapshot).slice(0, 14000)}`;
 

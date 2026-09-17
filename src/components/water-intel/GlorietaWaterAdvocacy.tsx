@@ -6,15 +6,17 @@ import {
   FilePenLine,
   FileText,
   LockKeyhole,
+  Mail,
   MessageSquareWarning,
   Scale,
   ShieldCheck,
+  ThumbsDown,
+  ThumbsUp,
 } from 'lucide-react';
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
   ComposedChart,
   Line,
   ResponsiveContainer,
@@ -25,7 +27,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { ProRichTextEditor, RichTextViewer } from '@/components/ui/rich-text-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { buildGlorietaDisputeCase, type GlorietaMonthlyPoint } from '@/lib/water-intel/glorietaDispute';
+import {
+  buildGlorietaDisputeCase,
+  GLORIETA_FORMAL_RETROACTIVE_REBILL,
+  GLORIETA_FORMAL_UNPAID_BALANCE,
+  type GlorietaMonthlyPoint,
+} from '@/lib/water-intel/glorietaDispute';
 import { gallons, money, type WaterExecNote } from '@/lib/water-intel';
 import { useWaterNotes, type WaterIntelScope } from '@/hooks/useWaterIntelligence';
 
@@ -87,27 +94,6 @@ function ExplanationCard({ title, body }: { title: string; body: string }) {
   );
 }
 
-function InternalActionCard() {
-  return (
-    <section className="rounded-[24px] border border-amber-200 bg-amber-50 p-5 text-amber-950">
-      <div className="flex items-start gap-3">
-        <MessageSquareWarning className="mt-1 h-5 w-5 shrink-0" />
-        <div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.16em]">Internal site-action note</div>
-          <h3 className="mt-1 font-display text-2xl text-[#08271f]">Manhole fabric follow-up</h3>
-          <p className="mt-2 text-sm leading-relaxed">
-            Chris is following up on leftover fabric in the manholes. Internal draft response: "Please visit the site and get it out. Please let me know when you will get it done. Thank you."
-          </p>
-          <p className="mt-2 text-sm leading-relaxed">
-            Follow-up context: the issue was shared with Chris yesterday and he acknowledged it. APAS plans to follow up again today. Payment may need to be held until the manhole fabric is removed because that may be the practical lever to get the field remediation completed.
-          </p>
-          <p className="mt-2 text-xs font-semibold uppercase tracking-wide">Not sent. Keep separate from the billing dispute package.</p>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function extractSavedLetter(note: WaterExecNote | undefined) {
   if (!note?.body.includes(GLORIETA_CITY_LETTER_MARKER)) return null;
   const html = note.body.split(GLORIETA_CITY_LETTER_MARKER)[1]?.trim();
@@ -159,9 +145,9 @@ export function GlorietaWaterAdvocacy({
   }
 
   const recentDispute = dispute.disputeMonthly.slice(-12);
-  const claim = dispute.summary.claimedCreditTarget;
   const extracted = dispute.summary.disputeCurrentCharges;
-  const gapToClaim = Math.max(0, claim - extracted);
+  const mailSubject = encodeURIComponent(`Glorieta Gardens billing dispute - Account ${dispute.summary.disputeAccount}`);
+  const mailBody = encodeURIComponent(letterHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
 
   return (
     <section className="overflow-hidden rounded-[28px] border border-[#dedbd1] bg-[#f7f3ea] shadow-sm" data-testid="glorieta-water-advocacy">
@@ -186,10 +172,10 @@ export function GlorietaWaterAdvocacy({
       </div>
 
       <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4 md:p-6">
-        <CompactMetric label="Claim target" value={money(claim)} detail="Owner-requested full disputed exposure for reconciliation." tone="rose" />
-        <CompactMetric label="Bill-backed subtotal" value={money(extracted)} detail="Extracted Building 8 current charges in the dispute window." tone="gold" />
+        <CompactMetric label="Formal rebill cited" value={money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} detail="Retroactive back-bill amount cited in the July 23, 2026 dispute package." tone="rose" />
+        <CompactMetric label="Unpaid balance cited" value={money(GLORIETA_FORMAL_UNPAID_BALANCE)} detail="Balance cited in the formal dispute package for Account 2745714336." tone="gold" />
+        <CompactMetric label="Indexed bill subtotal" value={money(extracted)} detail="Current charges extracted from Building 8 records inside the dispute window." tone="blue" />
         <CompactMetric label="Indexed source files" value={String(dispute.summary.sourceFileCount)} detail={`${dispute.summary.canonicalBillCount} canonical records after duplicate control.`} tone="blue" />
-        <CompactMetric label="Review queue" value={String(dispute.summary.reviewQueueCount)} detail="Needs human confirmation before driving the final claim." />
       </div>
 
       <Tabs defaultValue="case" className="px-4 pb-5 md:px-6">
@@ -203,43 +189,46 @@ export function GlorietaWaterAdvocacy({
         </TabsList>
 
         <TabsContent value="case" className="mt-4 space-y-4">
-          {mode === 'staff' && <InternalActionCard />}
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
             <section className="rounded-3xl border border-[#dedbd1] bg-white p-5">
               <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">
                 <ShieldCheck className="h-4 w-4 text-emerald-600" /> Plain-English position
               </div>
-              <h3 className="mt-2 font-display text-3xl text-[#08271f]">Why the credit argument is strong</h3>
+              <h3 className="mt-2 font-display text-3xl text-[#08271f]">What the factual billing dispute is</h3>
               <div className="mt-4 grid gap-3">
-                <ExplanationCard title="The building was not normally occupied" body="The dispute package says Building 8 was condemned, vacant, and under rehabilitation through the period when high estimated usage was billed. That makes ordinary apartment consumption an unreliable assumption." />
-                <ExplanationCard title="The bill was driven by estimates and rebilling" body="The formal dispute identifies a retroactive rebill and estimated monthly usage. The request asks the City and WASD to reconcile those estimates to actual reads, meter-change records, and reasonable vacant-building usage." />
-                <ExplanationCard title="The analytics separate proof from claim" body={`ProjOS shows the auditable bill subtotal (${money(extracted)}) separately from the requested ${money(claim)} exposure target. That helps the owner make the larger case without overstating what has already been extracted from statements.`} />
-                <ExplanationCard title="Where the $1.1M number came from" body={`${money(claim)} is a working claim target entered into ProjOS from the owner-side request, not a WASD bill total. The source-backed figures currently visible are the ${money(extracted)} extracted Building 8 dispute-window subtotal, the $95,017.57 retroactive rebill, and the $113,874.41 unpaid balance cited in the formal dispute package. Keep the $1.1M labeled as under-reconciliation until counsel or the owner supplies the supporting schedule.`} />
+                <ExplanationCard title="The disputed account is Building 8" body={`Account ${dispute.summary.disputeAccount}, Meter ${dispute.summary.disputeMeter}, Building 8 / 13200 Alexandria Drive is the account being challenged.`} />
+                <ExplanationCard title="The dispute is about a back-bill, not a broad damages claim" body={`The formal dispute package cites a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill, a ${money(GLORIETA_FORMAL_UNPAID_BALANCE)} unpaid balance, and estimated usage of about 216,000 gallons per month.`} />
+                <ExplanationCard title="The vacancy record matters" body="Building 8 was red-tagged, condemned, vacated, and under rehabilitation during the core dispute window. That is why occupied-building estimated usage needs to be corrected to actual reads or a reasonable vacant-building basis." />
+                <ExplanationCard title="The dashboard stays bill-backed" body={`ProjOS shows the extracted Building 8 dispute-window subtotal as ${money(extracted)} in current charges and ${dispute.summary.disputeGallons.toLocaleString()} gallons. It does not add speculative numbers to the case.`} />
               </div>
             </section>
 
-            <section className="rounded-3xl border border-[#dedbd1] bg-white p-5">
+            <section className="relative overflow-hidden rounded-3xl border border-[#dedbd1] bg-white p-5">
+              <div className="pointer-events-none absolute inset-0 opacity-[0.08]">
+                <svg viewBox="0 0 600 260" className="h-full w-full" preserveAspectRatio="none" aria-hidden="true">
+                  <path d="M0 90 C70 30 135 150 205 90 S345 30 420 90 535 150 600 90" fill="none" stroke="#1D6FE8" strokeWidth="18" />
+                  <path d="M0 175 C85 115 130 230 220 175 S365 115 455 175 545 225 600 175" fill="none" stroke="#C4A35A" strokeWidth="14" />
+                </svg>
+              </div>
               <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">
-                <AlertTriangle className="h-4 w-4 text-rose-600" /> Reconciliation bridge
+                <AlertTriangle className="h-4 w-4 text-rose-600" /> Billing timeline
               </div>
-              <h3 className="mt-2 font-display text-2xl text-[#08271f]">From extracted subtotal to full claim</h3>
-              <div className="mt-5 space-y-3">
-                <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#f8f6ef] px-4 py-3 text-sm">
-                  <span>Owner claim target</span>
-                  <strong className="font-mono text-[#08271f]">{money(claim)}</strong>
-                </div>
-                <div className="flex items-center justify-between gap-4 rounded-2xl bg-[#f8f6ef] px-4 py-3 text-sm">
-                  <span>Statement subtotal currently indexed</span>
-                  <strong className="font-mono text-[#08271f]">{money(extracted)}</strong>
-                </div>
-                <div className="flex items-center justify-between gap-4 rounded-2xl bg-rose-50 px-4 py-3 text-sm text-rose-900">
-                  <span>Needs reconciliation support</span>
-                  <strong className="font-mono">{money(gapToClaim)}</strong>
-                </div>
+              <h3 className="relative mt-2 font-display text-2xl text-[#08271f]">Pre, vacancy, and post-rehab story</h3>
+              <div className="relative mt-5 grid gap-3">
+                {[
+                  ['Pre-Vacancy', 'Before Aug 2023', 'Normal operations before Building 8 was condemned.'],
+                  ['Vacancy / Rehab', 'Aug 2023 - Feb 2025', 'Building 8 was red-tagged, vacated, and under rehabilitation. This is the core reason estimated occupied usage should be challenged.'],
+                  ['Post-Rehab', 'Mar 2025 - Sep 2026', 'Building reoccupation and the later back-bill/dispute activity occur here.'],
+                ].map(([title, dates, body], index) => (
+                  <div key={title} className={`rounded-2xl border px-4 py-3 ${index === 1 ? 'border-rose-200 bg-rose-50 text-rose-950' : 'border-[#e8e3d8] bg-[#fcfbf7] text-[#3d4a45]'}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <strong className="text-sm text-[#08271f]">{title}</strong>
+                      <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-[#8a8478]">{dates}</span>
+                    </div>
+                    <p className="mt-1 text-sm leading-relaxed">{body}</p>
+                  </div>
+                ))}
               </div>
-              <p className="mt-4 text-sm leading-relaxed text-[#5c6863]">
-                The next evidence step is to connect the remaining claim amount to late charges, total account balance history, rebill worksheets, service-risk consequences, and any owner damages or payments already made.
-              </p>
             </section>
           </div>
         </TabsContent>
@@ -272,22 +261,25 @@ export function GlorietaWaterAdvocacy({
             </TabsContent>
             <TabsContent value="accounts" className="mt-4">
               <section className="rounded-3xl border border-[#dedbd1] bg-white p-5">
-                <h3 className="font-display text-2xl text-[#08271f]">Which account carries the cost</h3>
-                <p className="mt-1 text-sm text-[#5c6863]">Sorted by extracted current charges across the canonical bill archive. Building 8 is isolated as the formal dispute account.</p>
+                <h3 className="font-display text-2xl text-[#08271f]">Pre / vacancy / post-rehab meter comparison</h3>
+                <p className="mt-1 text-sm text-[#5c6863]">Each row is a meter/account. Building 8 is highlighted because Account {dispute.summary.disputeAccount} is the disputed back-bill account.</p>
                 <div className="mt-4 h-[340px]">
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={dispute.accounts} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
+                    <BarChart data={dispute.meterTimeline} layout="vertical" margin={{ top: 0, right: 16, left: 8, bottom: 0 }}>
                       <CartesianGrid stroke="#efe9da" horizontal={false} />
                       <XAxis type="number" tick={{ fontSize: 11, fill: '#8a8478' }} axisLine={false} tickLine={false} tickFormatter={(value) => `$${Math.round(Number(value) / 1000)}k`} />
                       <YAxis type="category" dataKey="label" width={145} tick={{ fontSize: 11, fill: '#08271f' }} axisLine={false} tickLine={false} />
                       <Tooltip content={<TrendTip />} />
-                      <Bar dataKey="spend" name="Current charges" radius={[0, 8, 8, 0]}>
-                        {dispute.accounts.map((row) => (
-                          <Cell key={row.accountNumber} fill={row.accountNumber === dispute.summary.disputeAccount ? ROSE : FOREST} />
-                        ))}
-                      </Bar>
+                      <Bar dataKey="preVacancySpend" name="Pre-vacancy" stackId="period" fill="#94A3B8" radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="vacancySpend" name="Vacancy/rehab" stackId="period" fill={ROSE} radius={[0, 0, 0, 0]} />
+                      <Bar dataKey="postRehabSpend" name="Post-rehab" stackId="period" fill={FOREST} radius={[0, 8, 8, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#5c6863]">
+                  <span className="rounded-full bg-slate-100 px-3 py-1">Pre-vacancy</span>
+                  <span className="rounded-full bg-rose-100 px-3 py-1 text-rose-900">Vacancy/rehab disputed period</span>
+                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-emerald-900">Post-rehab</span>
                 </div>
               </section>
             </TabsContent>
@@ -343,6 +335,11 @@ export function GlorietaWaterAdvocacy({
                 <Button variant="outline" onClick={copyLetter}>
                   {copied ? <CheckCircle2 className="mr-1.5 h-4 w-4" /> : <Copy className="mr-1.5 h-4 w-4" />}
                   {copied ? 'Copied' : 'Copy text'}
+                </Button>
+                <Button variant="outline" asChild>
+                  <a href={`mailto:?subject=${mailSubject}&body=${mailBody}`}>
+                    <Mail className="mr-1.5 h-4 w-4" /> Email draft
+                  </a>
                 </Button>
                 <Button
                   className="bg-[#08271f] hover:bg-[#08271f]/90"
@@ -411,10 +408,26 @@ export function GlorietaWaterAdvocacy({
             </div>
             <h3 className="mt-2 font-display text-3xl text-[#08271f]">Questions the financial reviewer will ask</h3>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <ExplanationCard title="Can we prove the $1.1M?" body="Not yet from bills alone. The dashboard intentionally separates the working claim target from source-backed bill totals so the final letter can be reconciled to statements, late charges, payments, service consequences, and owner damages." />
-              <ExplanationCard title="Why is the water intensity low?" body="Because the measured ledger window includes vacancy/rehab conditions and uses connected units as the denominator. That is useful evidence for disputing occupied-building estimates, but it is not a standalone efficiency certification." />
-              <ExplanationCard title="What should be requested from the City/WASD?" body="Ask for meter-change records, register reads, estimate worksheets, rebill worksheets, payment ledger, late-charge ledger, and the investigative notes behind the Building 8 rebill." />
-              <ExplanationCard title="What should APAS save?" body="Keep the edited city letter, reviewer comments, source PDFs, extracted fact index, and any owner reconciliation schedule in the Water Intelligence record so the magic-link review and staff portal stay connected." />
+              {[
+                ['Which account and meter are actually disputed?', `Building 8, Account ${dispute.summary.disputeAccount}, Meter ${dispute.summary.disputeMeter}. Keep the case focused there unless another statement shows the same problem.`],
+                ['What period should be challenged?', 'The vacancy/rehab window is the central period: August 2023 through February 2025, with the indexed dispute ledger running April 2024 through January 2026.'],
+                ['What dollar amount is supported by the formal dispute?', `The formal package cites a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill and a ${money(GLORIETA_FORMAL_UNPAID_BALANCE)} unpaid balance.`],
+                ['What does ProjOS extract from the bill archive?', `The indexed Building 8 dispute-window subtotal is ${money(extracted)} in current charges and ${dispute.summary.disputeGallons.toLocaleString()} gallons.`],
+                ['Why is the estimate suspect?', 'Because the building was red-tagged, vacated, and under rehabilitation while the billing record refers to large estimated usage.'],
+                ['What proof should the City or WASD produce?', 'Actual reads, meter-change work orders, starting register reads, estimate worksheets, adjustment worksheets, payment ledger, late-charge ledger, and investigation notes.'],
+                ['What would justify killing the charge?', 'A record showing that the rebilled usage is not supported by actual consumption, actual reads, or a reasonable vacant-building consumption basis.'],
+                ['Which accounts are not part of the current dispute?', 'The other Glorieta meters remain useful as context, but the present billing challenge is Building 8 unless another account is separately documented.'],
+                ['How should the pre/post chart be read?', 'It shows whether charges cluster during the vacancy/rehab window compared with normal operations before and after the building was reoccupied.'],
+                ['What is the most important next step?', 'Send the corrected-billing request with the exact account, meter, vacancy timeline, rebill amount, unpaid balance, and document request.'],
+                ['What should not be included?', 'Do not include unrelated field issues, speculative damages, or unsupported dollar targets. Keep the package bill-backed.'],
+                ['What response should leadership expect?', 'A defensible response should include the rebill worksheet, meter history, estimate basis, and a credit or corrected account statement if the estimate cannot be supported.'],
+              ].map(([title, body]) => (
+                <ExplanationCard key={title} title={title} body={body} />
+              ))}
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Button variant="outline" size="sm"><ThumbsUp className="mr-1.5 h-4 w-4" /> Useful</Button>
+              <Button variant="outline" size="sm"><ThumbsDown className="mr-1.5 h-4 w-4" /> Needs work</Button>
             </div>
           </section>
         </TabsContent>
