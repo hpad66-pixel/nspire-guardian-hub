@@ -99,11 +99,11 @@ test("bill archive and QA overlay are checked into the repo", () => {
 test("Glorieta briefing has prominent navigation and portal-saved client comments", () => {
   const source = fs.readFileSync(GLORIETA_ADVOCACY, "utf8");
   expect(source).toContain('data-testid="glorieta-popped-nav"');
-  expect(source).toContain("Start here - Water Intelligence navigation");
+  expect(source).toContain("Start here - review navigation");
   expect(source).toContain("Use tabs");
   expect(source).toContain("GLORIETA_CLIENT_REVIEW_NOTE_V1");
   expect(source).toContain("Save client comment to portal");
-  expect(source).toContain("Magic-link comments save into the same Water Intelligence record APAS sees in the portal.");
+  expect(source).toContain("Magic-link comments save into the same billing review record visible in the portal.");
 });
 
 test("magic link page mounts for an unknown token", async ({ page }) => {
