@@ -117,6 +117,8 @@ export function PayAppSignSendDialog({
       toast.loading("Sending to the client…", { id: t });
       await sendEmail.mutateAsync({
         recipients,
+        fromName: buildBrand.senderName,
+        fromEmail: buildBrand.senderEmail,
         subject: `DRAFT for review - Pay Application #${pa.pay_app_no} - ${contract.title}`,
         bodyHtml: `
           <div style="font-family:Arial,sans-serif;color:#17191d;max-width:620px">

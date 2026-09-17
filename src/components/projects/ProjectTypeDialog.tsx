@@ -1,7 +1,7 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Building2, Briefcase, Lightbulb, Check, Loader2, HardHat } from 'lucide-react';
 import { useUpdateProject } from '@/hooks/useProjects';
-import { companyBrandForProjectType } from '@/lib/financial/apasCompanyBranding';
+import { billingWorkflowDescriptorForProjectType, companyBrandForProjectType } from '@/lib/financial/apasCompanyBranding';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -49,6 +49,7 @@ export function ProjectTypeDialog({ open, onOpenChange, project }: Props) {
             const Icon = t.icon;
             const active = t.value === current;
             const brand = companyBrandForProjectType(t.value);
+            const workflow = billingWorkflowDescriptorForProjectType(t.value, brand);
             return (
               <button
                 key={t.value}
@@ -69,7 +70,7 @@ export function ProjectTypeDialog({ open, onOpenChange, project }: Props) {
                   <div className="text-sm font-medium flex items-center gap-2">{t.label}{active && <span className="text-[11px] text-[var(--apas-sapphire)]">Current</span>}</div>
                   <div className="text-xs text-muted-foreground">{t.desc}</div>
                   <div className="mt-1 text-[11px] font-semibold" style={{ color: brand.primary }}>
-                    {brand.legalName} - {brand.workflowLabel} - sender: {brand.senderName}
+                    Default company: {brand.legalName} - {workflow.workflowLabel}. Billing company can be changed separately in Project Admin.
                   </div>
                 </div>
                 {update.isPending ? <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0 mt-1" /> : active ? <Check className="h-4 w-4 text-[var(--apas-sapphire)] shrink-0 mt-1" /> : null}

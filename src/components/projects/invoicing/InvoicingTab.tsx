@@ -7,10 +7,11 @@ import {
 import { Plus, Receipt, MoreHorizontal, Trash2, Eye, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { useConsultingInvoices, useConsultingArLedger } from '@/hooks/useConsultingInvoices';
+import { useProject } from '@/hooks/useProjects';
 import { useProjectScopes, summarizeScopes } from '@/hooks/useProjectScopes';
 import { useFinancialProposals } from '@/hooks/useFinancialProposals';
 import { proposalTotals } from '@/lib/financial/proposalPricing';
-import { APAS_COMPANY_BRANDS } from '@/lib/financial/apasCompanyBranding';
+import { billingWorkflowDescriptorForProjectType, companyBrandForProject } from '@/lib/financial/apasCompanyBranding';
 import { ConsultingInvoiceBuilder, type InvoiceClientSeed } from './ConsultingInvoiceBuilder';
 import { InvoiceDetailDialog } from './InvoiceDetailDialog';
 import { INVOICE_STATUS_META, money } from './invoiceMeta';
@@ -40,6 +41,7 @@ export function InvoicingTab({
   autoCreateProposalId?: string | null;
 }) {
   const { data: invoices, isLoading, remove } = useConsultingInvoices(projectId);
+  const { data: project } = useProject(projectId);
   const { data: ledger } = useConsultingArLedger(projectId);
   const { data: scopes } = useProjectScopes(projectId);
   const { data: proposals = [] } = useFinancialProposals(projectId);
@@ -47,7 +49,8 @@ export function InvoicingTab({
   const [editId, setEditId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
   const [handledAutoCreate, setHandledAutoCreate] = useState<string | null>(null);
-  const consultingBrand = APAS_COMPANY_BRANDS.apas_consulting;
+  const billingBrand = companyBrandForProject(project as { project_type?: string | null; program_meta?: unknown } | null);
+  const workflow = billingWorkflowDescriptorForProjectType(project?.project_type, billingBrand);
 
   useEffect(() => {
     if (!autoCreateProposalId || handledAutoCreate === autoCreateProposalId) return;
@@ -74,10 +77,10 @@ export function InvoicingTab({
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2 font-[Playfair_Display]">
             <Receipt className="h-5 w-5 text-[var(--apas-sapphire)]" />
-            Client invoices
+            {workflow.workflowLabel}
           </h2>
           <p className="text-sm text-muted-foreground">
-            Corporate invoices against approved proposals with a running payment tab. Branded PDF · client sign-off · email.
+            Corporate invoices against approved proposals with a running payment tab. Branded PDF · report package · client email.
           </p>
         </div>
         <Button onClick={() => { setEditId(null); setBuilderOpen(true); }} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
@@ -88,25 +91,30 @@ export function InvoicingTab({
       <div
         className="rounded-xl border p-4"
         style={{
-          borderColor: `${consultingBrand.accent}66`,
-          background: consultingBrand.surface,
-          color: consultingBrand.ink,
-          fontFamily: consultingBrand.fontFamily,
+          borderColor: `${billingBrand.accent}66`,
+          background: billingBrand.surface,
+          color: billingBrand.ink,
+          fontFamily: billingBrand.fontFamily,
         }}
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: consultingBrand.accent }}>
-              {consultingBrand.wordmark}
+            <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: billingBrand.accent }}>
+              {billingBrand.wordmark}
             </p>
-            <h3 className="mt-1 text-lg font-black">{consultingBrand.documentLabel}</h3>
-            <p className="max-w-3xl text-sm" style={{ color: consultingBrand.muted }}>
-              Consulting projects use {consultingBrand.legalName} branding, professional-services typography, invoice PDFs, report backup, and a running A/R tab.
+            <h3 className="mt-1 text-lg font-black">{workflow.documentLabel}</h3>
+            <p className="max-w-3xl text-sm" style={{ color: billingBrand.muted }}>
+              This project bills under {billingBrand.legalName}. Invoice PDFs, report backup, sender identity, and the running A/R tab use that project billing profile.
             </p>
+            {billingBrand.senderEmailStatus === 'pending_domain' && (
+              <p className="mt-2 text-xs font-semibold text-amber-700">
+                {billingBrand.senderEmail} is staged. Verify APASBuild.com with the sending provider before emails leave directly from that mailbox.
+              </p>
+            )}
           </div>
           <div className="grid gap-1 text-xs">
-            {consultingBrand.packageIncludes.slice(0, 3).map((item) => (
-              <span key={item} className="rounded bg-white/80 px-2 py-1 font-semibold" style={{ color: consultingBrand.primary }}>{item}</span>
+            {billingBrand.packageIncludes.slice(0, 3).map((item) => (
+              <span key={item} className="rounded bg-white/80 px-2 py-1 font-semibold" style={{ color: billingBrand.primary }}>{item}</span>
             ))}
           </div>
         </div>
@@ -254,6 +262,7 @@ export function InvoicingTab({
         clientSeed={clientSeed}
         editInvoiceId={editId}
         initialProposalId={autoCreateProposalId}
+        billingBrand={billingBrand}
       />
       <InvoiceDetailDialog
         open={!!detailId}
@@ -263,6 +272,7 @@ export function InvoicingTab({
         projectName={projectName}
         clientName={clientName}
         clientSeed={clientSeed}
+        billingBrand={billingBrand}
       />
     </div>
   );

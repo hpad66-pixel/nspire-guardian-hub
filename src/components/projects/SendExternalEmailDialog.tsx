@@ -59,6 +59,12 @@ export interface SendExternalEmailAttachment {
   contentType: string;
 }
 
+export interface SendExternalEmailPreviewAttachment {
+  filename: string;
+  url: string;
+  contentType: string;
+}
+
 export interface SendExternalEmailDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -72,6 +78,13 @@ export interface SendExternalEmailDialogProps {
   onSent?: () => void;
   /** Optional PDF (or other) attachment — used by consulting invoices. */
   pdfAttachment?: SendExternalEmailAttachment;
+  /** Optional multiple attachments. Takes precedence over pdfAttachment. */
+  attachments?: SendExternalEmailAttachment[];
+  previewAttachments?: SendExternalEmailPreviewAttachment[];
+  fromName?: string;
+  fromEmail?: string;
+  fromEmailVerified?: boolean;
+  senderNotice?: string;
 }
 
 // ── Config per document type ──────────────────────────────────────────────────
@@ -326,6 +339,12 @@ export function SendExternalEmailDialog({
   contentHtml,
   onSent,
   pdfAttachment,
+  attachments,
+  previewAttachments = [],
+  fromName,
+  fromEmail,
+  fromEmailVerified = true,
+  senderNotice,
 }: SendExternalEmailDialogProps) {
   const cfg = DOC_CONFIG[documentType];
   const DocIcon = cfg.Icon;
@@ -338,8 +357,12 @@ export function SendExternalEmailDialog({
   const [bccEmails, setBccEmails] = useState<string[]>([]);
   const [subject, setSubject] = useState(autoSubject);
   const [message, setMessage] = useState('');
+  const [activePreviewIndex, setActivePreviewIndex] = useState(0);
 
   const sendEmail = useSendEmail();
+  const outboundAttachments = attachments?.length ? attachments : pdfAttachment ? [pdfAttachment] : [];
+  const firstAttachment = outboundAttachments[0];
+  const activePreview = previewAttachments[activePreviewIndex] ?? previewAttachments[0];
 
   const handleOpenChange = (v: boolean) => {
     if (!v) {
@@ -391,19 +414,21 @@ export function SendExternalEmailDialog({
       bccRecipients: bccEmails.length > 0 ? bccEmails : undefined,
       subject,
       bodyHtml: buildEmailBody(),
-      attachments: pdfAttachment
-        ? [{
-            filename: pdfAttachment.filename,
-            contentBase64: pdfAttachment.contentBase64,
-            contentType: pdfAttachment.contentType,
-            size: Math.round((pdfAttachment.contentBase64.length * 3) / 4),
-          }]
+      fromName,
+      fromEmail,
+      attachments: outboundAttachments.length
+        ? outboundAttachments.map((attachment) => ({
+            filename: attachment.filename,
+            contentBase64: attachment.contentBase64,
+            contentType: attachment.contentType,
+            size: Math.round((attachment.contentBase64.length * 3) / 4),
+          }))
         : undefined,
       projectId,
       sourceModule: 'project-client-email',
       reportType: documentType,
-      attachmentFilename: pdfAttachment?.filename,
-      attachmentSize: pdfAttachment ? Math.round((pdfAttachment.contentBase64.length * 3) / 4) : undefined,
+      attachmentFilename: firstAttachment?.filename,
+      attachmentSize: firstAttachment ? Math.round((firstAttachment.contentBase64.length * 3) / 4) : undefined,
     });
     handleOpenChange(false);
     onSent?.();
@@ -444,10 +469,23 @@ export function SendExternalEmailDialog({
               </div>
               <div className="flex items-start gap-2.5 rounded-xl bg-white p-3">
                 <Paperclip className="mt-0.5 h-4 w-4 text-emerald-700" />
-                <div className="min-w-0"><p className="text-sm font-semibold text-[#082b23]">{pdfAttachment ? 'Matching file attached' : 'Project document included'}</p><p className="truncate text-xs text-muted-foreground">{pdfAttachment ? pdfAttachment.filename : documentTitle}</p></div>
+                <div className="min-w-0"><p className="text-sm font-semibold text-[#082b23]">{outboundAttachments.length ? 'Client file package attached' : 'Project document included'}</p><p className="truncate text-xs text-muted-foreground">{outboundAttachments.length ? outboundAttachments.map((a) => a.filename).join(', ') : documentTitle}</p></div>
                 <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-emerald-600" />
               </div>
             </div>
+
+            {(fromEmail || senderNotice) && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900">
+                <p className="font-semibold">Sender identity</p>
+                {fromName && fromEmail && (
+                  <p className="mt-0.5">{fromName} &lt;{fromEmail}&gt;</p>
+                )}
+                {!fromEmailVerified && (
+                  <p className="mt-1">This address is staged in ProjOS, but the sending provider must verify the domain before email can truly leave from it.</p>
+                )}
+                {senderNotice && <p className="mt-1">{senderNotice}</p>}
+              </div>
+            )}
 
             {/* To */}
             <div className="flex items-start gap-2">
@@ -565,11 +603,37 @@ export function SendExternalEmailDialog({
                   />
                 </div>
                 <div className="border-t bg-slate-50 px-4 py-3 text-xs text-slate-500">
-                  {pdfAttachment
-                    ? `Attachment: ${pdfAttachment.filename}`
+                  {outboundAttachments.length
+                    ? `Attachment${outboundAttachments.length === 1 ? '' : 's'}: ${outboundAttachments.map((a) => a.filename).join(', ')}`
                     : 'No PDF attachment is currently bundled.'}
                 </div>
               </div>
+              {previewAttachments.length > 0 && (
+                <div className="mt-3 overflow-hidden rounded-2xl border bg-white shadow-sm">
+                  <div className="border-b bg-slate-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Attachment preview</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {previewAttachments.map((attachment, index) => (
+                        <button
+                          key={`${attachment.filename}-${index}`}
+                          type="button"
+                          onClick={() => setActivePreviewIndex(index)}
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${index === activePreviewIndex ? 'bg-[#082b23] text-white' : 'bg-white text-slate-600 border'}`}
+                        >
+                          {attachment.filename}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {activePreview?.contentType.includes('pdf') ? (
+                    <iframe title={activePreview.filename} src={activePreview.url} className="h-[360px] w-full bg-slate-100" />
+                  ) : activePreview?.contentType.startsWith('image/') ? (
+                    <img src={activePreview.url} alt={activePreview.filename} className="max-h-[360px] w-full object-contain bg-slate-100" />
+                  ) : (
+                    <div className="p-4 text-xs text-muted-foreground">Preview is not available for this file type.</div>
+                  )}
+                </div>
+              )}
             </aside>
           </div>
         </ScrollArea>
@@ -602,7 +666,7 @@ export function SendExternalEmailDialog({
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" />
-                  {pdfAttachment ? 'Send HTML + attachment' : 'Send branded email'}
+                  {outboundAttachments.length ? 'Send HTML + attachment' : 'Send branded email'}
                 </>
               )}
             </Button>

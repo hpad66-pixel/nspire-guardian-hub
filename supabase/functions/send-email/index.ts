@@ -18,6 +18,8 @@ interface SendEmailRequest {
   bodyText?: string;
   /** Optional override for the From display name (e.g. signer or company). */
   fromName?: string;
+  /** Optional verified From mailbox. Honored only when allowed by env config. */
+  fromEmail?: string;
   attachments?: { filename: string; contentBase64: string; contentType?: string; size?: number }[];
   projectId?: string;
   sourceModule?: string;
@@ -74,6 +76,7 @@ const handler = async (req: Request): Promise<Response> => {
       bodyHtml,
       bodyText,
       fromName,
+      fromEmail,
       attachments,
       projectId,
       sourceModule,
@@ -169,9 +172,30 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Sending email to ${recipients.length} recipient(s):`, recipients);
 
+    const defaultFromEmail = Deno.env.get("DEFAULT_FROM_EMAIL") || "hardeep@apas.ai";
+    const requestedFromEmail = String(fromEmail || "").trim().toLowerCase();
+    const verifiedAddresses = new Set(
+      (Deno.env.get("VERIFIED_EMAIL_FROM_ADDRESSES") || defaultFromEmail)
+        .split(",")
+        .map((value) => value.trim().toLowerCase())
+        .filter(Boolean),
+    );
+    const verifiedDomains = new Set(
+      (Deno.env.get("VERIFIED_EMAIL_FROM_DOMAINS") || "apas.ai")
+        .split(",")
+        .map((value) => value.trim().toLowerCase().replace(/^@/, ""))
+        .filter(Boolean),
+    );
+    const requestedDomain = requestedFromEmail.split("@")[1] || "";
+    const resolvedFromEmail =
+      requestedFromEmail &&
+      (verifiedAddresses.has(requestedFromEmail) || verifiedDomains.has(requestedDomain))
+        ? requestedFromEmail
+        : defaultFromEmail;
+
     // Build email payload
     const emailPayload: Record<string, unknown> = {
-      from: `${senderName} <hardeep@apas.ai>`,
+      from: `${senderName} <${resolvedFromEmail}>`,
       to: recipients,
       subject: subject,
       html: bodyHtml,
@@ -206,7 +230,10 @@ const handler = async (req: Request): Promise<Response> => {
     });
 
     const emailResult = await emailResponse.json();
-    console.log("Resend API response:", emailResult);
+    console.log("Resend API response:", emailResult, {
+      requestedFromEmail: requestedFromEmail || null,
+      resolvedFromEmail,
+    });
 
     if (!emailResponse.ok) {
       console.error("Failed to send email:", emailResult);
@@ -321,6 +348,9 @@ const handler = async (req: Request): Promise<Response> => {
       JSON.stringify({
         success: true,
         emailId: emailResult.id,
+        fromEmail: resolvedFromEmail,
+        requestedFromEmail: requestedFromEmail || null,
+        fromEmailHonored: !requestedFromEmail || requestedFromEmail === resolvedFromEmail,
       }),
       {
         status: 200,

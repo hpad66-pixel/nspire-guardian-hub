@@ -234,6 +234,7 @@ export function useCreateProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (project: Omit<ProjectInsert, 'id' | 'created_at' | 'updated_at'>) => {
+      const programMeta = (project as { program_meta?: unknown }).program_meta;
       const isClientScoped = Boolean(
         project.client_id
         && !project.property_id
@@ -254,6 +255,16 @@ export function useCreateProject() {
           p_owner_user_id: project.owner_user_id ?? null,
         } as any);
         if (error) throw error;
+        if (programMeta && (data as ProjectRow | null)?.id) {
+          const { data: patched, error: patchError } = await supabase
+            .from('projects' as any)
+            .update({ program_meta: programMeta } as any)
+            .eq('id', (data as ProjectRow).id)
+            .select()
+            .single();
+          if (patchError) throw patchError;
+          return patched as ProjectRow;
+        }
         return data as ProjectRow;
       }
 
@@ -280,6 +291,7 @@ export function useUpdateProject() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, ...updates }: Partial<ProjectRow> & { id: string }) => {
+      const programMeta = (updates as { program_meta?: unknown }).program_meta;
       const isClientScoped = Boolean(
         updates.client_id
         && !updates.property_id
@@ -300,6 +312,16 @@ export function useUpdateProject() {
           p_owner_user_id: updates.owner_user_id ?? null,
         } as any);
         if (error) throw error;
+        if (programMeta) {
+          const { data: patched, error: patchError } = await supabase
+            .from('projects' as any)
+            .update({ program_meta: programMeta } as any)
+            .eq('id', id)
+            .select()
+            .single();
+          if (patchError) throw patchError;
+          return patched as ProjectRow;
+        }
         return data as ProjectRow;
       }
 

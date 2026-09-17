@@ -11,7 +11,13 @@ import { useProjectTree } from '@/hooks/useProjectTree';
 import { ModuleVisibilityPanel } from '@/components/projects/ModuleVisibilityPanel';
 import { ProjectKindBadge, ProjectTypeMissingAlert } from '@/components/projects/ProjectKindBadge';
 import { ProjectTypeDialog } from '@/components/projects/ProjectTypeDialog';
-import { companyBrandForProjectType } from '@/lib/financial/apasCompanyBranding';
+import {
+  APAS_COMPANY_BRANDS,
+  billingWorkflowDescriptorForProjectType,
+  companyBrandForProject,
+  upsertProjectBillingProfile,
+  type ApasCompanyKey,
+} from '@/lib/financial/apasCompanyBranding';
 import { projectKind } from '@/lib/projectKind';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -37,7 +43,15 @@ export default function ProjectAdminPage() {
     : null;
   const children = projectId ? tree.children(projectId) : [];
   const kind = projectKind(project ?? {});
-  const brand = companyBrandForProjectType((project as { project_type?: string | null } | null)?.project_type);
+  const brand = companyBrandForProject(project as { project_type?: string | null; program_meta?: unknown } | null);
+  const workflow = billingWorkflowDescriptorForProjectType((project as { project_type?: string | null } | null)?.project_type, brand);
+
+  const changeBillingCompany = async (companyKey: ApasCompanyKey) => {
+    await updateProject.mutateAsync({
+      id: project!.id,
+      program_meta: upsertProjectBillingProfile((project as { program_meta?: unknown }).program_meta, companyKey),
+    } as never);
+  };
 
   if (isLoading || permsLoading) {
     return (
@@ -116,7 +130,7 @@ export default function ProjectAdminPage() {
               Billing workflow and company
             </CardTitle>
             <CardDescription>
-              This controls whether the project uses consulting invoices or construction pay applications.
+              Project type controls invoice vs pay-app workflow. Billing company controls APAS Consulting vs APAS Build branding and sender identity.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -135,10 +149,10 @@ export default function ProjectAdminPage() {
                     {brand.wordmark}
                   </div>
                   <div className="mt-1 text-lg font-black">{brand.legalName}</div>
-                  <div className="text-sm" style={{ color: brand.muted }}>{brand.workflowDescription}</div>
+                  <div className="text-sm" style={{ color: brand.muted }}>{workflow.workflowDescription}</div>
                 </div>
                 <span className="rounded-lg px-2.5 py-1 text-xs font-black uppercase tracking-wide text-white" style={{ background: brand.primary }}>
-                  {brand.workflowLabel}
+                  {workflow.workflowLabel}
                 </span>
               </div>
               <div className="mt-4 grid gap-2 text-xs sm:grid-cols-3">
@@ -148,12 +162,42 @@ export default function ProjectAdminPage() {
                 </div>
                 <div className="rounded-lg bg-white/80 p-2">
                   <p className="font-semibold">Document</p>
-                  <p style={{ color: brand.muted }}>{brand.documentLabel}</p>
+                  <p style={{ color: brand.muted }}>{workflow.documentLabel}</p>
                 </div>
                 <div className="rounded-lg bg-white/80 p-2">
                   <p className="font-semibold">Sender</p>
-                  <p style={{ color: brand.muted }}>{brand.senderName}</p>
+                  <p style={{ color: brand.muted }}>{brand.senderName} &lt;{brand.senderEmail}&gt;</p>
+                  {brand.senderEmailStatus === 'pending_domain' && (
+                    <p className="mt-0.5 text-[10px] font-semibold text-amber-700">APASBuild.com sender domain pending verification</p>
+                  )}
                 </div>
+              </div>
+            </div>
+            <div className="grid gap-2 rounded-xl border bg-muted/20 p-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Billing company</p>
+                <p className="text-xs text-muted-foreground">Use this for City Engineering or any project where APAS Build owns the invoice even if the work is consulting.</p>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {Object.values(APAS_COMPANY_BRANDS).map((option) => (
+                  <button
+                    key={option.key}
+                    type="button"
+                    disabled={updateProject.isPending}
+                    onClick={() => changeBillingCompany(option.key)}
+                    className={`rounded-lg border p-3 text-left transition ${brand.key === option.key ? 'ring-2 ring-offset-1' : 'hover:border-muted-foreground/40'}`}
+                    style={{
+                      borderColor: brand.key === option.key ? option.accent : undefined,
+                      background: brand.key === option.key ? option.surface : undefined,
+                      color: brand.key === option.key ? option.ink : undefined,
+                    }}
+                  >
+                    <p className="text-sm font-black">{option.legalName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      {option.senderName} &lt;{option.senderEmail}&gt;
+                    </p>
+                  </button>
+                ))}
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -162,9 +206,9 @@ export default function ProjectAdminPage() {
                 Change type
               </Button>
               <Button size="sm" asChild style={{ background: brand.primary }}>
-                <Link to={`/projects/${project.id}/${brand.routePath}`}>
+                <Link to={`/projects/${project.id}/${workflow.routePath}`}>
                   <Wallet className="mr-1.5 h-3.5 w-3.5" />
-                  {brand.routeLabel}
+                  {workflow.routeLabel}
                 </Link>
               </Button>
             </div>
@@ -260,9 +304,9 @@ export default function ProjectAdminPage() {
             Correspondence
           </Button>
           <Button variant="outline" className="justify-start" asChild>
-            <Link to={`/projects/${project.id}/${brand.routePath}`}>
+            <Link to={`/projects/${project.id}/${workflow.routePath}`}>
               <Wallet className="mr-2 h-4 w-4" />
-              {brand.workflowLabel}
+              {workflow.workflowLabel}
             </Link>
           </Button>
           <Button

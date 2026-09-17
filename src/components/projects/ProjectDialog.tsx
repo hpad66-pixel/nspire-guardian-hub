@@ -14,7 +14,15 @@ import { useProfiles } from '@/hooks/useProfiles';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserPermissions } from '@/hooks/usePermissions';
 import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
-import { companyBrandForProjectType } from '@/lib/financial/apasCompanyBranding';
+import {
+  APAS_COMPANY_BRANDS,
+  billingWorkflowDescriptorForProjectType,
+  companyBrandForProject,
+  companyBrandForProjectType,
+  defaultCompanyKeyForProjectType,
+  upsertProjectBillingProfile,
+  type ApasCompanyKey,
+} from '@/lib/financial/apasCompanyBranding';
 import type { Database } from '@/integrations/supabase/types';
 import { z } from 'zod';
 
@@ -74,6 +82,15 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
   const canChangeOwner = !isEditing || isAdmin || isSuperAdmin || currentRole === 'owner';
 
   const [projectType, setProjectType] = useState<ProjectType>(initialType);
+  const [billingCompany, setBillingCompany] = useState<ApasCompanyKey>(
+    companyBrandForProject(
+      project
+        ? { project_type: (project as any).project_type, program_meta: (project as any).program_meta }
+        : parentProject
+          ? { project_type: (parentProject as any).project_type, program_meta: (parentProject as any).program_meta }
+          : { project_type: initialType },
+    ).key,
+  );
   const [showAddClient, setShowAddClient] = useState(false);
   const [newClientName, setNewClientName] = useState('');
   const [dateError, setDateError] = useState<string | null>(null);
@@ -128,6 +145,10 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
       start_date: formData.start_date || null,
       target_end_date: formData.target_end_date || null,
       project_type: projectType,
+      program_meta: upsertProjectBillingProfile(
+        (project as any)?.program_meta ?? (parentProject as any)?.program_meta ?? null,
+        billingCompany,
+      ),
       // Clear whichever is not in use. Consulting and construction engagements
       // are client-linked billing records, while property records stay property-linked.
       property_id: projectType === 'property' ? formData.property_id || null : null,
@@ -152,6 +173,7 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
   const resetForm = () => {
     setFormData({ property_id: '', client_id: clientContext?.id || '', name: '', owner_user_id: user?.id || '', description: '', scope: '', budget: undefined, start_date: '', target_end_date: '' });
     setProjectType(isClientScoped ? 'construction' : 'property');
+    setBillingCompany(defaultCompanyKeyForProjectType(isClientScoped ? 'construction' : 'property'));
     setShowAddClient(false);
     setNewClientName('');
     setDateError(null);
@@ -163,7 +185,8 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
   const isOwnerValid = isEditing || !!formData.owner_user_id;
   const canSubmit = !!formData.name && isPropertyValid && isClientValid && isOwnerValid;
   const isPending = createProject.isPending || updateProject.isPending;
-  const billingBrand = companyBrandForProjectType(projectType);
+  const billingBrand = APAS_COMPANY_BRANDS[billingCompany] ?? companyBrandForProjectType(projectType);
+  const workflow = billingWorkflowDescriptorForProjectType(projectType, billingBrand);
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
@@ -185,7 +208,11 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
           {/* Project Type Toggle */}
           <div className="grid gap-2">
             <Label>Project Type</Label>
-            <Tabs value={projectType} onValueChange={(v) => setProjectType(v as ProjectType)}>
+            <Tabs value={projectType} onValueChange={(v) => {
+              const nextType = v as ProjectType;
+              setProjectType(nextType);
+              if (!isEditing) setBillingCompany(defaultCompanyKeyForProjectType(nextType));
+            }}>
               <TabsList className="w-full">
                 {isClientScoped ? (
                   <TabsTrigger value="construction" className="flex-1 gap-1.5">
@@ -214,6 +241,36 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
                 </TabsTrigger>
               </TabsList>
             </Tabs>
+            <div className="grid gap-2 rounded-xl border bg-muted/20 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <Label>Billing company</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Choose who owns the invoice/pay-app brand. This is separate from the project type.
+                  </p>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(Object.values(APAS_COMPANY_BRANDS) as Array<typeof billingBrand>).map((brand) => (
+                  <button
+                    key={brand.key}
+                    type="button"
+                    onClick={() => setBillingCompany(brand.key)}
+                    className={`rounded-lg border p-3 text-left transition ${billingCompany === brand.key ? 'ring-2 ring-offset-1' : 'hover:border-muted-foreground/40'}`}
+                    style={{
+                      borderColor: billingCompany === brand.key ? brand.accent : undefined,
+                      background: billingCompany === brand.key ? brand.surface : undefined,
+                      color: billingCompany === brand.key ? brand.ink : undefined,
+                    }}
+                  >
+                    <p className="text-sm font-black">{brand.legalName}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Sender: {brand.senderName} &lt;{brand.senderEmail}&gt;
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
             <div
               className="rounded-xl border p-3"
               style={{
@@ -229,18 +286,21 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
                     Billing identity
                   </p>
                   <p className="mt-1 text-sm font-black">{billingBrand.legalName}</p>
-                  <p className="text-xs" style={{ color: billingBrand.muted }}>{billingBrand.workflowDescription}</p>
+                  <p className="text-xs" style={{ color: billingBrand.muted }}>{workflow.workflowDescription}</p>
                 </div>
                 <div className="rounded-lg px-2 py-1 text-right text-[11px] font-black uppercase tracking-wide text-white" style={{ background: billingBrand.primary }}>
-                  {billingBrand.workflowLabel}
+                  {workflow.workflowLabel}
                 </div>
               </div>
               <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
                 <div className="rounded-lg bg-white/75 p-2">
-                  <span className="font-semibold">Document:</span> {billingBrand.documentLabel}
+                  <span className="font-semibold">Document:</span> {workflow.documentLabel}
                 </div>
                 <div className="rounded-lg bg-white/75 p-2">
                   <span className="font-semibold">Sent as:</span> {billingBrand.senderName}
+                  {billingBrand.senderEmailStatus === 'pending_domain' && (
+                    <span className="ml-1 text-amber-700">(domain pending)</span>
+                  )}
                 </div>
               </div>
             </div>

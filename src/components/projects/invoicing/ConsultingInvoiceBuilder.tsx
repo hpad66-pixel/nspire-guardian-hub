@@ -25,7 +25,7 @@ import {
   defaultInvoiceSubject,
   type ProposalBillingRow,
 } from '@/lib/consulting/billing';
-import { APAS_COMPANY_BRANDS } from '@/lib/financial/apasCompanyBranding';
+import { APAS_COMPANY_BRANDS, invoiceDocumentLabelForCompany, type ApasCompanyBrand } from '@/lib/financial/apasCompanyBranding';
 import { money } from './invoiceMeta';
 
 export interface InvoiceClientSeed {
@@ -49,6 +49,7 @@ interface Props {
   editInvoiceId?: string | null;
   /** Preselect one executed proposal when launched from its Create invoice action. */
   initialProposalId?: string | null;
+  billingBrand?: ApasCompanyBrand;
 }
 
 interface ScopeRow extends NewInvoiceLine {
@@ -82,6 +83,7 @@ export function ConsultingInvoiceBuilder({
   clientSeed,
   editInvoiceId,
   initialProposalId,
+  billingBrand = APAS_COMPANY_BRANDS.apas_consulting,
 }: Props) {
   const { data: scopes } = useProjectScopes(projectId);
   const { data: proposals = [] } = useFinancialProposals(projectId);
@@ -310,7 +312,8 @@ export function ConsultingInvoiceBuilder({
 
   const approvedCount = proposals.filter((p) => p.status === 'approved').length;
   const saving = create.isPending || update.isPending;
-  const consultingBrand = APAS_COMPANY_BRANDS.apas_consulting;
+  const consultingBrand = billingBrand;
+  const invoiceDocumentLabel = invoiceDocumentLabelForCompany(consultingBrand);
 
   const buildHeader = (): InvoiceHeaderInput => ({
     issue_date: issueDate,
@@ -366,7 +369,7 @@ export function ConsultingInvoiceBuilder({
             {editing ? `Edit invoice #${existing?.invoice_no ?? ''}` : 'New client invoice'}
           </DialogTitle>
           <DialogDescription>
-            {consultingBrand.legalName} professional-services invoice. Prior billed and paid amounts for each proposal stay connected automatically.
+            {consultingBrand.legalName} client invoice. Prior billed and paid amounts for each proposal stay connected automatically.
             {approvedCount > 0 && (
               <span className="block mt-1 text-foreground">
                 {approvedCount} approved proposal{approvedCount === 1 ? '' : 's'}
@@ -383,10 +386,10 @@ export function ConsultingInvoiceBuilder({
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: consultingBrand.accent }}>{consultingBrand.wordmark}</p>
-              <p className="text-sm font-black">{consultingBrand.documentLabel}</p>
+              <p className="text-sm font-black">{invoiceDocumentLabel}</p>
             </div>
             <p className="text-xs" style={{ color: consultingBrand.muted }}>
-              Branded PDF, account tab, client sign-off, and delivery email.
+              Branded PDF, account tab, report attachment package, client sign-off, and delivery email.
             </p>
           </div>
         </div>

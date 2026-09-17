@@ -16,6 +16,8 @@ export interface SendEmailParams {
   subject: string;
   bodyHtml: string;
   bodyText?: string;
+  fromName?: string;
+  fromEmail?: string;
   attachments?: EmailAttachment[];
   projectId?: string;
   sourceModule?: string;

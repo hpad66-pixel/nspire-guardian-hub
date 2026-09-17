@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, Send, Plus, Loader2, Mail, Pencil } from 'lucide-react';
+import { Download, Send, Plus, Loader2, Mail, Pencil, Paperclip, Upload, X } from 'lucide-react';
 import {
   useInvoiceDetail,
   useConsultingInvoices,
@@ -12,10 +12,17 @@ import {
 } from '@/hooks/useConsultingInvoices';
 import { downloadConsultingInvoicePdf, generateConsultingInvoicePdf } from '@/lib/pdf/consultingInvoice';
 import { useCoSettings } from '@/hooks/useCoSettings';
-import { SendExternalEmailDialog } from '@/components/projects/SendExternalEmailDialog';
+import { SendExternalEmailDialog, type SendExternalEmailPreviewAttachment } from '@/components/projects/SendExternalEmailDialog';
 import { ConsultingInvoiceBuilder, type InvoiceClientSeed } from './ConsultingInvoiceBuilder';
 import { buildProposalAccountSummaries, type ProposalBillingRow } from '@/lib/consulting/billing';
-import { APAS_COMPANY_BRANDS, invoicePackageSubject } from '@/lib/financial/apasCompanyBranding';
+import {
+  APAS_COMPANY_BRANDS,
+  invoiceDocumentLabelForCompany,
+  invoiceEmailOpeningForCompany,
+  invoicePackageSubject,
+  type ApasCompanyBrand,
+} from '@/lib/financial/apasCompanyBranding';
+import { supabase } from '@/integrations/supabase/client';
 import { INVOICE_STATUS_META, money } from './invoiceMeta';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +34,27 @@ interface Props {
   projectName: string;
   clientName?: string | null;
   clientSeed?: InvoiceClientSeed | null;
+  billingBrand?: ApasCompanyBrand;
+}
+
+interface ReportAttachmentDraft {
+  id: string;
+  filename: string;
+  contentBase64: string;
+  contentType: string;
+  previewUrl: string;
+}
+
+function fileToBase64(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = String(reader.result || '');
+      resolve(result.includes(',') ? result.split(',')[1] ?? '' : result);
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
 }
 
 export function InvoiceDetailDialog({
@@ -37,6 +65,7 @@ export function InvoiceDetailDialog({
   projectName,
   clientName,
   clientSeed,
+  billingBrand = APAS_COMPANY_BRANDS.apas_consulting,
 }: Props) {
   const { data, isLoading, addPayment } = useInvoiceDetail(invoiceId);
   const { setStatus } = useConsultingInvoices(projectId);
@@ -53,9 +82,13 @@ export function InvoiceDetailDialog({
   const [pdfAttachment, setPdfAttachment] = useState<
     { filename: string; contentBase64: string; contentType: string } | undefined
   >();
+  const [reportAttachments, setReportAttachments] = useState<ReportAttachmentDraft[]>([]);
+  const [previewAttachments, setPreviewAttachments] = useState<SendExternalEmailPreviewAttachment[]>([]);
+  const [packaging, setPackaging] = useState(false);
 
   const inv: ConsultingInvoice | undefined = data?.invoice;
-  const consultingBrand = APAS_COMPANY_BRANDS.apas_consulting;
+  const consultingBrand = billingBrand;
+  const invoiceDocumentLabel = invoiceDocumentLabelForCompany(consultingBrand);
   const lines = useMemo(() => data?.lines ?? [], [data?.lines]);
   const payments = useMemo(() => data?.payments ?? [], [data?.payments]);
   const paid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
@@ -63,11 +96,11 @@ export function InvoiceDetailDialog({
   const meta = inv ? INVOICE_STATUS_META[inv.status] : null;
 
   const branding = {
-    companyName: coSettings?.company_name ?? consultingBrand.legalName,
-    companyAddress: coSettings?.company_address ?? null,
-    companyCity: coSettings?.company_city ?? null,
-    companyEmail: coSettings?.company_email ?? null,
-    companyContact: coSettings?.company_contact ?? null,
+    companyName: consultingBrand.key === 'apas_consulting' ? coSettings?.company_name ?? consultingBrand.legalName : consultingBrand.legalName,
+    companyAddress: consultingBrand.key === 'apas_consulting' ? coSettings?.company_address ?? null : null,
+    companyCity: consultingBrand.key === 'apas_consulting' ? coSettings?.company_city ?? null : null,
+    companyEmail: consultingBrand.key === 'apas_consulting' ? coSettings?.company_email ?? consultingBrand.senderEmail : consultingBrand.senderEmail,
+    companyContact: consultingBrand.key === 'apas_consulting' ? coSettings?.company_contact ?? consultingBrand.senderName : consultingBrand.senderName,
     wordmark: coSettings?.wordmark ?? consultingBrand.wordmark,
     footer: coSettings?.footer ?? consultingBrand.footer,
   };
@@ -155,8 +188,23 @@ export function InvoiceDetailDialog({
     downloadConsultingInvoicePdf(input);
   };
 
-  const handleSend = () => {
+  const addReportFiles = async (files: FileList | null) => {
+    const picked = Array.from(files ?? []);
+    if (!picked.length) return;
+    const supported = picked.filter((file) => file.type.includes('pdf') || file.type.startsWith('image/'));
+    const next = await Promise.all(supported.map(async (file) => ({
+      id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+      filename: file.name,
+      contentBase64: await fileToBase64(file),
+      contentType: file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'application/octet-stream'),
+      previewUrl: URL.createObjectURL(file),
+    })));
+    setReportAttachments((prev) => [...prev, ...next]);
+  };
+
+  const handleSend = async () => {
     if (!inv) return;
+    setPackaging(true);
     const company = branding.companyName || consultingBrand.legalName;
     const rows = lines
       .map(
@@ -166,19 +214,20 @@ export function InvoiceDetailDialog({
       )
       .join('');
     setEmailHtml(`
-      <div style="font-family:Georgia,serif;color:${consultingBrand.ink};max-width:620px">
+      <div style="font-family:${consultingBrand.fontFamily};color:${consultingBrand.ink};max-width:620px">
         <div style="border-bottom:3px solid ${consultingBrand.accent};padding-bottom:12px;margin-bottom:20px">
           <div style="font-size:18px;font-weight:700">${company}</div>
           <div style="color:${consultingBrand.primary};font-size:14px;margin-top:4px">Invoice package #${inv.invoice_no}</div>
         </div>
         ${inv.subject ? `<p style="color:#878581"><strong>RE:</strong> ${inv.subject}</p>` : ''}
-        <p>${consultingBrand.emailOpening}</p>
+        <p>${invoiceEmailOpeningForCompany(consultingBrand)}</p>
         <p>Please find Invoice #${inv.invoice_no} for <strong>${projectName}</strong>.</p>
         <table style="width:100%;border-collapse:collapse;margin:16px 0">${rows}</table>
         <p style="font-size:16px"><strong>Amount due: ${money(balance)}</strong></p>
         ${inv.due_date ? `<p style="color:#878581">Due ${inv.due_date}</p>` : ''}
         ${inv.payment_terms ? `<p style="color:#878581;font-size:13px">${inv.payment_terms}</p>` : ''}
-        <p style="color:#878581;font-size:13px">The attached PDF is client-ready and includes the invoice detail, running account tab, payment terms, and approval/sign-off block.</p>
+        <p style="color:#878581;font-size:13px">The attached PDF package is client-ready and includes the invoice detail, running account tab, payment terms, approval/sign-off block${reportAttachments.length ? ', and the attached report backup.' : '.'}</p>
+        <p style="margin-top:20px">Regards,<br/>${consultingBrand.senderName}<br/><span style="color:${consultingBrand.muted}">${consultingBrand.legalName}</span></p>
       </div>
     `);
     const input = pdfInput();
@@ -186,17 +235,54 @@ export function InvoiceDetailDialog({
       try {
         const doc = generateConsultingInvoicePdf(input);
         const dataUri = doc.output('datauristring') as string;
+        const invoiceBase64 = dataUri.split(',')[1] ?? '';
+        let finalBase64 = invoiceBase64;
+        let finalFilename = `Invoice-${inv.invoice_no}.pdf`;
+        let finalPreviewUrl = dataUri;
+        if (reportAttachments.length > 0) {
+          const { data: pkg, error: pkgErr } = await supabase.functions.invoke('package-pdf', {
+            body: {
+              basePdfBase64: invoiceBase64,
+              basePdfLabel: `Invoice #${inv.invoice_no}`,
+              rawItems: reportAttachments.map((attachment) => ({
+                base64: attachment.contentBase64,
+                contentType: attachment.contentType,
+                label: attachment.filename,
+              })),
+            },
+          });
+          if (!pkgErr && pkg?.ok && pkg.base64) {
+            finalBase64 = pkg.base64;
+            finalFilename = `Invoice-${inv.invoice_no}-client-package.pdf`;
+            finalPreviewUrl = `data:application/pdf;base64,${pkg.base64}`;
+          }
+        }
         setPdfAttachment({
-          filename: `Invoice-${inv.invoice_no}.pdf`,
-          contentBase64: dataUri.split(',')[1] ?? '',
+          filename: finalFilename,
+          contentBase64: finalBase64,
           contentType: 'application/pdf',
         });
+        setPreviewAttachments([
+          {
+            filename: finalFilename,
+            url: finalPreviewUrl,
+            contentType: 'application/pdf',
+          },
+          ...reportAttachments.map((attachment) => ({
+            filename: attachment.filename,
+            url: attachment.previewUrl,
+            contentType: attachment.contentType,
+          })),
+        ]);
       } catch {
+        setPreviewAttachments([]);
         setPdfAttachment(undefined);
       }
     } else {
       setPdfAttachment(undefined);
+      setPreviewAttachments([]);
     }
+    setPackaging(false);
     setEmailOpen(true);
   };
 
@@ -278,10 +364,10 @@ export function InvoiceDetailDialog({
                       Client delivery package
                     </div>
                     <p className="mt-1 font-medium" style={{ color: consultingBrand.ink }}>
-                      {consultingBrand.documentLabel} from {consultingBrand.legalName}
+                      {invoiceDocumentLabel} from {consultingBrand.legalName}
                     </p>
                     <p className="text-xs" style={{ color: consultingBrand.muted }}>
-                      Emailing this invoice attaches the branded PDF and previews the client-facing note before it goes out.
+                      Emailing this invoice attaches one branded PDF package. Add separately prepared reports below and ProjOS merges them behind the invoice.
                     </p>
                   </div>
                   <div className="grid gap-1 text-xs">
@@ -306,6 +392,53 @@ export function InvoiceDetailDialog({
                   ))}
                 </div>
               )}
+
+              <div className="rounded-lg border border-dashed p-3 text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <Paperclip className="h-3.5 w-3.5" />
+                      Report backup
+                    </div>
+                    <p className="mt-1 text-sm font-medium">Attach the separately built report before previewing the package.</p>
+                    <p className="text-xs text-muted-foreground">
+                      PDF, PNG, or JPG files are collated after the invoice into one client package PDF.
+                    </p>
+                  </div>
+                  <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-3 py-2 text-xs font-medium hover:bg-muted">
+                    <Upload className="h-3.5 w-3.5" />
+                    Attach report
+                    <input
+                      type="file"
+                      accept="application/pdf,image/png,image/jpeg"
+                      multiple
+                      className="hidden"
+                      onChange={(event) => {
+                        void addReportFiles(event.target.files);
+                        event.currentTarget.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+                {reportAttachments.length > 0 && (
+                  <div className="mt-3 space-y-1.5">
+                    {reportAttachments.map((attachment) => (
+                      <div key={attachment.id} className="flex items-center gap-2 rounded-md bg-muted/40 px-2.5 py-2 text-xs">
+                        <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="min-w-0 flex-1 truncate">{attachment.filename}</span>
+                        <button
+                          type="button"
+                          className="rounded p-1 text-muted-foreground hover:bg-background hover:text-destructive"
+                          onClick={() => setReportAttachments((prev) => prev.filter((item) => item.id !== attachment.id))}
+                          title="Remove report"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               <div className="rounded-lg border overflow-hidden">
                 <table className="w-full text-sm">
@@ -391,7 +524,10 @@ export function InvoiceDetailDialog({
                   </Button>
                 )}
                 <Button size="sm" variant="outline" onClick={handlePdf} className="gap-1.5"><Download className="h-4 w-4" />Download package PDF</Button>
-                <Button size="sm" variant="outline" onClick={handleSend} className="gap-1.5"><Mail className="h-4 w-4" />Preview & email package</Button>
+                <Button size="sm" variant="outline" onClick={() => void handleSend()} disabled={packaging} className="gap-1.5">
+                  {packaging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+                  Preview & email package
+                </Button>
                 {inv.status === 'draft' && (
                   <Button size="sm" onClick={markSent} disabled={setStatus.isPending} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
                     {setStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Mark as sent
@@ -418,6 +554,7 @@ export function InvoiceDetailDialog({
         projectName={projectName}
         clientSeed={clientSeed}
         editInvoiceId={invoiceId}
+        billingBrand={consultingBrand}
       />
 
       {inv && (
@@ -431,10 +568,15 @@ export function InvoiceDetailDialog({
           projectId={projectId}
           defaultSubject={inv.subject || invoicePackageSubject(consultingBrand, inv.invoice_no, projectName)}
           contentHtml={emailHtml}
+          fromName={consultingBrand.senderName}
+          fromEmail={consultingBrand.senderEmail}
+          fromEmailVerified={consultingBrand.senderEmailStatus === 'verified'}
+          senderNotice={consultingBrand.senderEmailStatus === 'pending_domain' ? 'Until APASBuild.com is verified in the sending provider, ProjOS prepares the package and uses the verified fallback sender for delivery.' : undefined}
           onSent={() => {
             if (inv.status === 'draft') markSent();
           }}
           pdfAttachment={pdfAttachment}
+          previewAttachments={previewAttachments}
         />
       )}
     </>

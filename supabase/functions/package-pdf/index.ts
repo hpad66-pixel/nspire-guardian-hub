@@ -3,7 +3,11 @@
 // PDFs are appended page-by-page; images (png/jpg) become a full page each.
 // Authenticated (GC) — the API key / service role stays server-side.
 //
-// Input:  { payAppBase64: string, payAppLabel?: string, items: [{ bucket, path, contentType?, label? }] }
+// Input:  {
+//   payAppBase64?: string, basePdfBase64?: string, payAppLabel?: string, basePdfLabel?: string,
+//   rawItems?: [{ base64, contentType?, label? }],
+//   items: [{ bucket, path, contentType?, label? }]
+// }
 // Output: { ok, base64, skipped: string[] }
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -35,8 +39,9 @@ serve(async (req) => {
     const auth = req.headers.get("Authorization");
     if (!auth?.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
 
-    const { payAppBase64, items } = await req.json().catch(() => ({}));
-    if (!payAppBase64) return json({ error: "payAppBase64 required" }, 400);
+    const { payAppBase64, basePdfBase64, payAppLabel, basePdfLabel, rawItems, items } = await req.json().catch(() => ({}));
+    const basePdf = basePdfBase64 || payAppBase64;
+    if (!basePdf) return json({ error: "basePdfBase64 required" }, 400);
 
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const out = await PDFDocument.create();
@@ -60,10 +65,24 @@ serve(async (req) => {
       } catch { skipped.push(label); }
     };
 
-    // 1) the pay app itself, first
-    await appendPdf(b64ToBytes(payAppBase64), "Pay application");
+    // 1) the primary PDF itself, first
+    await appendPdf(b64ToBytes(basePdf), basePdfLabel || payAppLabel || "Primary PDF");
 
-    // 2) each selected supporting doc, in order
+    // 2) raw browser-supplied documents, in order
+    for (const it of (Array.isArray(rawItems) ? rawItems : [])) {
+      const label = it?.label || "attachment";
+      try {
+        const bytes = b64ToBytes(it.base64 || "");
+        const ct = (it.contentType || "").toLowerCase();
+        const head = String.fromCharCode(...bytes.subarray(0, 5));
+        if (ct.includes("pdf") || head.startsWith("%PDF")) await appendPdf(bytes, label);
+        else if (ct.includes("png") || (bytes[0] === 0x89 && bytes[1] === 0x50)) await appendImage(bytes, "png", label);
+        else if (ct.includes("jpeg") || ct.includes("jpg") || (bytes[0] === 0xff && bytes[1] === 0xd8)) await appendImage(bytes, "jpg", label);
+        else skipped.push(label);
+      } catch { skipped.push(label); }
+    }
+
+    // 3) each selected supporting doc, in order
     for (const it of (Array.isArray(items) ? items : [])) {
       const label = it?.label || it?.path || "attachment";
       try {
