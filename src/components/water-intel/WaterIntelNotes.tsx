@@ -12,6 +12,18 @@ import {
 import type { AccountRollup, WaterExecNote, WaterServiceAccount } from '@/lib/water-intel';
 import { useWaterInstruction, useWaterNotes, type WaterIntelScope } from '@/hooks/useWaterIntelligence';
 
+const GLORIETA_CITY_LETTER_MARKER = '[[GLORIETA_CITY_LETTER_DRAFT_V1]]';
+
+function noteDisplay(note: WaterExecNote) {
+  if (note.body.includes(GLORIETA_CITY_LETTER_MARKER)) {
+    return {
+      title: 'Glorieta City Letter Draft',
+      body: 'Saved editable city-letter draft. Open the Glorieta City Letter tab to review, edit, copy, or save a newer version.',
+    };
+  }
+  return { title: note.author_name || 'Executive', body: note.body };
+}
+
 export function WaterIntelNotes({
   scope,
   notes,
@@ -33,7 +45,7 @@ export function WaterIntelNotes({
   const [authorName, setAuthorName] = useState(guest ? '' : '');
   const [authorEmail, setAuthorEmail] = useState('');
   const [open, setOpen] = useState(false);
-  const [subject, setSubject] = useState(`Water Intelligence — ${propertyName}`);
+  const [subject, setSubject] = useState(`Water Intelligence - ${propertyName}`);
   const [recipients, setRecipients] = useState('');
   const [instruction, setInstruction] = useState('');
   const [accountId, setAccountId] = useState<string>('');
@@ -62,7 +74,7 @@ export function WaterIntelNotes({
           </div>
         )}
         <Textarea
-          placeholder="Capture a decision, a question for APAS, or a follow-up for the PM…"
+          placeholder="Capture a decision, a question for APAS, or a follow-up for the PM..."
           value={body}
           onChange={(e) => setBody(e.target.value)}
           className="min-h-[88px]"
@@ -91,13 +103,7 @@ export function WaterIntelNotes({
           </li>
         )}
         {notes.map((note) => (
-          <li key={note.id} className="rounded-2xl bg-[#F7F4EC] px-4 py-3">
-            <div className="flex items-center justify-between gap-2 text-[11px] text-[#8a8478]">
-              <span className="font-semibold text-[#08271f]">{note.author_name || 'Executive'}</span>
-              <span>{new Date(note.created_at).toLocaleString()}</span>
-            </div>
-            <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-[#3d4a45]">{note.body}</p>
-          </li>
+          <NoteItem key={note.id} note={note} />
         ))}
       </ol>
 
@@ -107,13 +113,13 @@ export function WaterIntelNotes({
             <DialogTitle className="font-display text-2xl">Send an instruction</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Email anyone from this briefing — PM, counsel, bookkeeper, or the city. A copy is logged on the property.
+            Email anyone from this briefing - PM, counsel, bookkeeper, or the city. A copy is logged on the property.
           </p>
           <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Subject" />
           <Input
             value={recipients}
             onChange={(e) => setRecipients(e.target.value)}
-            placeholder="Recipients — comma separated emails"
+            placeholder="Recipients - comma separated emails"
           />
           <select
             className="h-10 rounded-md border border-input bg-background px-3 text-sm"
@@ -123,7 +129,7 @@ export function WaterIntelNotes({
             <option value="">Entire property</option>
             {accounts.map((a) => (
               <option key={a.id} value={a.id}>
-                {a.building_label || a.service_address} · {a.account_number}
+                {a.building_label || a.service_address} - {a.account_number}
               </option>
             ))}
           </select>
@@ -133,8 +139,8 @@ export function WaterIntelNotes({
             onChange={(e) => setInstruction(e.target.value)}
             placeholder={
               rollups[0]
-                ? `Please pull actual meter reads for ${rollups[0].buildingLabel} and confirm the credit path with Opa-locka…`
-                : 'Write the instruction…'
+                ? `Please pull actual meter reads for ${rollups[0].buildingLabel} and confirm the credit path with Opa-locka...`
+                : 'Write the instruction...'
             }
           />
           <div className="flex justify-end">
@@ -155,5 +161,18 @@ export function WaterIntelNotes({
         </DialogContent>
       </Dialog>
     </section>
+  );
+}
+
+function NoteItem({ note }: { note: WaterExecNote }) {
+  const display = noteDisplay(note);
+  return (
+    <li className="rounded-2xl bg-[#F7F4EC] px-4 py-3">
+      <div className="flex items-center justify-between gap-2 text-[11px] text-[#8a8478]">
+        <span className="font-semibold text-[#08271f]">{display.title}</span>
+        <span>{new Date(note.created_at).toLocaleString()}</span>
+      </div>
+      <p className="mt-1 whitespace-pre-wrap text-sm leading-relaxed text-[#3d4a45]">{display.body}</p>
+    </li>
   );
 }

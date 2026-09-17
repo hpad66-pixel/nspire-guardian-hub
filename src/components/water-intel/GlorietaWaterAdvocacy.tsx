@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
@@ -26,12 +26,14 @@ import { Button } from '@/components/ui/button';
 import { ProRichTextEditor, RichTextViewer } from '@/components/ui/rich-text-editor';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { buildGlorietaDisputeCase, type GlorietaMonthlyPoint } from '@/lib/water-intel/glorietaDispute';
-import { gallons, money } from '@/lib/water-intel';
+import { gallons, money, type WaterExecNote } from '@/lib/water-intel';
+import { useWaterNotes, type WaterIntelScope } from '@/hooks/useWaterIntelligence';
 
 const FOREST = '#08271f';
 const GOLD = '#C4A35A';
 const BLUE = '#1D6FE8';
 const ROSE = '#E11D48';
+export const GLORIETA_CITY_LETTER_MARKER = '[[GLORIETA_CITY_LETTER_DRAFT_V1]]';
 
 interface TipEntry {
   dataKey?: string;
@@ -106,17 +108,54 @@ function InternalActionCard() {
   );
 }
 
-export function GlorietaWaterAdvocacy({ mode }: { mode: 'staff' | 'magic' | 'property_manager' }) {
+function extractSavedLetter(note: WaterExecNote | undefined) {
+  if (!note?.body.includes(GLORIETA_CITY_LETTER_MARKER)) return null;
+  const html = note.body.split(GLORIETA_CITY_LETTER_MARKER)[1]?.trim();
+  return html || null;
+}
+
+function savedLetterNote(notes: WaterExecNote[]) {
+  return notes.find((note) => note.body.includes(GLORIETA_CITY_LETTER_MARKER));
+}
+
+export function GlorietaWaterAdvocacy({
+  mode,
+  scope,
+  notes = [],
+}: {
+  mode: 'staff' | 'magic' | 'property_manager';
+  scope: WaterIntelScope;
+  notes?: WaterExecNote[];
+}) {
   const dispute = useMemo(() => buildGlorietaDisputeCase(), []);
+  const savedDraft = savedLetterNote(notes);
   const [letterHtml, setLetterHtml] = useState(dispute.draftLetterHtml);
   const [reviewNote, setReviewNote] = useState('');
   const [copied, setCopied] = useState(false);
+  const [lastLoadedDraftId, setLastLoadedDraftId] = useState<string | null>(null);
   const confidential = mode === 'magic';
+  const saveLetter = useWaterNotes(scope);
+
+  useEffect(() => {
+    const savedHtml = extractSavedLetter(savedDraft);
+    if (savedHtml && savedDraft?.id !== lastLoadedDraftId) {
+      setLetterHtml(savedHtml);
+      setLastLoadedDraftId(savedDraft.id);
+    }
+  }, [lastLoadedDraftId, savedDraft]);
 
   async function copyLetter() {
     await navigator.clipboard?.writeText(letterHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
+  }
+
+  function persistLetter() {
+    saveLetter.mutate({
+      body: `Glorieta City Letter Draft\nSaved from Water Intelligence on ${new Date().toLocaleString()}\n\n${GLORIETA_CITY_LETTER_MARKER}\n${letterHtml}`,
+      authorName: mode === 'magic' ? 'Magic-link reviewer' : 'APAS Water Intelligence',
+      authorEmail: undefined,
+    });
   }
 
   const recentDispute = dispute.disputeMonthly.slice(-12);
@@ -154,12 +193,13 @@ export function GlorietaWaterAdvocacy({ mode }: { mode: 'staff' | 'magic' | 'pro
       </div>
 
       <Tabs defaultValue="case" className="px-4 pb-5 md:px-6">
-        <TabsList className="h-auto w-full flex-wrap justify-start rounded-2xl bg-white p-1">
-          <TabsTrigger value="case" className="rounded-xl">Case</TabsTrigger>
-          <TabsTrigger value="analytics" className="rounded-xl">Analytics</TabsTrigger>
-          <TabsTrigger value="regulatory" className="rounded-xl">Regulatory basis</TabsTrigger>
-          <TabsTrigger value="letter" className="rounded-xl">City letter</TabsTrigger>
-          <TabsTrigger value="evidence" className="rounded-xl">Evidence QA</TabsTrigger>
+        <TabsList className="sticky top-2 z-10 h-auto w-full flex-wrap justify-start gap-1 rounded-[22px] border border-[#08271f]/10 bg-[#08271f] p-1.5 shadow-lg shadow-[#08271f]/10">
+          <TabsTrigger value="case" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Case</TabsTrigger>
+          <TabsTrigger value="analytics" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Analytics</TabsTrigger>
+          <TabsTrigger value="regulatory" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Regulatory Basis</TabsTrigger>
+          <TabsTrigger value="letter" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">City Letter</TabsTrigger>
+          <TabsTrigger value="evidence" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Evidence</TabsTrigger>
+          <TabsTrigger value="qa" className="rounded-2xl px-4 py-2 text-xs font-bold uppercase tracking-[0.12em] text-white/70 data-[state=active]:bg-[#d5aa52] data-[state=active]:text-[#08271f]">Q&amp;A</TabsTrigger>
         </TabsList>
 
         <TabsContent value="case" className="mt-4 space-y-4">
@@ -174,6 +214,7 @@ export function GlorietaWaterAdvocacy({ mode }: { mode: 'staff' | 'magic' | 'pro
                 <ExplanationCard title="The building was not normally occupied" body="The dispute package says Building 8 was condemned, vacant, and under rehabilitation through the period when high estimated usage was billed. That makes ordinary apartment consumption an unreliable assumption." />
                 <ExplanationCard title="The bill was driven by estimates and rebilling" body="The formal dispute identifies a retroactive rebill and estimated monthly usage. The request asks the City and WASD to reconcile those estimates to actual reads, meter-change records, and reasonable vacant-building usage." />
                 <ExplanationCard title="The analytics separate proof from claim" body={`ProjOS shows the auditable bill subtotal (${money(extracted)}) separately from the requested ${money(claim)} exposure target. That helps the owner make the larger case without overstating what has already been extracted from statements.`} />
+                <ExplanationCard title="Where the $1.1M number came from" body={`${money(claim)} is a working claim target entered into ProjOS from the owner-side request, not a WASD bill total. The source-backed figures currently visible are the ${money(extracted)} extracted Building 8 dispute-window subtotal, the $95,017.57 retroactive rebill, and the $113,874.41 unpaid balance cited in the formal dispute package. Keep the $1.1M labeled as under-reconciliation until counsel or the owner supplies the supporting schedule.`} />
               </div>
             </section>
 
@@ -303,7 +344,19 @@ export function GlorietaWaterAdvocacy({ mode }: { mode: 'staff' | 'magic' | 'pro
                   {copied ? <CheckCircle2 className="mr-1.5 h-4 w-4" /> : <Copy className="mr-1.5 h-4 w-4" />}
                   {copied ? 'Copied' : 'Copy text'}
                 </Button>
+                <Button
+                  className="bg-[#08271f] hover:bg-[#08271f]/90"
+                  disabled={saveLetter.isPending}
+                  onClick={persistLetter}
+                >
+                  {saveLetter.isPending ? 'Saving...' : 'Save to portal'}
+                </Button>
               </div>
+              {savedDraft && (
+                <p className="mb-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs leading-relaxed text-emerald-900">
+                  Saved draft loaded from the Water Intelligence record. Last saved {new Date(savedDraft.created_at).toLocaleString()} by {savedDraft.author_name || 'reviewer'}.
+                </p>
+              )}
               <ProRichTextEditor content={letterHtml} onChange={setLetterHtml} minHeight="520px" />
             </section>
 
@@ -347,6 +400,21 @@ export function GlorietaWaterAdvocacy({ mode }: { mode: 'staff' | 'magic' | 'pro
                   <span>{fact}</span>
                 </div>
               ))}
+            </div>
+          </section>
+        </TabsContent>
+
+        <TabsContent value="qa" className="mt-4">
+          <section className="rounded-3xl border border-[#dedbd1] bg-white p-5">
+            <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">
+              <MessageSquareWarning className="h-4 w-4 text-[#1D6FE8]" /> Questions and review posture
+            </div>
+            <h3 className="mt-2 font-display text-3xl text-[#08271f]">Questions the financial reviewer will ask</h3>
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <ExplanationCard title="Can we prove the $1.1M?" body="Not yet from bills alone. The dashboard intentionally separates the working claim target from source-backed bill totals so the final letter can be reconciled to statements, late charges, payments, service consequences, and owner damages." />
+              <ExplanationCard title="Why is the water intensity low?" body="Because the measured ledger window includes vacancy/rehab conditions and uses connected units as the denominator. That is useful evidence for disputing occupied-building estimates, but it is not a standalone efficiency certification." />
+              <ExplanationCard title="What should be requested from the City/WASD?" body="Ask for meter-change records, register reads, estimate worksheets, rebill worksheets, payment ledger, late-charge ledger, and the investigative notes behind the Building 8 rebill." />
+              <ExplanationCard title="What should APAS save?" body="Keep the edited city letter, reviewer comments, source PDFs, extracted fact index, and any owner reconciliation schedule in the Water Intelligence record so the magic-link review and staff portal stay connected." />
             </div>
           </section>
         </TabsContent>

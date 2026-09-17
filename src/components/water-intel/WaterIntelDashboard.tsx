@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  BadgeDollarSign,
   CircleDollarSign,
   Droplets,
   Gauge,
@@ -108,7 +109,7 @@ export function WaterIntelDashboard({
   if (intel.isLoading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center text-[#8a8478]" data-testid="water-intel-loading">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Opening the water ledger…
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Opening the water ledger...
       </div>
     );
   }
@@ -134,7 +135,7 @@ export function WaterIntelDashboard({
     return (
       <div className="space-y-5 pb-16" data-testid="water-property-manager-dashboard">
         <header className="overflow-hidden rounded-[28px] bg-[#08271f] px-6 py-8 text-white shadow-xl md:px-10">
-          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#d5aa52]">Water statements · property operations</div>
+          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#d5aa52]">Water statements - property operations</div>
           <h1 className="mt-2 font-display text-4xl font-medium md:text-5xl">{propertyName}</h1>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-[#b8c5c0]">Keep the water record current by uploading each monthly statement. Proj OS handles extraction and matching; administrators control analytical settings.</p>
         </header>
@@ -153,7 +154,7 @@ export function WaterIntelDashboard({
         <section className="rounded-3xl border border-[#dedbd1] bg-white p-5 shadow-sm">
           <div className="text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">Recent source records</div>
           <h2 className="mt-1 font-display text-2xl text-[#08271f]">Latest uploads</h2>
-          <div className="mt-4 divide-y divide-[#ece9e0]">{bills.slice(0, 8).map((bill) => { const account = accounts.find((row) => row.id === bill.account_id); return <div key={bill.id} className="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-[#08271f]">{account?.building_label || account?.service_address || 'Service account'}</p><p className="text-xs text-[#8a8478]">{bill.bill_period_start} · {bill.document_name || 'Ledger record'}</p></div><span className="font-mono text-[#08271f]">{gallons(bill.consumption_gallons)}</span></div>; })}</div>
+          <div className="mt-4 divide-y divide-[#ece9e0]">{bills.slice(0, 8).map((bill) => { const account = accounts.find((row) => row.id === bill.account_id); return <div key={bill.id} className="flex flex-col gap-1 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold text-[#08271f]">{account?.building_label || account?.service_address || 'Service account'}</p><p className="text-xs text-[#8a8478]">{bill.bill_period_start} - {bill.document_name || 'Ledger record'}</p></div><span className="font-mono text-[#08271f]">{gallons(bill.consumption_gallons)}</span></div>; })}</div>
           {!bills.length && <p className="mt-4 text-sm text-[#8a8478]">No statements uploaded yet.</p>}
         </section>
       </div>
@@ -166,13 +167,13 @@ export function WaterIntelDashboard({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#d5aa52]">
-              Water Intelligence · Executive
+              Water Intelligence - Executive
             </div>
             <h1 className="mt-2 max-w-3xl font-display text-4xl font-medium leading-tight md:text-5xl">
               {propertyName}
             </h1>
             <p className="mt-3 max-w-2xl text-sm text-[#b8c5c0]">
-              Entire property · {kpis.accountCount} Miami-Dade service accounts · not a single-building sample.
+              Entire property - {kpis.accountCount} Miami-Dade service accounts - not a single-building sample.
               {kpis.latestPeriod ? ` Latest period ${kpis.latestPeriod.slice(0, 7)}.` : ''}
             </p>
           </div>
@@ -180,7 +181,7 @@ export function WaterIntelDashboard({
             className="bg-[#d5aa52] text-[#08271f] hover:bg-[#e0c27a]"
             onClick={() => setChatOpen(true)}
           >
-            <Sparkles className="mr-1.5 h-4 w-4" /> Ask what’s happening
+            <Sparkles className="mr-1.5 h-4 w-4" /> {isGlorieta ? 'Glorieta Intelligence Brief' : "Ask what's happening"}
           </Button>
         </div>
 
@@ -194,13 +195,31 @@ export function WaterIntelDashboard({
           />
           <Kpi label="Trailing 12 months" value={money(kpis.last12Spend)} hint={gallons(kpis.last12Gallons)} icon={Droplets} />
           <Kpi label="Open / unpaid" value={money(kpis.openAmount)} hint={`${money(kpis.pastDueAmount)} past due`} icon={Scale} />
-          <Kpi label="Estimated exposure" value={money(kpis.estimatedSpend)} hint={`${money(kpis.disputedSpend)} in dispute`} icon={Gauge} />
+          <Kpi
+            label="Estimated-read exposure"
+            value={money(kpis.estimatedSpend)}
+            hint={`${money(kpis.disputedSpend)} source-backed disputed charges`}
+            icon={Gauge}
+          />
           <Kpi
             label="Normalized avoided cost"
-            value={efficiency.avoidedCost == null ? '—' : money(efficiency.avoidedCost)}
-            hint={`${efficiency.status} · excludes estimated reads`}
+            value={efficiency.avoidedCost == null ? '-' : money(efficiency.avoidedCost)}
+            hint={`${efficiency.status} - matched actual reads only`}
             icon={CircleDollarSign}
             tone={(efficiency.avoidedCost ?? 0) < 0 ? 'rose' : 'gold'}
+          />
+        </div>
+
+        <div className="mt-4 grid gap-3 lg:grid-cols-2">
+          <HeroExplainer
+            icon={Gauge}
+            title="Estimated-read exposure"
+            body="This is not the full claim. It is the dollar amount tied to bills marked estimated, with source-backed disputed charges shown in the hint. It tells us where the billing record needs proof."
+          />
+          <HeroExplainer
+            icon={BadgeDollarSign}
+            title="Normalized avoided cost"
+            body="This compares matched actual-read months against the prior-year baseline after adjusting for service days and the current water/sewer rate. Positive means avoided cost; negative means excess cost."
           />
         </div>
       </header>
@@ -208,7 +227,7 @@ export function WaterIntelDashboard({
       <WaterIntelQaBanner report={qa} />
 
       {isGlorieta && (
-        <GlorietaWaterAdvocacy mode={mode} />
+        <GlorietaWaterAdvocacy mode={mode} scope={scope} notes={notes} />
       )}
 
       {canUpload && meta?.property_id && (
@@ -251,10 +270,10 @@ export function WaterIntelDashboard({
           onChange={(e) => setAccountFilter(e.target.value)}
           data-testid="water-account-filter"
         >
-          <option value="all">All accounts — whole property</option>
+          <option value="all">All accounts - whole property</option>
           {accounts.map((a) => (
             <option key={a.id} value={a.id}>
-              {a.building_label || a.service_address} · {a.account_number}
+              {a.building_label || a.service_address} - {a.account_number}
             </option>
           ))}
         </select>
@@ -316,13 +335,25 @@ function Kpi({
   tone?: 'gold' | 'rose';
 }) {
   return (
-    <div className="rounded-2xl bg-white/5 px-4 py-4 ring-1 ring-white/10">
+    <div className="flex min-h-[132px] flex-col justify-between rounded-2xl bg-white/5 px-4 py-4 ring-1 ring-white/10">
       <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.14em] text-[#b8c5c0]">
         {label === 'YTD spend' ? <WaterTerm term="ytd" className="text-[#b8c5c0]">YTD spend</WaterTerm> : label === 'Trailing 12 months' ? <WaterTerm term="t12" className="text-[#b8c5c0]">Trailing 12 months</WaterTerm> : label}
         <Icon className={`h-4 w-4 ${tone === 'rose' ? 'text-[#F43F5E]' : 'text-[#d5aa52]'}`} />
       </div>
-      <div className="mt-2 font-mono text-3xl tracking-tight">{value}</div>
-      <div className="mt-1 text-xs text-[#b8c5c0]">{hint}</div>
+      <div className="mt-3 whitespace-nowrap font-mono text-[clamp(1.55rem,2.2vw,1.875rem)] leading-none tracking-normal tabular-nums">{value}</div>
+      <div className="mt-2 min-h-8 text-xs leading-snug text-[#b8c5c0]">{hint}</div>
+    </div>
+  );
+}
+
+function HeroExplainer({ icon: Icon, title, body }: { icon: typeof Droplets; title: string; body: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-[#d8e2de]">
+      <div className="flex items-center gap-2 font-semibold text-white">
+        <Icon className="h-4 w-4 text-[#d5aa52]" />
+        {title}
+      </div>
+      <p className="mt-1 leading-relaxed text-[#b8c5c0]">{body}</p>
     </div>
   );
 }
