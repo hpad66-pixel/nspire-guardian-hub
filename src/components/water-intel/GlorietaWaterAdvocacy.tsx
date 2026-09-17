@@ -94,6 +94,21 @@ function ExplanationCard({ title, body }: { title: string; body: string }) {
   );
 }
 
+function CfoAnswerCard({ title, answer, accent = 'forest' }: { title: string; answer: string; accent?: 'forest' | 'gold' | 'rose' | 'blue' }) {
+  const accents = {
+    forest: 'border-[#08271f]/20 bg-[#f7faf8] text-[#08271f]',
+    gold: 'border-[#C4A35A]/35 bg-[#fff8e5] text-[#6d5319]',
+    rose: 'border-rose-200 bg-rose-50 text-rose-900',
+    blue: 'border-blue-200 bg-blue-50 text-blue-900',
+  };
+  return (
+    <article className={`rounded-2xl border p-4 ${accents[accent]}`}>
+      <h4 className="text-sm font-bold leading-snug">{title}</h4>
+      <p className="mt-2 text-sm leading-relaxed text-[#3d4a45]">{answer}</p>
+    </article>
+  );
+}
+
 function extractSavedLetter(note: WaterExecNote | undefined) {
   if (!note?.body.includes(GLORIETA_CITY_LETTER_MARKER)) return null;
   const html = note.body.split(GLORIETA_CITY_LETTER_MARKER)[1]?.trim();
@@ -146,6 +161,11 @@ export function GlorietaWaterAdvocacy({
 
   const recentDispute = dispute.disputeMonthly.slice(-12);
   const extracted = dispute.summary.disputeCurrentCharges;
+  const complexSpend = dispute.accounts.reduce((sum, account) => sum + account.spend, 0);
+  const complexGallons = dispute.accounts.reduce((sum, account) => sum + account.gallons, 0);
+  const vacancyComplexSpend = dispute.meterTimeline.reduce((sum, account) => sum + account.vacancySpend, 0);
+  const disputeShare = complexSpend > 0 ? (extracted / complexSpend) * 100 : 0;
+  const topContextMeter = dispute.meterTimeline.find((account) => !account.isDispute);
   const mailSubject = encodeURIComponent(`Glorieta Gardens billing dispute - Account ${dispute.summary.disputeAccount}`);
   const mailBody = encodeURIComponent(letterHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim());
 
@@ -406,7 +426,52 @@ export function GlorietaWaterAdvocacy({
             <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#8a8478]">
               <MessageSquareWarning className="h-4 w-4 text-[#1D6FE8]" /> Questions and review posture
             </div>
-            <h3 className="mt-2 font-display text-3xl text-[#08271f]">Questions the financial reviewer will ask</h3>
+            <h3 className="mt-2 font-display text-3xl text-[#08271f]">CFO answer bank</h3>
+            <p className="mt-2 max-w-4xl text-sm leading-relaxed text-[#5c6863]">
+              These are the quick answers a CFO or budget director needs before deciding whether the Building 8 bill should be paid, disputed, reserved, or escalated.
+            </p>
+            <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              <CfoAnswerCard
+                accent="rose"
+                title="1. What is the approximately $100k problem?"
+                answer={`The issue is a Building 8 back-bill. The formal dispute package cites a ${money(GLORIETA_FORMAL_RETROACTIVE_REBILL)} retroactive rebill, while ProjOS has indexed ${money(extracted)} in Building 8 current charges inside the dispute window. Those figures are close enough that the CFO should treat this as one bill-backed dispute workstream, not a broad unsupported damages number.`}
+              />
+              <CfoAnswerCard
+                accent="gold"
+                title="2. Is this one meter or the whole complex?"
+                answer={`The challenged account is one meter: Building 8, Account ${dispute.summary.disputeAccount}, Meter ${dispute.summary.disputeMeter}. The whole complex data still matters because ProjOS compares this account against ${dispute.summary.accountCount} total service accounts to show whether the disputed period stands out from the rest of Glorieta.`}
+              />
+              <CfoAnswerCard
+                accent="blue"
+                title="3. How much water is tied to the disputed window?"
+                answer={`The indexed Building 8 dispute window carries ${dispute.summary.disputeGallons.toLocaleString()} gallons. The formal dispute also references estimated usage of about 216,000 gallons per month, which should be reconciled against actual reads, not accepted as ordinary occupied-building consumption.`}
+              />
+              <CfoAnswerCard
+                title="4. What does the entire complex data show?"
+                answer={`ProjOS has indexed ${dispute.summary.sourceFileCount} WASD PDFs into ${dispute.summary.canonicalBillCount} canonical account-period records across ${dispute.summary.accountCount} service accounts. Across the indexed complex ledger, current charges total ${money(complexSpend)} and consumption totals ${complexGallons.toLocaleString()} gallons, so the CFO can see Building 8 in context instead of as an isolated PDF.`}
+              />
+              <CfoAnswerCard
+                accent="rose"
+                title="5. How big is Building 8 compared with the full ledger?"
+                answer={`The Building 8 dispute-window subtotal is about ${disputeShare.toFixed(1)}% of indexed complex current charges. The broader vacancy-window spend across all meters is ${money(vacancyComplexSpend)}, which helps separate the single disputed meter from normal complex-wide operating water costs.`}
+              />
+              <CfoAnswerCard
+                accent="blue"
+                title="6. What should finance ask for before paying?"
+                answer="Ask for the meter-change work order, starting register read, monthly actual read history, estimate basis, rebill worksheet, payment ledger, late-charge ledger, and investigation notes. Without that package, finance cannot tell whether the back-bill is supported by actual consumption."
+              />
+              <CfoAnswerCard
+                accent="gold"
+                title="7. What is the recommended accounting posture?"
+                answer={`Treat the ${money(GLORIETA_FORMAL_UNPAID_BALANCE)} cited unpaid balance as disputed pending reconciliation. The business question is not whether Glorieta uses water; it is whether this Building 8 back-bill is supported during the red-tagged/vacant/rehab period.`}
+              />
+              <CfoAnswerCard
+                title="8. Which comparison should leadership look at first?"
+                answer={`Start with the pre/vacancy/post-rehab meter comparison. Building 8 is highlighted, and ${topContextMeter ? `${topContextMeter.label} is shown as complex context` : 'the other meters are shown as complex context'}, so leadership can see whether the charge pattern is isolated to the disputed account.`}
+              />
+            </div>
+
+            <h3 className="mt-8 font-display text-2xl text-[#08271f]">Additional review questions</h3>
             <div className="mt-5 grid gap-3 md:grid-cols-2">
               {[
                 ['Which account and meter are actually disputed?', `Building 8, Account ${dispute.summary.disputeAccount}, Meter ${dispute.summary.disputeMeter}. Keep the case focused there unless another statement shows the same problem.`],
