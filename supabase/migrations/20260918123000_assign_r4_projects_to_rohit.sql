@@ -21,6 +21,11 @@ BEGIN
    WHERE id = ANY(v_project_ids)
      AND deleted_at IS NULL;
 
+  IF v_project_count = 0 THEN
+    RAISE NOTICE 'Skipping Rohit assignment because the target R4 projects are not present in this database.';
+    RETURN;
+  END IF;
+
   IF v_project_count <> 2 THEN
     RAISE EXCEPTION
       'Expected 2 active R4 projects for Rohit assignment, found %',
