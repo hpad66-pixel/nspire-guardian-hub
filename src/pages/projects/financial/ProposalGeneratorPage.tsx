@@ -14,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VoiceDictationTextareaWithAI } from "@/components/ui/voice-dictation-textarea-ai";
-import { ChevronRight, FileText, LayoutDashboard, Loader2, Paperclip, Sparkles, X } from "lucide-react";
+import { ChevronRight, FileText, LayoutDashboard, Loader2, Paperclip, Plus, Sparkles, Trash2, UploadCloud, Wand2, X } from "lucide-react";
 
 interface DraftLine {
   category: FinancialProposalLine["category"];
@@ -50,6 +50,8 @@ const EMPTY: GeneratorDraft = {
 
 const toLines = (value: string) => value.split("\n").map(line => line.trim()).filter(Boolean);
 const fromLines = (values: string[] | undefined) => (values ?? []).join("\n");
+const CATEGORIES: FinancialProposalLine["category"][] = ["labor", "material", "equipment", "subcontract", "other"];
+const money = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value || 0);
 
 export default function ProposalGeneratorPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -66,6 +68,7 @@ export default function ProposalGeneratorPage() {
 
   const [aiText, setAiText] = useState("");
   const [bgFile, setBgFile] = useState<File | null>(null);
+  const [intakeMode, setIntakeMode] = useState<"scratch" | "upload">("scratch");
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -84,6 +87,23 @@ export default function ProposalGeneratorPage() {
 
   const patch = <K extends keyof GeneratorDraft>(key: K, value: GeneratorDraft[K]) =>
     setDraft(current => ({ ...current, [key]: value }));
+  const patchLine = <K extends keyof DraftLine>(index: number, key: K, value: DraftLine[K]) =>
+    setDraft(current => ({
+      ...current,
+      lines: current.lines.map((line, lineIndex) => lineIndex === index ? { ...line, [key]: value } : line),
+    }));
+  const addDraftLine = () => setDraft(current => ({
+    ...current,
+    lines: [...current.lines, { category: "other", description: "", quantity: 1, unit: "ls", unit_cost: 0 }],
+  }));
+  const removeDraftLine = (index: number) => setDraft(current => ({
+    ...current,
+    lines: current.lines.filter((_, lineIndex) => lineIndex !== index),
+  }));
+  const draftSubtotal = useMemo(
+    () => draft.lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unit_cost) || 0), 0),
+    [draft.lines],
+  );
 
   async function draftWithAI() {
     if (aiText.trim().length < 5 && !bgFile) {
@@ -264,10 +284,37 @@ export default function ProposalGeneratorPage() {
       <div className="grid gap-6 lg:grid-cols-2">
         {/* ── Author ─────────────────────────────── */}
         <div className="space-y-4">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Step 1 · How do you want to build this proposal?</CardTitle>
+              <p className="text-sm text-muted-foreground">Choose one clear path. Either start from a dictated scope, or upload the client proposal, RFP, subconsultant quote, or pricing backup and extract the billing schedule.</p>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => { setIntakeMode("scratch"); setBgFile(null); }}
+                className={`rounded-xl border p-4 text-left transition ${intakeMode === "scratch" ? "border-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/[0.06] shadow-sm" : "bg-background hover:bg-muted/40"}`}
+              >
+                <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-[var(--apas-sapphire)] text-white"><Wand2 className="h-4 w-4" /></span>
+                <span className="block font-semibold">Create from scratch with AI</span>
+                <span className="mt-1 block text-sm leading-5 text-muted-foreground">Dictate the scope, fee, deliverables, and terms. Claude writes the proposal and creates editable fee rows.</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIntakeMode("upload"); fileRef.current?.click(); }}
+                className={`rounded-xl border p-4 text-left transition ${intakeMode === "upload" ? "border-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/[0.06] shadow-sm" : "bg-background hover:bg-muted/40"}`}
+              >
+                <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-700 text-white"><UploadCloud className="h-4 w-4" /></span>
+                <span className="block font-semibold">Upload and extract</span>
+                <span className="mt-1 block text-sm leading-5 text-muted-foreground">Upload a proposal, RFP, or quote. Review the extracted lines, vendors, subcontractors, overhead, and profit before saving.</span>
+              </button>
+            </CardContent>
+          </Card>
+
           <Card className="border-[var(--apas-sapphire)]/30 bg-[var(--apas-sapphire)]/[0.03]">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-1.5 text-base"><Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" /> Describe the proposal</CardTitle>
-              <p className="text-xs text-muted-foreground">Tell the story — what the client needs, your approach, the fee. Attach a subconsultant quote or RFP and Claude reads both. You can dictate with your mic.</p>
+              <CardTitle className="flex items-center gap-1.5 text-base"><Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" /> {intakeMode === "upload" ? "Upload and extract proposal" : "Describe the proposal"}</CardTitle>
+              <p className="text-xs text-muted-foreground">{intakeMode === "upload" ? "Attach the proposal package, then add any instructions about what to extract or ignore. Claude will draft the proposal and fee schedule for your review." : "Tell the story: what the client needs, your approach, the fee, subs, consultants, pass-throughs, terms, and deliverables. You can dictate with your mic."}</p>
             </CardHeader>
             <CardContent className="space-y-2">
               <VoiceDictationTextareaWithAI
@@ -282,7 +329,7 @@ export default function ProposalGeneratorPage() {
                 type="file"
                 className="hidden"
                 accept=".pdf,.png,.jpg,.jpeg,.webp,.gif,.txt,.md,.csv,.tsv"
-                onChange={(e) => { setBgFile(e.target.files?.[0] ?? null); e.currentTarget.value = ""; }}
+                onChange={(e) => { setIntakeMode("upload"); setBgFile(e.target.files?.[0] ?? null); e.currentTarget.value = ""; }}
               />
               {bgFile ? (
                 <div className="flex items-center justify-between gap-2 rounded-md border border-[var(--apas-sapphire)]/30 bg-background px-3 py-2 text-sm">
@@ -291,7 +338,7 @@ export default function ProposalGeneratorPage() {
                 </div>
               ) : (
                 <button type="button" onClick={() => fileRef.current?.click()} className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-muted-foreground/30 px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-[var(--apas-sapphire)]/50 hover:text-foreground">
-                  <Paperclip className="h-3.5 w-3.5" /> Attach subconsultant doc — click (PDF, image, or text)
+                  <Paperclip className="h-3.5 w-3.5" /> Attach proposal, RFP, or quote — click (PDF, image, or text)
                 </button>
               )}
               <div className="flex justify-end">
@@ -319,9 +366,58 @@ export default function ProposalGeneratorPage() {
               {draft.lines.length > 0 && (
                 <div className="rounded-md border bg-muted/20 p-3 text-sm">
                   <p className="mb-1 font-medium">{draft.lines.length} fee line item{draft.lines.length === 1 ? "" : "s"} drafted</p>
-                  <p className="text-xs text-muted-foreground">Fine-tune pricing in the builder after you create the proposal.</p>
+                  <p className="text-xs text-muted-foreground">Review these rows now. They become the schedule of values that invoices bill against after approval.</p>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base">Step 2 · Review schedule of values</CardTitle>
+                  <p className="mt-1 text-sm text-muted-foreground">One row per approved billing bucket: consulting fee, subcontractor, consultant, material, labor, equipment, pass-through, overhead-bearing cost, or other scope item.</p>
+                </div>
+                <Button type="button" variant="outline" size="sm" onClick={addDraftLine}><Plus className="mr-1.5 h-4 w-4" />Add row</Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="overflow-x-auto rounded-lg border">
+                <table className="w-full min-w-[760px] text-sm">
+                  <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                    <tr><th className="p-2 text-left">Category</th><th className="p-2 text-left">Description / vendor</th><th className="p-2 text-right">Qty</th><th className="p-2 text-left">Unit</th><th className="p-2 text-right">Unit cost</th><th className="p-2 text-right">Extended</th><th /></tr>
+                  </thead>
+                  <tbody>
+                    {draft.lines.length === 0 ? (
+                      <tr><td colSpan={7} className="p-5 text-center text-sm text-muted-foreground">No fee rows yet. Draft with AI, upload a proposal, or add a row manually.</td></tr>
+                    ) : draft.lines.map((line, index) => {
+                      const extended = (Number(line.quantity) || 0) * (Number(line.unit_cost) || 0);
+                      return (
+                        <tr key={index} className="border-t bg-background">
+                          <td className="p-2">
+                            <select className="h-9 rounded-md border bg-background px-2 text-xs" value={line.category} onChange={event => patchLine(index, "category", event.target.value as DraftLine["category"])}>
+                              {CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
+                            </select>
+                          </td>
+                          <td className="p-2"><Input className="h-9 min-w-64 text-xs" value={line.description} onChange={event => patchLine(index, "description", event.target.value)} placeholder="Vendor, subcontractor, consultant, or scope item" /></td>
+                          <td className="p-2"><Input className="h-9 w-20 text-right text-xs" type="number" step="any" value={line.quantity} onChange={event => patchLine(index, "quantity", Number(event.target.value) || 0)} /></td>
+                          <td className="p-2"><Input className="h-9 w-20 text-xs" value={line.unit} onChange={event => patchLine(index, "unit", event.target.value)} /></td>
+                          <td className="p-2"><Input className="h-9 w-28 text-right text-xs" type="number" step="any" value={line.unit_cost} onChange={event => patchLine(index, "unit_cost", Number(event.target.value) || 0)} /></td>
+                          <td className="p-2 text-right font-mono text-xs">{money(extended)}</td>
+                          <td className="p-2"><Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeDraftLine(index)}><Trash2 className="h-3.5 w-3.5" /></Button></td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t bg-muted/40 font-semibold"><td colSpan={5} className="p-2 text-right">Cost-of-work subtotal</td><td className="p-2 text-right font-mono">{money(draftSubtotal)}</td><td /></tr>
+                  </tfoot>
+                </table>
+              </div>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Overhead and profit calculate from the subtotal. They are not line items. After the proposal is approved and locked, client invoices can bill only against the approved rows and remaining value.
+              </p>
             </CardContent>
           </Card>
         </div>
