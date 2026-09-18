@@ -7,7 +7,7 @@ export default function PricingPage() {
       <div className="mx-auto max-w-4xl">
         <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-[#e2bd76]">Enterprise access</p>
         <h1 className="mt-5 font-display text-5xl font-medium leading-none tracking-normal sm:text-7xl">
-          OneWater Work is scoped by conversation, not a public price card.
+          Enterprise pricing is scoped by conversation, not a public price card.
         </h1>
         <p className="mt-6 max-w-2xl text-lg leading-8 text-white/70">
           We configure the platform around your projects, properties, voice agents, financial controls,

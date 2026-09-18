@@ -256,7 +256,7 @@ function Hero() {
           transition={{ duration: 0.7 }}
         >
           <p className="ow-eyebrow"><span /> OneWater.ai flagship system</p>
-          <h1>Project intelligence people can actually run.</h1>
+          <h1>See every project with intelligence people can actually run.</h1>
           <p className="ow-hero-lede">
             OneWater Work turns voice calls, field walks, invoices, water data, portals, and client decisions into one
             clear operating system. Premium enough for executives. Simple enough for the field.

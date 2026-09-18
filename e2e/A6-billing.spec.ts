@@ -4,7 +4,7 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("A6 Billing", () => {
-  test("public pricing page renders plan cards", async ({ page }) => {
+  test("public pricing page renders enterprise contact pricing", async ({ page }) => {
     await page.goto("/pricing");
     await expect(page.getByRole("heading", { name: /pricing/i })).toBeVisible();
   });
