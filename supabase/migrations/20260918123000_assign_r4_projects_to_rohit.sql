@@ -14,6 +14,7 @@ DECLARE
   v_workspace_count integer;
   v_workspace_id uuid;
   v_rohit_user_id uuid;
+  v_admin_user_id uuid;
 BEGIN
   SELECT COUNT(*), COUNT(DISTINCT workspace_id)
     INTO v_project_count, v_workspace_count
@@ -68,10 +69,39 @@ BEGIN
     RAISE EXCEPTION 'Could not find active Rohit Anand profile in workspace %', v_workspace_id;
   END IF;
 
-  -- The project owner trigger intentionally requires an administrator claim for
-  -- reassignment. Keep the trigger and audit insert active by using a local
-  -- migration-only super-admin JWT claim rather than disabling triggers.
-  PERFORM set_config('request.jwt.claims', '{"role":"super_admin"}', true);
+  SELECT p.user_id
+    INTO v_admin_user_id
+    FROM public.profiles p
+    LEFT JOIN public.user_roles ur
+      ON ur.user_id = p.user_id
+     AND ur.role = 'admin'::public.app_role
+    LEFT JOIN public.workspaces w
+      ON w.id = p.workspace_id
+     AND w.owner_user_id = p.user_id
+   WHERE p.workspace_id = v_workspace_id
+     AND COALESCE(p.status, 'active') = 'active'
+     AND (ur.user_id IS NOT NULL OR w.owner_user_id IS NOT NULL)
+   ORDER BY
+     CASE WHEN ur.user_id IS NOT NULL THEN 0 ELSE 1 END,
+     p.created_at DESC NULLS LAST
+   LIMIT 1;
+
+  IF v_admin_user_id IS NULL THEN
+    RAISE EXCEPTION 'Could not find active workspace administrator for workspace %', v_workspace_id;
+  END IF;
+
+  -- The project owner trigger intentionally requires administrator authority
+  -- for reassignment. Use an existing workspace admin as the migration actor so
+  -- the trigger stays active and the audit row has a meaningful changed_by.
+  PERFORM set_config('request.jwt.claim.sub', v_admin_user_id::text, true);
+  PERFORM set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'sub', v_admin_user_id::text,
+      'role', 'authenticated'
+    )::text,
+    true
+  );
 
   UPDATE public.projects
      SET owner_user_id = v_rohit_user_id,
