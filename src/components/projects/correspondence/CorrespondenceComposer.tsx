@@ -36,7 +36,7 @@ import { downloadLetterPdf, letterPdfBase64 } from "@/lib/correspondence/letterP
 import { RecipientsInput } from "./RecipientsInput";
 
 const CATEGORIES = [
-  { value: "r4", label: "Client / Owner (R4)" },
+  { value: "client-owner", label: "Client / Owner" },
   { value: "city", label: "Agency / City" },
   { value: "transmittal", label: "Transmittal" },
   { value: "general", label: "General" },
@@ -72,7 +72,7 @@ export function CorrespondenceComposer({
   const gmail = useGmailConnection();
   const docRef = useRef<HTMLDivElement>(null);
 
-  const [category, setCategory] = useState("r4");
+  const [category, setCategory] = useState("client-owner");
   const [recipient, setRecipient] = useState("");
   const [recipientOrg, setRecipientOrg] = useState("");
   const [recipients, setRecipients] = useState<string[]>([]);
@@ -95,7 +95,7 @@ export function CorrespondenceComposer({
     if (!open) return;
     if (draft) {
       const meta = (draft.letter_meta ?? {}) as Record<string, any>;
-      setCategory(meta.category || "r4");
+      setCategory(meta.category || "client-owner");
       setRecipient(meta.recipient || "");
       setRecipientOrg(meta.recipientOrg || "");
       setRecipients(draft.to_emails ?? []);
@@ -128,7 +128,7 @@ export function CorrespondenceComposer({
       setCcRecipients([]); setBccRecipients([]); setShowCcBcc(false);
       setReferenceNo(""); setSubject(""); setContext(""); setBodyHtml(""); setMessage(""); setSavedId(null);
     } else {
-      setCategory("r4"); setRecipient(""); setRecipientOrg("");
+      setCategory("client-owner"); setRecipient(""); setRecipientOrg("");
       setRecipients([]); setCcRecipients([]); setBccRecipients([]); setShowCcBcc(false);
       setReferenceNo(""); setSubject(""); setContext(""); setBodyHtml(""); setMessage(""); setSavedId(null);
     }
@@ -301,7 +301,7 @@ export function CorrespondenceComposer({
   };
 
   const saveTemplate = async () => {
-    const name = window.prompt("Template name (e.g. \"R4 status letter\"):", `${CATEGORIES.find((c) => c.value === category)?.label} letter`);
+    const name = window.prompt("Template name (e.g. \"Owner status letter\"):", `${CATEGORIES.find((c) => c.value === category)?.label} letter`);
     if (!name) return;
     try {
       await templates.create.mutateAsync({ name, category, subject_template: subject, body_template: bodyHtml, recipient });
@@ -335,7 +335,7 @@ export function CorrespondenceComposer({
 
           <div className="grid gap-2 sm:grid-cols-2">
             <Input placeholder="Recipient name / title (for the letter's address block)" value={recipient} onChange={(e) => setRecipient(e.target.value)} />
-            <Input placeholder="Recipient org (e.g. R4 Capital)" value={recipientOrg} onChange={(e) => setRecipientOrg(e.target.value)} />
+            <Input placeholder="Recipient organization" value={recipientOrg} onChange={(e) => setRecipientOrg(e.target.value)} />
           </div>
 
           {/* Send-to addresses — email only, no name required. Autocompletes

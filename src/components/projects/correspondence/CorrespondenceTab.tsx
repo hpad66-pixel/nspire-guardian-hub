@@ -202,7 +202,7 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
               </Button>
             </>
           ) : (
-            <Button variant="outline" size="sm" onClick={() => gmail.connect.mutate(undefined)} disabled={gmail.connect.isPending} title="Connect your Gmail to sync R4 & City of Opa-Locka threads">
+            <Button variant="outline" size="sm" onClick={() => gmail.connect.mutate(undefined)} disabled={gmail.connect.isPending} title="Connect your Gmail to sync owner, client, and agency threads">
               {gmail.connect.isPending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Inbox className="h-4 w-4 mr-1" />} Connect Gmail
             </Button>
           ))}
@@ -302,8 +302,8 @@ export function CorrespondenceTab({ projectId, projectName }: { projectId: strin
                 <div className="font-medium">No correspondence yet</div>
                 <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
                   {connected
-                    ? "Click Sync now to pull in the water-billing and meter threads with R4 and the City of Opa-Locka — then Analyze to summarize them."
-                    : "Connect your Gmail to pull in the R4 and City of Opa-Locka threads, or switch to Documents to upload and author a letter."}
+                    ? "Click Sync now to pull in billing, owner, client, and agency threads, then Analyze to summarize them."
+                    : "Connect your Gmail to pull in owner, client, and agency threads, or switch to Documents to upload and author a letter."}
                 </p>
                 {connected && (
                   <Button className="mt-4" size="sm" onClick={runSync} disabled={sync.isPending}>

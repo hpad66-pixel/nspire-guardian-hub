@@ -184,7 +184,7 @@ export function AppSidebar() {
             </div>
             {!collapsed && (
               <span className="grid gap-1 leading-none">
-                <strong className="text-[16px] font-bold text-sidebar-foreground">OneWater Work</strong>
+                <strong className="text-[16px] font-bold text-sidebar-foreground">Proj OS</strong>
                 <small className="text-[9px] font-bold uppercase tracking-[0.14em] text-sidebar-muted">Project operating system</small>
               </span>
             )}

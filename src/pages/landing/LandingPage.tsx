@@ -1,9 +1,9 @@
-import OneWaterLandingPage from './OneWaterLandingPage';
+import ProjOSLandingPage from './ProjOSLandingPage';
 
 /**
  * Public marketing entry point. The operational application remains unchanged;
- * this route presents the OneWater Work flagship product experience.
+ * this route presents the Proj OS flagship product experience.
  */
 export default function LandingPage() {
-  return <OneWaterLandingPage />;
+  return <ProjOSLandingPage />;
 }

@@ -112,7 +112,7 @@ export default function AuthPage() {
           transition={{ duration: 0.6 }}
           className="relative z-10"
         >
-          {/* OneWater Work wordmark */}
+          {/* Proj OS wordmark */}
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-3 select-none">
             <span
               className="font-black leading-none tracking-tight text-primary-foreground"
@@ -198,7 +198,7 @@ export default function AuthPage() {
         {/* Footer */}
         <div className="relative z-10 mt-8">
           <p className="text-xs text-primary-foreground/35">
-            © 2026 OneWater.ai · OneWater Work
+            © 2026 OneWater.ai · Proj OS
           </p>
         </div>
       </div>
@@ -241,7 +241,7 @@ export default function AuthPage() {
                   ? 'Sign in with the account connected to your private project portal'
                   : AUTH0_ENABLED
                     ? 'Use your secure workspace identity to continue'
-                    : 'Sign in to access your OneWater Work workspace'}
+                    : 'Sign in to access your Proj OS workspace'}
               </p>
             </div>
 
@@ -308,7 +308,7 @@ export default function AuthPage() {
                 </div>
                 <button type="submit" disabled={isSubmitting}
                   className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
-                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : ('Sign in to OneWater Work')}
+                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : ('Sign in to Proj OS')}
                 </button>
             </form>
             )}

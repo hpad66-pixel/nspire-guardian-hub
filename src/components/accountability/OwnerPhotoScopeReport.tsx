@@ -234,7 +234,7 @@ function HudReadinessPlan({ groups }: { groups: PhotoScopeGroup[] }) {
       <div className="bg-[#082b23] p-5 text-white sm:p-6">
         <p className="text-[10px] font-black uppercase tracking-[.18em] text-amber-300">Expedited owner direction · HUD inspection readiness</p>
         <h3 className="mt-2 font-display text-3xl">One APAS-controlled program. Licensed responsibility by trade.</h3>
-        <p className="mt-2 max-w-4xl text-sm leading-relaxed text-emerald-50/75">APAS will consolidate the scope, pricing, schedule, decisions and closeout evidence for R4 in one place. Proceed immediately with a general contractor, licensed plumbing/underground utility contractor, electrical contractor and structural engineer, while coordinating the civil, stucco and landscape work beneath the approved delivery plan.</p>
+        <p className="mt-2 max-w-4xl text-sm leading-relaxed text-emerald-50/75">APAS will consolidate the scope, pricing, schedule, decisions and closeout evidence in one place. Proceed immediately with a general contractor, licensed plumbing/underground utility contractor, electrical contractor and structural engineer, while coordinating the civil, stucco and landscape work beneath the approved delivery plan.</p>
         <div className="mt-4 flex flex-wrap gap-2">{[...counts.entries()].map(([discipline, count]) => <span key={discipline} className="rounded-full border border-white/15 bg-white/10 px-3 py-1.5 text-[10px] font-bold">{discipline} · {count} items</span>)}</div>
       </div>
       <div className="grid gap-px bg-slate-200 md:grid-cols-2">

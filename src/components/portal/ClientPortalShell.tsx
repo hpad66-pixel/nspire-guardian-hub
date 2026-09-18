@@ -375,7 +375,7 @@ export function ClientPortalShell() {
             <PortalNavigationLinks items={secondaryNavigation} decisions={decisions} location={location} className="client-portal-rail__link" />
           </nav>
 
-          <div className="client-portal-sidebar__secure"><ShieldCheck aria-hidden /><span><strong>Private workspace</strong><small>Role-restricted to your R4 team</small></span></div>
+          <div className="client-portal-sidebar__secure"><ShieldCheck aria-hidden /><span><strong>Private workspace</strong><small>Role-restricted to the invited client team</small></span></div>
         </aside>
 
         <div className="client-portal-content">
@@ -390,7 +390,7 @@ export function ClientPortalShell() {
             {projectUnavailable ? (
               <div className="client-dashboard-empty" data-testid="owner-portal-project-unavailable">
                 <h2>This project is not available in your portal</h2>
-                <p>Choose one of the R4 projects in the navigation.</p>
+                <p>Choose one of the projects in the navigation.</p>
               </div>
             ) : (
               <Outlet />

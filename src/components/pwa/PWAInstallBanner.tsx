@@ -23,10 +23,10 @@ export function PWAInstallBanner() {
     >
       <div className="flex items-start gap-3 rounded-xl border border-border bg-card p-3.5 shadow-lg">
         <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg">
-          <img src="/icons/apas-os-192.png" alt="OneWater Work" className="h-full w-full object-cover" />
+          <img src="/icons/apas-os-192.png" alt="Proj OS" className="h-full w-full object-cover" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-tight text-foreground">Install OneWater Work</p>
+          <p className="text-sm font-semibold leading-tight text-foreground">Install Proj OS</p>
           {isIOS ? (
             <p className="mt-0.5 text-xs leading-snug text-muted-foreground">
               Tap <strong>Share</strong> then <strong>&quot;Add to Home Screen&quot;</strong>.{' '}

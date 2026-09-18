@@ -63,7 +63,7 @@ serve(async (req) => {
   const phone = clean(body.phone, 80) || null;
   const interest = clean(body.interest, 160) || "Enterprise deployment";
   const message = clean(body.message, 4000) || null;
-  const product = clean(body.product, 80) || "OneWater Work";
+  const product = clean(body.product, 80) || "Proj OS";
   const source_path = clean(body.source_path, 240) || null;
   const source_url = clean(body.source_url, 600) || null;
 
@@ -99,7 +99,7 @@ serve(async (req) => {
           company_name: company ?? undefined,
           phone: phone ?? undefined,
           notes: [existing.notes, noteLines.join("\n")].filter(Boolean).join("\n\n"),
-          tags: Array.from(new Set([...existingTags, "enterprise-lead", "onewater-work", "marketing"])),
+          tags: Array.from(new Set([...existingTags, "enterprise-lead", "proj-os", "marketing"])),
         })
         .eq("id", crm_contact_id);
     } else {
@@ -114,7 +114,7 @@ serve(async (req) => {
           email,
           phone,
           notes: noteLines.join("\n"),
-          tags: ["enterprise-lead", "onewater-work", "marketing", interest.toLowerCase().replace(/[^a-z0-9]+/g, "-")],
+          tags: ["enterprise-lead", "proj-os", "marketing", interest.toLowerCase().replace(/[^a-z0-9]+/g, "-")],
           is_active: true,
           is_favorite: false,
         })

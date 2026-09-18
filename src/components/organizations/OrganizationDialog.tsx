@@ -227,7 +227,7 @@ export function OrganizationDialog({ open, onOpenChange, organization, onCreated
                 <FormItem>
                   <FormLabel>Organization Name *</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. R4 Capital Partners" {...field} />
+                    <Input placeholder="e.g. Capital Partners LLC" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

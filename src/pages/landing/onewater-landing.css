@@ -868,6 +868,45 @@
   line-height: 1.65;
 }
 
+.ow-roi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.ow-roi-grid article {
+  min-height: 230px;
+  padding: 24px;
+  border: 1px solid rgba(6, 31, 26, .14);
+  background:
+    linear-gradient(180deg, rgba(6, 31, 26, .96), rgba(8, 43, 35, .94)),
+    var(--ow-deep);
+  color: var(--ow-white);
+}
+
+.ow-roi-grid span {
+  color: var(--ow-gold-soft);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .14em;
+}
+
+.ow-roi-grid h3 {
+  margin: 58px 0 12px;
+  font-family: var(--ow-display);
+  font-size: 35px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.ow-roi-grid p {
+  margin: 0;
+  color: #cfdcd6;
+  font-size: 14px;
+  line-height: 1.65;
+}
+
 .ow-mobile-section {
   background: var(--ow-surface-2);
 }
@@ -1081,7 +1120,8 @@
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .ow-workflow-grid {
+  .ow-workflow-grid,
+  .ow-roi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }
@@ -1174,6 +1214,7 @@
 
   .ow-value-grid,
   .ow-workflow-grid,
+  .ow-roi-grid,
   .ow-contact-form {
     grid-template-columns: 1fr;
   }
@@ -1223,6 +1264,14 @@
 
   .ow-workflow-grid h3 {
     margin-top: 36px;
+  }
+
+  .ow-roi-grid article {
+    min-height: 190px;
+  }
+
+  .ow-roi-grid h3 {
+    margin-top: 34px;
   }
 }
 

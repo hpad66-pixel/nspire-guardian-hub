@@ -41,18 +41,18 @@ const NAV = [
 ];
 
 const SIGNALS = [
-  ['Voice calls captured', '24/7'],
-  ['Project controls', 'Live'],
+  ['Calls become tickets', '24/7'],
+  ['Project money visible', 'Live'],
   ['Client portals', 'Secure'],
   ['CRM intake', 'Ready'],
 ];
 
 const STREAM = [
-  { label: 'VOICE AGENT', text: 'Caller says water is pooling in Unit 204. Agent confirms severity and contact details.' },
-  { label: 'WORK ORDER', text: 'Urgent plumbing ticket created, on call technician notified, owner view updated.' },
+  { label: 'VOICE AGENT', text: 'A caller reports an active issue. Proj OS asks the next question and records the answer.' },
+  { label: 'WORK ORDER', text: 'A ticket is created with urgency, location, contact details, and the right team notified.' },
   { label: 'FIELD WALK', text: 'Photos, annotation, before and after proof, and assignment history stay in one record.' },
-  { label: 'FINANCIALS', text: 'Approved proposal, sub cost, billing percent, invoice package, and report attachment stay connected.' },
-  { label: 'WATER INTEL', text: 'Meter data, dispute period, evidence, client comments, and letter draft remain traceable.' },
+  { label: 'FINANCIALS', text: 'Proposal value, subcontractor exposure, billing percent, invoice package, and approval lock stay connected.' },
+  { label: 'CLIENT PORTAL', text: 'The client sees the clean version: status, proof, decisions, notes, and what needs attention.' },
 ];
 
 const VALUE_CARDS: Array<{
@@ -64,7 +64,7 @@ const VALUE_CARDS: Array<{
   {
     icon: PhoneCall,
     label: 'Voice agents',
-    title: 'Calls become work instead of voicemail.',
+    title: 'Calls become work, not voicemail.',
     copy: 'After hours calls are answered, clarified, transcribed, routed, and turned into tickets with human review where it matters.',
   },
   {
@@ -81,9 +81,9 @@ const VALUE_CARDS: Array<{
   },
   {
     icon: Droplets,
-    label: 'Water Intelligence',
-    title: 'Utility disputes get clean analytics.',
-    copy: 'Bills, meters, periods, letters, comments, and client ready evidence pages are organized for simple review.',
+    label: 'Data intelligence',
+    title: 'Messy evidence becomes a simple case.',
+    copy: 'Bills, photos, reports, comments, letters, and client ready evidence pages are organized so decisions can be made from facts.',
   },
   {
     icon: UsersRound,
@@ -100,10 +100,17 @@ const VALUE_CARDS: Array<{
 ];
 
 const WORKFLOWS = [
-  ['Construction', 'Contracts, SOV, pay apps, change orders, retainage, closeout, and owner approval.'],
-  ['Consulting', 'Proposals, branded invoices, report packages, client emails, A/R, and subcontractor controls.'],
-  ['Property operations', 'Voice intake, work orders, permits, stores, inspections, water intelligence, and evidence.'],
-  ['Executive oversight', 'Cockpit, dashboards, daily priorities, risk radar, messages, and client ready briefs.'],
+  ['Construction companies', 'Contracts, SOV, pay apps, change orders, retainage, closeout, field proof, and owner approval.'],
+  ['Consulting companies', 'Proposals, branded invoices, report packages, client emails, A/R, and subcontractor controls.'],
+  ['Owner representatives', 'Daily decisions, issue logs, document packages, meeting follow ups, and client safe portals.'],
+  ['Executive oversight', 'Cockpit, dashboards, priorities, risk radar, money at risk, messages, and client ready briefs.'],
+];
+
+const ROI_PATH = [
+  ['01', 'Money', 'Connect every invoice to the proposal, subcontractor budget, approved percent, report attachment, and approval state.'],
+  ['02', 'Time', 'Turn calls, field walks, notes, and client questions into routed records instead of loose follow ups.'],
+  ['03', 'Visibility', 'Show executives the live state of open issues, payments, owner decisions, site proof, and risk.'],
+  ['04', 'Accountability', 'Keep a clean audit trail of who asked, who answered, who approved, and what changed.'],
 ];
 
 type ContactState = {
@@ -126,10 +133,10 @@ const INITIAL_CONTACT: ContactState = {
 
 function BrandMark() {
   return (
-    <span className="ow-brand" aria-label="OneWater Work home">
+    <span className="ow-brand" aria-label="Proj OS home">
       <span className="ow-brand-icon"><Waves aria-hidden="true" /></span>
       <span>
-        <strong>OneWater Work</strong>
+        <strong>Proj OS</strong>
         <small>Enterprise project operating system</small>
       </span>
     </span>
@@ -187,16 +194,16 @@ function ProductTheater() {
           <span />
           <span />
           <span />
-          <strong>onewater.work/control-room</strong>
+          <strong>projos.ai/control-room</strong>
         </div>
         <div className="ow-browser-grid">
           <div className="ow-command-panel ow-command-panel-main">
             <div className="ow-panel-label">Executive cockpit</div>
-            <h3>R4 portfolio health</h3>
+            <h3>Capital project health</h3>
             <div className="ow-meter">
               <span style={{ width: '83%' }} />
             </div>
-            <p>Field proof, invoices, water analysis, and client comments are synchronized.</p>
+            <p>Field proof, invoices, reports, owner decisions, and client comments are synchronized.</p>
           </div>
           <div className="ow-mini-card">
             <BarChart3 aria-hidden="true" />
@@ -255,11 +262,11 @@ function Hero() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
         >
-          <p className="ow-eyebrow"><span /> OneWater.ai flagship system</p>
+          <p className="ow-eyebrow"><span /> APAS cinematic project system</p>
           <h1>See every project with intelligence people can actually run.</h1>
           <p className="ow-hero-lede">
-            OneWater Work turns voice calls, field walks, invoices, water data, portals, and client decisions into one
-            clear operating system. Premium enough for executives. Simple enough for the field.
+            Proj OS turns voice calls, site walks, proposals, pay apps, consulting invoices, reports, portals, and
+            client decisions into one clear operating system. Premium enough for executives. Simple enough for the field.
           </p>
           <div className="ow-hero-actions">
             <a className="ow-button ow-button-primary" href="#contact">Contact us <ArrowRight aria-hidden="true" /></a>
@@ -288,8 +295,8 @@ function PlatformSection() {
           <p className="ow-kicker">Why teams buy it</p>
           <h2>One operating layer for the work that keeps escaping the system.</h2>
           <p>
-            The value is not another dashboard. The value is that every record knows where it came from, who touched it,
-            what is next, and what the client is allowed to see.
+            Construction companies and consulting companies lose money when work moves faster than the record. Proj OS
+            keeps the scope, proof, dollars, handoffs, and client view connected.
           </p>
         </div>
         <div className="ow-value-grid">
@@ -325,8 +332,8 @@ function VoiceSection() {
           <p className="ow-kicker ow-kicker-dark">Voice AI and live intelligence</p>
           <h2>Show the buyer the magic, then show the audit trail.</h2>
           <p>
-            Voice agents are not a gimmick. They answer, ask the next question, capture the record, trigger the workflow,
-            and keep the human team in control.
+            Voice agents are not a showpiece. They answer, ask the next question, capture the record, trigger the
+            workflow, and keep the human team in control.
           </p>
           <div className="ow-feature-list">
             <span><Mic2 aria-hidden="true" /> Field notes become punch items and reports.</span>
@@ -376,12 +383,21 @@ function WorkflowsSection() {
       <div className="ow-shell">
         <div className="ow-section-head ow-section-head-left">
           <p className="ow-kicker">Connected workflows</p>
-          <h2>Construction, consulting, operations, and intelligence in one product story.</h2>
+          <h2>Built for the real places project work breaks.</h2>
         </div>
         <div className="ow-workflow-grid">
           {WORKFLOWS.map(([title, copy], index) => (
             <article key={title}>
               <span>{String(index + 1).padStart(2, '0')}</span>
+              <h3>{title}</h3>
+              <p>{copy}</p>
+            </article>
+          ))}
+        </div>
+        <div className="ow-roi-grid" aria-label="Proj OS value proof">
+          {ROI_PATH.map(([number, title, copy]) => (
+            <article key={title}>
+              <span>{number}</span>
               <h3>{title}</h3>
               <p>{copy}</p>
             </article>
@@ -416,8 +432,8 @@ function MobileSection() {
           <p className="ow-kicker">Mobile first where it matters</p>
           <h2>The field user should feel calm because the system keeps confirming the work is saved.</h2>
           <p>
-            The walkthrough, QR links, camera capture, galleries, and portals are built for real site conditions. Staff
-            can capture now, annotate when needed, and keep moving.
+            Walkthroughs, QR links, camera capture, galleries, and portals are built for real site conditions. Staff can
+            capture now, annotate when needed, confirm saved state, and keep moving.
           </p>
           <div className="ow-mobile-points">
             <span><Smartphone aria-hidden="true" /> Installable PWA</span>
@@ -447,7 +463,7 @@ function ContactSection() {
         ...form,
         source_path: window.location.pathname,
         source_url: window.location.href,
-        product: 'OneWater Work',
+        product: 'Proj OS',
       },
     });
     if (invokeError) {
@@ -467,7 +483,7 @@ function ContactSection() {
           <h2>No public pricing. Start with a serious conversation.</h2>
           <p>
             Tell us what you run, where the pain is, and which modules matter first. The request is captured for the
-            OneWater Work CRM workflow so the team can qualify and follow up.
+            Proj OS CRM workflow so the team can qualify and follow up.
           </p>
           <div className="ow-contact-promises">
             <span><Building2 aria-hidden="true" /> Portfolio and project onboarding</span>
@@ -518,7 +534,7 @@ function ContactSection() {
   );
 }
 
-export default function OneWaterLandingPage() {
+export default function ProjOSLandingPage() {
   return (
     <main className="ow-page">
       <LandingNav />
@@ -531,7 +547,7 @@ export default function OneWaterLandingPage() {
       <footer className="ow-footer">
         <div className="ow-shell">
           <BrandMark />
-          <p>OneWater Work is the enterprise front door for project, property, document, voice, and intelligence workflows.</p>
+          <p>Proj OS is the enterprise front door for project, property, document, voice, and intelligence workflows.</p>
         </div>
       </footer>
     </main>

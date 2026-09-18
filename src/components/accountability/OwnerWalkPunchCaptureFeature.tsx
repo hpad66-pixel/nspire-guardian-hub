@@ -59,7 +59,7 @@ export function OwnerWalkPunchCaptureFeature({
             <p className="mt-5 text-xs font-bold uppercase tracking-[.18em] text-emerald-200">Owner walk to accountable scope</p>
             <h2 className="mt-2 font-display text-3xl sm:text-4xl">Punch capture workspace</h2>
             <p className="mt-3 max-w-2xl text-sm leading-relaxed text-emerald-50/75">
-              Use this for R4 and any future property walk: take before photos, attach the owner narrative,
+              Use this for any property walk: take before photos, attach the owner narrative,
               categorize each condition, assign the work, collect after proof, and publish a client-ready packet.
             </p>
             <div className="mt-5 flex flex-col gap-2 sm:flex-row">
