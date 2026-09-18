@@ -615,6 +615,142 @@
       color: var(--ink-2);
       line-height: 1.5;
     }
+    .role-architecture {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 16px;
+      align-items: stretch;
+    }
+    .role-card, .publish-gate {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 20px;
+    }
+    .role-card h3, .publish-gate h3 { font-size: 31px; }
+    .role-card p, .publish-gate p {
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .role-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .role-list span {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 12px;
+      border: 1px solid #eadfce;
+      background: #fffdf8;
+      font-size: 13px;
+      font-weight: 850;
+    }
+    .publish-gate {
+      display: grid;
+      min-width: 260px;
+      align-content: center;
+      background: #0b3129;
+      color: #fffaf0;
+    }
+    .publish-gate h3 { color: #fffaf0; }
+    .publish-gate p { color: #cfe2da; }
+    .gate-flow {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .gate-flow span {
+      padding: 10px;
+      border: 1px solid rgba(255, 250, 240, .14);
+      background: rgba(255, 250, 240, .08);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .access-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 360px;
+      gap: 18px;
+      align-items: stretch;
+    }
+    .access-card {
+      position: relative;
+      min-height: 350px;
+      border: 1px solid rgba(255, 250, 240, .22);
+      background:
+        linear-gradient(135deg, rgba(226, 189, 118, .15), transparent 42%),
+        #061f1a;
+      color: #fffaf0;
+      padding: 24px;
+      overflow: hidden;
+    }
+    .access-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -40px -70px auto;
+      width: 230px;
+      height: 230px;
+      border: 1px solid rgba(226, 189, 118, .28);
+      transform: rotate(18deg);
+    }
+    .access-card h3 {
+      max-width: 390px;
+      color: #fffaf0;
+      font-size: 46px;
+      line-height: .98;
+    }
+    .access-card p {
+      max-width: 520px;
+      color: #cfe2da;
+      line-height: 1.65;
+    }
+    .apas-lockup {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 32px;
+      color: #fffaf0;
+    }
+    .apas-lockup .mark {
+      width: 46px;
+      height: 46px;
+      font-size: 11px;
+    }
+    .qr-card {
+      display: grid;
+      align-content: space-between;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 22px;
+    }
+    .qr-placeholder {
+      display: grid;
+      width: 180px;
+      height: 180px;
+      place-items: center;
+      margin: 18px auto;
+      border: 10px solid #fffdf8;
+      background:
+        linear-gradient(90deg, var(--ink) 10px, transparent 10px) 0 0 / 30px 30px,
+        linear-gradient(var(--ink) 10px, transparent 10px) 0 0 / 30px 30px,
+        #f7f2e8;
+      box-shadow: 0 16px 35px rgba(7, 31, 26, .12);
+      color: var(--gold);
+      font-weight: 950;
+      text-align: center;
+    }
+    .metadata-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .metadata-list span {
+      padding: 12px;
+      background: rgba(255, 250, 240, .08);
+      border: 1px solid rgba(255, 250, 240, .16);
+      color: #d7e7df;
+      line-height: 1.5;
+    }
     .note {
       margin-top: 20px;
       color: #b7d2c7;
@@ -624,7 +760,8 @@
     @media (max-width: 1060px) {
       .hero { grid-template-columns: 1fr; background: #061f1a; }
       .hero-visual { margin-bottom: 46px; }
-      .section-head, .ia-map, .portal-showcase, .contact-band { grid-template-columns: 1fr; }
+      .section-head, .ia-map, .portal-showcase, .access-grid, .contact-band { grid-template-columns: 1fr; }
+      .role-architecture { grid-template-columns: 1fr; }
       .value-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .phone { right: 16px; bottom: -82px; }
     }
@@ -780,12 +917,42 @@
 
     <section id="client-portal">
       <div class="section-head">
-        <h2>Client portal must be separate, simple, and always useful.</h2>
+        <h2>One web app. Two very different experiences.</h2>
         <p>
-          The existing app already has a dedicated client shell at owner portal routes, project tabs,
-          portal invitations, and token based public actions. The redesign should sharpen that into a
-          client first experience, not a smaller version of the internal staff workspace.
+          Internal staff and clients can enter the same Proj OS web app, but identity, role, project
+          access, and invitation context must split the experience immediately. Staff get the operating
+          system. Clients get a calm, curated project room.
         </p>
+      </div>
+      <div class="role-architecture" style="margin-bottom: 18px;">
+        <article class="role-card">
+          <h3>Internal staff experience</h3>
+          <p>Full project controls for Hardeep and staff: source data, draft notes, vendor details, internal risk, financial setup, approvals, and publishing decisions.</p>
+          <div class="role-list">
+            <span>Dashboard <em>priorities, client messages, approvals</em></span>
+            <span>Project record <em>scope, field, finance, documents</em></span>
+            <span>Publish center <em>choose what becomes client visible</em></span>
+          </div>
+        </article>
+        <article class="publish-gate">
+          <h3>Guarded publishing boundary</h3>
+          <p>Nothing noisy or internal leaks by default. Staff review, approve, and push only what the client should see.</p>
+          <div class="gate-flow">
+            <span>Draft internal fact</span>
+            <span>Review client wording</span>
+            <span>Publish to client portal</span>
+            <span>Audit who pushed it</span>
+          </div>
+        </article>
+        <article class="role-card">
+          <h3>Client portal experience</h3>
+          <p>Project specific access by account, link, or invitation. The client sees only the projects and curated facts they are allowed to see.</p>
+          <div class="role-list">
+            <span>Project switcher <em>if they have more than one job</em></span>
+            <span>Scope, schedule, budget <em>the big three first</em></span>
+            <span>Alerts and responses <em>flow back to staff</em></span>
+          </div>
+        </article>
       </div>
       <div class="portal-showcase">
         <div class="client-shell">
@@ -836,6 +1003,41 @@
             <span>Recommended navigation: project switcher, alerts, scope, schedule, budget, decisions, risks, proof, and messages. Everything else is secondary.</span>
             <span>Recommended design rule: the client portal should answer, What needs me, what changed, what does it cost, and what proof exists?</span>
           </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="access">
+      <div class="section-head">
+        <h2>APAS access cards and QR moments should feel premium, not gimmicky.</h2>
+        <p>
+          Proj OS should share the APAS ecosystem language being selected for OneWater.ai. The final APAS
+          logo treatment should replace this placeholder mark when chosen. QR codes should appear only
+          where they reduce friction: field capture, client portal access, public enterprise contact, and
+          installable web app handoff.
+        </p>
+      </div>
+      <div class="access-grid">
+        <article class="access-card">
+          <div class="apas-lockup"><div class="mark">APAS</div><strong>Proj OS Access</strong></div>
+          <h3>Classy web app entry for staff, clients, and field teams.</h3>
+          <p>
+            The access-card pattern can carry product identity, project context, QR entry, role context,
+            and safety language without spraying logos everywhere. It should feel like a private operating
+            pass, not a marketing sticker.
+          </p>
+          <div class="metadata-list">
+            <span>Public surfaces need Proj OS title, APAS author, canonical URL, installable app icons, and clear enterprise project intelligence descriptions.</span>
+            <span>Auth surfaces should say Proj OS and explain the private workspace without exposing internal modules or client names.</span>
+          </div>
+        </article>
+        <aside class="qr-card">
+          <div>
+            <small style="font-weight: 950; color: var(--gold); letter-spacing: .14em; text-transform: uppercase;">Access card mockup</small>
+            <h3 style="margin-top: 10px; font-size: 34px;">Scan to open the exact project context.</h3>
+          </div>
+          <div class="qr-placeholder">QR<br />PLACEHOLDER</div>
+          <p class="lead">Use QR links for project walkthroughs, client project rooms, install prompts, and invite handoffs. Keep the rest of the UI clean.</p>
         </aside>
       </div>
     </section>
