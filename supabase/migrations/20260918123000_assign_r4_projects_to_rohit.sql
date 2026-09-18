@@ -15,8 +15,8 @@ DECLARE
   v_workspace_id uuid;
   v_rohit_user_id uuid;
 BEGIN
-  SELECT COUNT(*), COUNT(DISTINCT workspace_id), MIN(workspace_id)
-    INTO v_project_count, v_workspace_count, v_workspace_id
+  SELECT COUNT(*), COUNT(DISTINCT workspace_id)
+    INTO v_project_count, v_workspace_count
     FROM public.projects
    WHERE id = ANY(v_project_ids)
      AND deleted_at IS NULL;
@@ -32,6 +32,13 @@ BEGIN
       'Expected both R4 projects to belong to one workspace, found %',
       v_workspace_count;
   END IF;
+
+  SELECT workspace_id
+    INTO v_workspace_id
+    FROM public.projects
+   WHERE id = ANY(v_project_ids)
+     AND deleted_at IS NULL
+   LIMIT 1;
 
   SELECT p.user_id
     INTO v_rohit_user_id
