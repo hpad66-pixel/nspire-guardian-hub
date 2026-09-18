@@ -8,13 +8,13 @@ const APP_URL = 'https://projos.ai';
 const iosSteps = [
   { icon: Share, text: 'Open the app in Safari, then tap the Share button (box with arrow) at the bottom of the screen.' },
   { icon: Plus, text: 'Scroll down in the Share sheet and tap "Add to Home Screen".' },
-  { icon: CheckCircle2, text: 'Tap "Add" in the top-right corner. APAS Project Controls will appear on your home screen like a native app.' },
+  { icon: CheckCircle2, text: 'Tap "Add" in the top-right corner. Proj OS will appear on your home screen like a native app.' },
 ];
 
 const androidSteps = [
   { icon: Chrome, text: 'Open the app in Chrome. Tap the three-dot menu (⋮) in the top-right corner.' },
   { icon: Plus, text: 'Tap "Add to Home Screen" or "Install App" from the menu.' },
-  { icon: CheckCircle2, text: 'Confirm by tapping "Install". APAS Project Controls will appear on your home screen.' },
+  { icon: CheckCircle2, text: 'Confirm by tapping "Install". Proj OS will appear on your home screen.' },
 ];
 
 export default function InstallPage() {
@@ -23,8 +23,8 @@ export default function InstallPage() {
       {/* Header */}
       <header className="flex items-center justify-between border-b border-border px-4 py-4 pt-[calc(1rem+env(safe-area-inset-top,0px))]">
         <div className="flex min-w-0 items-center gap-3">
-          <img src="/icons/apas-os-192.png" alt="APAS Project Controls" className="h-8 w-8 shrink-0 rounded-lg" />
-          <span className="truncate font-semibold text-foreground">APAS Project Controls</span>
+          <img src="/icons/apas-os-192.png" alt="Proj OS" className="h-8 w-8 shrink-0 rounded-lg" />
+          <span className="truncate font-semibold text-foreground">Proj OS</span>
         </div>
         <Link to="/auth">
           <Button variant="outline" size="sm" className="min-h-[40px]">Sign In</Button>
@@ -35,11 +35,11 @@ export default function InstallPage() {
         {/* Hero */}
         <div className="space-y-4 text-center">
           <div className="mx-auto h-20 w-20 overflow-hidden rounded-2xl shadow-lg">
-            <img src="/icons/apas-os-512.png" alt="APAS Project Controls" className="h-full w-full object-cover" />
+            <img src="/icons/apas-os-512.png" alt="Proj OS" className="h-full w-full object-cover" />
           </div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Install APAS Project Controls</h1>
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Install Proj OS</h1>
           <p className="mx-auto max-w-sm text-muted-foreground">
-            Add the projOS-powered APAS workspace to your home screen for fast, offline-capable access — no app store required. Fully mobile-responsive and downloadable as a web app.
+            Add the Proj OS workspace to your home screen for fast, offline-capable project access. No app store required.
           </p>
           <Link to="/portals">
             <Button className="gap-2">
@@ -98,7 +98,7 @@ export default function InstallPage() {
         <section className="space-y-4 text-center">
           <h2 className="text-xl font-semibold">On a computer?</h2>
           <p className="text-muted-foreground text-sm">
-            Scan this QR code with your phone to open APAS Project Controls on mobile, then follow the steps above.
+            Scan this QR code with your phone to open Proj OS on mobile, then follow the steps above.
           </p>
           <div className="flex justify-center">
             <div className="p-4 bg-white rounded-2xl shadow-md inline-block">
@@ -128,7 +128,7 @@ export default function InstallPage() {
       </main>
 
       <footer className="border-t border-border px-4 py-6 text-center">
-        <p className="text-xs text-muted-foreground">APAS Project Controls · Powered by projOS</p>
+        <p className="text-xs text-muted-foreground">Proj OS · APAS</p>
       </footer>
     </div>
   );

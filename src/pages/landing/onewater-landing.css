@@ -21,7 +21,7 @@
 
 .ow-page {
   min-height: 100vh;
-  overflow-x: visible;
+  overflow-x: hidden;
   overflow-y: visible;
   background: var(--ow-paper);
   color: var(--ow-ink);
@@ -234,21 +234,27 @@
 
 .ow-hero-overlay {
   background:
-    linear-gradient(90deg, rgba(4, 24, 22, .95) 0%, rgba(5, 26, 24, .82) 42%, rgba(5, 26, 24, .4) 76%),
-    linear-gradient(180deg, rgba(2, 12, 12, .08) 44%, rgba(2, 12, 12, .9) 100%);
+    radial-gradient(circle at 78% 20%, rgba(15, 96, 121, .38), transparent 34%),
+    linear-gradient(90deg, rgba(4, 24, 22, .98) 0%, rgba(5, 26, 24, .9) 48%, rgba(5, 26, 24, .58) 76%),
+    linear-gradient(180deg, rgba(2, 12, 12, .1) 36%, rgba(2, 12, 12, .95) 100%);
 }
 
 .ow-hero-inner {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, .92fr) minmax(560px, 1.08fr);
-  gap: 44px;
+  grid-template-columns: minmax(560px, 1.05fr) minmax(500px, .95fr);
+  gap: 38px;
   align-items: center;
 }
 
 .ow-hero-copy {
-  max-width: 650px;
+  max-width: 700px;
+  padding: 28px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background: linear-gradient(135deg, rgba(4, 22, 19, .86), rgba(4, 22, 19, .48));
+  box-shadow: 0 26px 80px rgba(0, 0, 0, .26);
+  backdrop-filter: blur(10px);
 }
 
 .ow-eyebrow,
@@ -290,7 +296,9 @@
 
 .ow-hero h1 {
   margin-top: 22px;
-  font-size: clamp(58px, 7.4vw, 104px);
+  font-size: clamp(52px, 5.2vw, 76px);
+  text-wrap: balance;
+  text-shadow: 0 3px 28px rgba(0, 0, 0, .46);
 }
 
 .ow-hero-lede,
@@ -304,6 +312,9 @@
 
 .ow-hero-lede {
   margin: 26px 0 0;
+  max-width: 58ch;
+  color: #eef6f2;
+  text-shadow: 0 2px 16px rgba(0, 0, 0, .42);
 }
 
 .ow-hero-actions {
@@ -908,7 +919,9 @@
 }
 
 .ow-mobile-section {
-  background: var(--ow-surface-2);
+  background:
+    radial-gradient(circle at 14% 0, rgba(77, 182, 189, .16), transparent 26%),
+    var(--ow-surface-2);
 }
 
 .ow-mobile-section h2 {
@@ -921,7 +934,7 @@
 
 .ow-device-stack {
   position: relative;
-  min-height: 470px;
+  min-height: 540px;
 }
 
 .ow-tablet {
@@ -956,17 +969,106 @@
 
 .ow-access-card {
   position: absolute;
-  right: 24px;
+  right: 14px;
   bottom: 0;
-  width: min(330px, calc(100% - 48px));
+  width: min(390px, calc(100% - 28px));
   padding: 22px;
   border: 1px solid rgba(226, 189, 118, .46);
-  background: var(--ow-deep);
+  background:
+    radial-gradient(circle at 100% 0, rgba(226, 189, 118, .22), transparent 32%),
+    linear-gradient(160deg, #061f1a, #082b25);
   color: var(--ow-white);
+  box-shadow: 0 28px 70px rgba(9, 35, 59, .24);
 }
 
-.ow-access-card svg {
+.ow-access-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
   color: var(--ow-gold-soft);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.ow-access-card-top span {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.ow-access-card-top small {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  background: rgba(77, 182, 189, .14);
+  color: #bdf6ec;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .08em;
+}
+
+.ow-access-card svg,
+.ow-access-link svg {
+  width: 16px;
+  height: 16px;
+  color: var(--ow-gold-soft);
+}
+
+.ow-access-pass {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 16px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 15px;
+  border: 1px solid rgba(255, 255, 255, .14);
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, .08), rgba(255, 255, 255, .03)),
+    rgba(255, 255, 255, .04);
+}
+
+.ow-access-pass-mark {
+  display: grid;
+  width: 72px;
+  height: 72px;
+  place-items: center;
+  border: 1px solid rgba(226, 189, 118, .58);
+  background: rgba(226, 189, 118, .12);
+  color: var(--ow-gold-soft);
+  font-size: 17px;
+  font-weight: 850;
+  letter-spacing: .11em;
+}
+
+.ow-access-pass-lines {
+  display: grid;
+  gap: 10px;
+}
+
+.ow-access-pass-lines span {
+  display: block;
+  height: 10px;
+  background: rgba(255, 255, 255, .16);
+}
+
+.ow-access-pass-lines span:nth-child(1) { width: 86%; }
+.ow-access-pass-lines span:nth-child(2) { width: 62%; background: rgba(77, 182, 189, .26); }
+.ow-access-pass-lines span:nth-child(3) { width: 74%; background: rgba(226, 189, 118, .24); }
+
+.ow-access-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 42px;
+  margin-top: 16px;
+  padding: 0 14px;
+  border: 1px solid rgba(226, 189, 118, .44);
+  color: var(--ow-gold-soft);
+  font-size: 13px;
+  font-weight: 850;
+  text-decoration: none;
 }
 
 .ow-access-card strong {
@@ -980,7 +1082,7 @@
 
 .ow-access-card p {
   margin: 12px 0 0;
-  color: #c9d7d1;
+  color: #d3e3dd;
   font-size: 13px;
   line-height: 1.65;
 }
@@ -1116,6 +1218,10 @@
     min-height: 560px;
   }
 
+  .ow-hero-copy {
+    max-width: none;
+  }
+
   .ow-value-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1162,7 +1268,12 @@
   }
 
   .ow-hero h1 {
-    font-size: clamp(48px, 16vw, 72px);
+    font-size: clamp(38px, 11vw, 56px);
+    line-height: 1.02;
+  }
+
+  .ow-hero-copy {
+    padding: 22px;
   }
 
   .ow-hero-lede,
@@ -1202,6 +1313,19 @@
   .ow-phone {
     right: 18px;
     bottom: 0;
+  }
+
+  .ow-device-stack {
+    min-height: auto;
+    display: grid;
+    gap: 18px;
+  }
+
+  .ow-access-card {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
   }
 
   .ow-section {
@@ -1256,6 +1380,34 @@
 
   .ow-product-theater {
     padding-bottom: 290px;
+  }
+
+  .ow-hero-copy {
+    margin-inline: -4px;
+    padding: 18px;
+  }
+
+  .ow-hero-actions .ow-button {
+    width: 100%;
+  }
+
+  .ow-access-card {
+    padding: 18px;
+  }
+
+  .ow-access-card-top {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ow-access-pass {
+    grid-template-columns: 62px 1fr;
+  }
+
+  .ow-access-pass-mark {
+    width: 62px;
+    height: 62px;
+    font-size: 14px;
   }
 
   .ow-workflow-grid article {

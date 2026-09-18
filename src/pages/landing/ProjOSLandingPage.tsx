@@ -2,7 +2,6 @@ import { useMemo, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
-  Accessibility,
   ArrowRight,
   BadgeCheck,
   BarChart3,
@@ -20,6 +19,7 @@ import {
   Menu,
   Mic2,
   PhoneCall,
+  QrCode,
   ReceiptText,
   ShieldCheck,
   Sparkles,
@@ -423,9 +423,21 @@ function MobileSection() {
             </div>
           </div>
           <div className="ow-access-card">
-            <Accessibility aria-hidden="true" />
-            <strong>Designed for phone, tablet, desktop, and assistive tech.</strong>
-            <p>Large touch targets, clear hierarchy, readable contrast, saved states, and workflows that confirm progress.</p>
+            <div className="ow-access-card-top">
+              <span><QrCode aria-hidden="true" /> Private web app access</span>
+              <small>PWA ready</small>
+            </div>
+            <div className="ow-access-pass" aria-hidden="true">
+              <div className="ow-access-pass-mark">POS</div>
+              <div className="ow-access-pass-lines">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+            <strong>Open Proj OS from an invitation, access card, or install link.</strong>
+            <p>Staff and clients use secure links, APAS access cards, or install prompts. This card previews the access pattern until each final private route is issued.</p>
+            <Link to="/install" className="ow-access-link">View install path <ArrowRight aria-hidden="true" /></Link>
           </div>
         </div>
         <div>
