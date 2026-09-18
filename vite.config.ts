@@ -23,9 +23,9 @@ export default defineConfig(() => ({
       includeAssets: ["favicon.svg", "icons/*.png", "robots.txt", "offline.html"],
       manifest: {
         id: "/",
-        name: "APAS Project Controls · projOS",
-        short_name: "APAS Controls",
-        description: "Infrastructure financial, risk, compliance, field, and document control in one operating record.",
+        name: "OneWater Work",
+        short_name: "OneWater Work",
+        description: "Enterprise project intelligence with voice agents, field capture, financial controls, reports, workflows, and accountable decisions.",
         theme_color: "#08271f",
         background_color: "#041914",
         display: "standalone",
@@ -75,7 +75,7 @@ export default defineConfig(() => ({
           {
             name: "Install guide",
             short_name: "Install",
-            description: "How to add Proj OS to your home screen",
+            description: "How to add OneWater Work to your home screen",
             url: "/install",
             icons: [{ src: "/icons/apas-os-192.png", sizes: "192x192", type: "image/png" }],
           },

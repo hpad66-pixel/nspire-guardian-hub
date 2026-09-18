@@ -291,10 +291,10 @@ const FINANCIAL_FLOW = [
 function BrandLockup({ dark = false, compact = false }: { dark?: boolean; compact?: boolean }) {
   return (
     <span className={`r4-brand-lockup ${dark ? 'r4-brand-lockup--dark' : ''} ${compact ? 'r4-brand-lockup--compact' : ''}`}>
-      <span className="r4-brand-mark">APAS</span>
+      <span className="r4-brand-mark">OneWater</span>
       <span className="r4-brand-copy">
-        <strong>Project Controls</strong>
-        <small>Powered by projOS</small>
+        <strong>Work</strong>
+        <small>Enterprise project intelligence</small>
       </span>
     </span>
   );
@@ -337,7 +337,7 @@ function MarketingNav() {
   return (
     <header className={`r4-site-header ${scrolled ? 'r4-site-header--scrolled' : ''}`}>
       <div className="r4-nav-shell">
-        <a href="#top" className="r4-brand-link" aria-label="APAS Project Controls home">
+        <a href="#top" className="r4-brand-link" aria-label="OneWater Work home">
           <BrandLockup dark />
         </a>
 
@@ -661,8 +661,8 @@ function GetTheApp() {
             <div className="r4-get-app-qr-brand">
               <QrCode aria-hidden="true" />
               <div>
-                <strong>APAS Project Controls</strong>
-                <small>Powered by projOS · {INSTALL_URL.replace('https://', '')}</small>
+                <strong>OneWater Work</strong>
+                <small>Enterprise access · {INSTALL_URL.replace('https://', '')}</small>
               </div>
             </div>
           </div>
@@ -1049,7 +1049,7 @@ function MarketingFooter() {
         </div>
       </div>
       <div className="r4-container r4-footer-bottom">
-        <span>© {new Date().getFullYear()} APAS Consulting · projOS</span>
+        <span>© {new Date().getFullYear()} OneWater.ai · OneWater Work</span>
         <span>Technology for teams that need to do more, prove more, and protect project value.</span>
       </div>
     </footer>

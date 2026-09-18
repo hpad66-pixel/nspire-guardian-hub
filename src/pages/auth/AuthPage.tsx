@@ -112,13 +112,13 @@ export default function AuthPage() {
           transition={{ duration: 0.6 }}
           className="relative z-10"
         >
-          {/* APAS Project Controls wordmark */}
+          {/* OneWater Work wordmark */}
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-3 select-none">
             <span
               className="font-black leading-none tracking-tight text-primary-foreground"
               style={{ fontSize: 'clamp(3rem, 4.5vw, 4.2rem)', letterSpacing: '-0.04em' }}
             >
-              APAS
+              OneWater
             </span>
             <span
               className="font-semibold leading-none tracking-tight"
@@ -128,14 +128,14 @@ export default function AuthPage() {
                 color: 'hsl(var(--accent))',
               }}
             >
-              Project Controls
+              Work
             </span>
           </div>
 
           {/* Tagline */}
           <p className="text-primary-foreground/70 font-semibold tracking-[0.22em] uppercase mb-7"
             style={{ fontSize: '0.78rem', letterSpacing: '0.22em' }}>
-            Powered by projOS
+            Enterprise project intelligence
           </p>
 
           {/* OS descriptor badge */}
@@ -146,7 +146,7 @@ export default function AuthPage() {
             }}>
             <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
             <span className="text-xs font-semibold tracking-widest uppercase text-accent">
-              Private infrastructure command center
+              Private operating record
             </span>
           </div>
 
@@ -157,8 +157,8 @@ export default function AuthPage() {
             <span className="text-accent">Prove every decision.</span>
           </h2>
           <p className="text-primary-foreground/60 text-base leading-relaxed max-w-md">
-            One operating record for financial control, field work, emergency response,
-            permits, environmental compliance, inspections, and owner-ready documentation.
+            One operating record for voice agents, field work, financial control,
+            permits, environmental compliance, inspections, and owner-ready reporting.
           </p>
         </motion.div>
 
@@ -198,7 +198,7 @@ export default function AuthPage() {
         {/* Footer */}
         <div className="relative z-10 mt-8">
           <p className="text-xs text-primary-foreground/35">
-            © 2026 APAS Consulting · Project Controls · projos.ai
+            © 2026 OneWater.ai · OneWater Work
           </p>
         </div>
       </div>
@@ -215,7 +215,7 @@ export default function AuthPage() {
           <div className="lg:hidden flex flex-col items-center mb-10">
             <div className="flex flex-wrap items-baseline justify-center gap-x-2 mb-1.5 select-none">
               <span className="font-black text-4xl tracking-tight text-foreground" style={{ letterSpacing: '-0.04em' }}>
-                APAS
+                OneWater
               </span>
               <span
                 className="font-semibold text-2xl tracking-tight text-accent"
@@ -223,10 +223,10 @@ export default function AuthPage() {
                   letterSpacing: '-0.03em',
                 }}
               >
-                Project Controls
+                Work
               </span>
             </div>
-            <p className="text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">Powered by projOS</p>
+            <p className="text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">Enterprise project intelligence</p>
             <p className="text-xs text-muted-foreground text-center">Private project-control workspace</p>
           </div>
 
@@ -240,8 +240,8 @@ export default function AuthPage() {
                 {isClientPortal
                   ? 'Sign in with the account connected to your private project portal'
                   : AUTH0_ENABLED
-                    ? 'One APAS ID signs you in to APAS Project Controls and every connected product'
-                    : 'Sign in to access your APAS Project Controls workspace'}
+                    ? 'Use your secure workspace identity to continue'
+                    : 'Sign in to access your OneWater Work workspace'}
               </p>
             </div>
 
@@ -253,7 +253,7 @@ export default function AuthPage() {
                   className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2">
                   {auth0Pending === 'login'
                     ? (<><Loader2 className="h-4 w-4 animate-spin" /> Redirecting…</>)
-                    : ('Continue with APAS ID')}
+                    : ('Continue securely')}
                 </button>
 
                 {!isClientPortal && (
@@ -308,7 +308,7 @@ export default function AuthPage() {
                 </div>
                 <button type="submit" disabled={isSubmitting}
                   className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
-                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : ('Sign in to projOS')}
+                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : ('Sign in to OneWater Work')}
                 </button>
             </form>
             )}
@@ -316,7 +316,7 @@ export default function AuthPage() {
             {!isClientPortal && <p className="text-xs text-center mt-5 text-muted-foreground">
               {AUTH0_ENABLED
                 ? 'Invited to an existing workspace? Open the private invitation your administrator sent you.'
-                : 'New accounts are created by a Proj OS administrator and activated from a private invitation.'}
+                : 'New accounts are created by a workspace administrator and activated from a private invitation.'}
             </p>}
             {isClientPortal && (
               <p className="text-xs text-center mt-5 text-muted-foreground">

@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* APAS Project Controls · powered by projOS */
+/* OneWater Work · enterprise project operating system */
 
 /* Build landing page custom properties */
 :root {
@@ -33,7 +33,7 @@
 
 @layer base {
   /*
-   * APAS Project Controls — limestone, infrastructure green, and decision gold.
+   * OneWater Work — deep water, field clarity, and decision gold.
    * These are presentation tokens only; operational state and module logic stay intact.
    */
   :root {

@@ -205,6 +205,11 @@ verify_jwt = false
 [functions.bid-submit]
 verify_jwt = false
 
+# Public enterprise contact intake. The function validates required fields and
+# writes a CRM-linked lead with the service role.
+[functions.enterprise-contact]
+verify_jwt = false
+
 # Nightly risk radar — invoked by pg_cron, authorized by a shared secret (not JWT).
 [functions.risk-radar-nightly]
 verify_jwt = false

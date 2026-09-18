@@ -180,12 +180,12 @@ export function AppSidebar() {
             )}
           >
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-[8px] font-bold tracking-[0.08em] text-primary-foreground shadow-sm ring-2 ring-accent/60 ring-offset-2 ring-offset-sidebar">
-              APAS
+              OW
             </div>
             {!collapsed && (
               <span className="grid gap-1 leading-none">
-                <strong className="text-[16px] font-bold text-sidebar-foreground">Project Controls</strong>
-                <small className="text-[9px] font-bold uppercase tracking-[0.14em] text-sidebar-muted">Powered by projOS</small>
+                <strong className="text-[16px] font-bold text-sidebar-foreground">OneWater Work</strong>
+                <small className="text-[9px] font-bold uppercase tracking-[0.14em] text-sidebar-muted">Project operating system</small>
               </span>
             )}
           </NavLink>
