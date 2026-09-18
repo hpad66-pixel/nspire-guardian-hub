@@ -21,7 +21,7 @@ test.describe('Mobile responsive + downloadable PWA', () => {
   test('install guide renders on a phone viewport', async ({ page }) => {
     await page.goto('/install');
     // InstallPage is public; wait for the lazy route to settle.
-    await expect(page.getByText(/Install APAS Project Controls/i).first()).toBeVisible({
+    await expect(page.getByText(/Install Proj OS/i).first()).toBeVisible({
       timeout: 15000,
     });
     await expect(page.getByText(/Add to Home Screen/i).first()).toBeVisible();

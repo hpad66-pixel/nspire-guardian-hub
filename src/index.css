@@ -448,6 +448,9 @@ body {
 .group\/sidebar-wrapper {
   overflow: visible;
 }
+main.ow-page {
+  overflow-y: visible;
+}
 img,
 video,
 canvas {

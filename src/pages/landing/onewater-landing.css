@@ -21,7 +21,7 @@
 
 .ow-page {
   min-height: 100vh;
-  overflow-x: hidden;
+  width: 100%;
   overflow-y: visible;
   background: var(--ow-paper);
   color: var(--ow-ink);

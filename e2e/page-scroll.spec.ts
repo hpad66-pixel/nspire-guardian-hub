@@ -82,7 +82,7 @@ test.describe('Document scroll', () => {
 
   for (const route of [
     { path: '/landing', marker: /see every project/i, footer: /enterprise front door/i },
-    { path: '/install', marker: /install apas project controls/i, footer: /on a computer\?/i },
+    { path: '/install', marker: /install proj os/i, footer: /on a computer\?/i },
     { path: '/features', marker: /property operations platform/i, footer: /all rights reserved/i },
   ] as const) {
     test(`${route.path} scrolls with the wheel and reaches the bottom`, async ({ page }) => {
