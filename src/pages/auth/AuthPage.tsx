@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { AUTH0_ENABLED } from '@/lib/auth/auth0';
-import { Loader2, Landmark, Siren, FileCheck2, Leaf, Headphones, FileSearch } from 'lucide-react';
+import { Loader2, Landmark, Siren, FileCheck2, Headphones, FileSearch, ShieldCheck, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
@@ -11,12 +11,19 @@ const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
 const features = [
-  { icon: Landmark,   color: 'hsl(var(--accent))',             label: 'Financial Control',       desc: 'Contracts, changes, pay applications, payments, retainage, and reports' },
-  { icon: Siren,      color: 'hsl(var(--severity-severe))',    label: 'Risk & Critical Alerts', desc: 'Responsible parties, deadlines, escalation, and evidence in one record' },
-  { icon: FileCheck2, color: 'hsl(var(--module-inspections))', label: 'Permits & Regulatory',   desc: 'Obligations, inspections, agency correspondence, and closeout' },
-  { icon: Leaf,       color: 'hsl(var(--success))',            label: 'Environmental Control', desc: 'Sampling, observations, exceedances, and corrective actions' },
-  { icon: Headphones, color: 'hsl(var(--module-projects))',    label: 'Voice & Work Orders',    desc: 'Calls become transcripts, assignments, alerts, and accountable action' },
-  { icon: FileSearch, color: 'hsl(var(--warning))',            label: 'Defensible Documents',  desc: 'Photos, approvals, correspondence, reports, and audit history' },
+  { icon: Landmark,   color: '#E2BD76', label: 'Money control',       desc: 'Proposals, pay apps, invoices, subcontractor caps, approvals, and reports' },
+  { icon: Siren,      color: '#F18C6A', label: 'Risk visibility',      desc: 'Open issues, deadlines, escalation, responsibility, and proof in one record' },
+  { icon: FileCheck2, color: '#7EC8BE', label: 'Decision history',     desc: 'Permits, signoffs, correspondence, client comments, and closeout trail' },
+  { icon: Headphones, color: '#8CA9FF', label: 'Voice to workflow',    desc: 'Calls become transcripts, tickets, assignments, and accountable action' },
+  { icon: FileSearch, color: '#F4D58D', label: 'Defensible evidence',  desc: 'Photos, reports, source files, letter packages, and audit history' },
+  { icon: ShieldCheck, color: '#9AE6B4', label: 'Private access',      desc: 'Workspace identity, client portals, tenant boundaries, and role based views' },
+];
+
+const signalRows = [
+  ['Voice call', 'MR-1042', 'Urgent ticket created'],
+  ['Proposal', '$53,000', 'Billing guardrail active'],
+  ['Site walk', '27 photos', 'Before proof saved'],
+  ['Client portal', 'Secure', 'Owner view updated'],
 ];
 
 export default function AuthPage() {
@@ -85,126 +92,129 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-[#f3f0e8]">
 
-      {/* ── LEFT: Brand panel ── */}
-      <div className="hidden lg:flex lg:w-[58%] relative overflow-hidden flex-col justify-between p-12 xl:p-16 bg-primary">
-
-        {/* Subtle grid */}
+      {/* ── LEFT: Proj OS brand panel ── */}
+      <div className="hidden lg:flex lg:w-[58%] relative overflow-hidden flex-col justify-between p-12 xl:p-16 bg-[#061f1a]">
         <div
-          className="absolute inset-0 pointer-events-none opacity-20"
+          className="absolute inset-0 pointer-events-none opacity-25"
           style={{
             backgroundImage:
-              'linear-gradient(hsl(var(--accent)/0.15) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--accent)/0.15) 1px, transparent 1px)',
-            backgroundSize: '52px 52px',
+              'linear-gradient(rgba(226,189,118,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(226,189,118,.12) 1px, transparent 1px)',
+            backgroundSize: '54px 54px',
           }}
         />
-        {/* Glow orbs */}
-        <div className="absolute top-0 right-0 w-96 h-96 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, hsl(var(--accent)/0.18) 0%, transparent 70%)', filter: 'blur(56px)' }} />
-        <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full pointer-events-none"
-          style={{ background: 'radial-gradient(circle, hsl(var(--module-projects)/0.14) 0%, transparent 70%)', filter: 'blur(48px)' }} />
+        <div className="absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(90deg,rgba(6,31,26,0),rgba(15,96,121,.18))] pointer-events-none" />
 
-        {/* Brand lockup */}
         <motion.div
           initial={{ opacity: 0, y: -18 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
           className="relative z-10"
         >
-          {/* Proj OS wordmark */}
-          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mb-3 select-none">
-            <span
-              className="font-black leading-none tracking-tight text-primary-foreground"
-              style={{ fontSize: 'clamp(3rem, 4.5vw, 4.2rem)', letterSpacing: '-0.04em' }}
-            >
-              OneWater
-            </span>
-            <span
-              className="font-semibold leading-none tracking-tight"
-              style={{
-                fontSize: 'clamp(1.9rem, 3vw, 2.75rem)',
-                letterSpacing: '-0.035em',
-                color: 'hsl(var(--accent))',
-              }}
-            >
-              Work
-            </span>
+          <div className="mb-8 inline-flex items-center gap-3 text-[#f8f4e8]">
+            <div className="grid h-12 w-12 place-items-center border border-[#e2bd76]/45 bg-[#e2bd76]/10 text-[11px] font-black tracking-[0.14em] text-[#e2bd76]">
+              POS
+            </div>
+            <div>
+              <div className="font-display text-4xl font-medium leading-none tracking-normal">Proj OS</div>
+              <div className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-[#c8d8d1]">
+                Project intelligence workspace
+              </div>
+            </div>
           </div>
 
-          {/* Tagline */}
-          <p className="text-primary-foreground/70 font-semibold tracking-[0.22em] uppercase mb-7"
-            style={{ fontSize: '0.78rem', letterSpacing: '0.22em' }}>
-            Enterprise project intelligence
+          <p className="mb-5 inline-flex items-center gap-2 border border-[#e2bd76]/35 bg-[#e2bd76]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#e2bd76]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#77e0b3]" />
+            Secure operating record
           </p>
 
-          {/* OS descriptor badge */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full mb-7"
-            style={{
-              background: 'hsl(var(--accent)/0.18)',
-              border: '1px solid hsl(var(--accent)/0.30)',
-            }}>
-            <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-            <span className="text-xs font-semibold tracking-widest uppercase text-accent">
-              Private operating record
-            </span>
-          </div>
-
-          {/* Tagline */}
-          <h2 className="font-bold text-primary-foreground mb-4 leading-tight"
-            style={{ fontSize: 'clamp(1.8rem, 2.8vw, 2.6rem)', letterSpacing: '-0.02em' }}>
-            See every project.{' '}
-            <span className="text-accent">Prove every decision.</span>
+          <h2 className="max-w-xl font-display text-6xl font-medium leading-[0.95] tracking-normal text-[#fffaf0] xl:text-7xl">
+            Sign in where project truth becomes usable.
           </h2>
-          <p className="text-primary-foreground/60 text-base leading-relaxed max-w-md">
-            One operating record for voice agents, field work, financial control,
-            permits, environmental compliance, inspections, and owner-ready reporting.
+          <p className="mt-6 max-w-lg text-base leading-7 text-[#c8d8d1]">
+            Proj OS connects consulting work, construction controls, voice intake, field proof,
+            financial packages, and client portals inside one private project record.
           </p>
         </motion.div>
 
-        {/* Feature grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 22 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.55, delay: 0.15 }}
+          className="relative z-10 my-10 grid grid-cols-[1.05fr_.95fr] gap-4"
+        >
+          <div className="border border-white/12 bg-white/[0.06] p-5 shadow-2xl shadow-black/20">
+            <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[#e2bd76]">Executive cockpit</span>
+              <span className="text-xs font-bold text-[#9ae6b4]">Live</span>
+            </div>
+            <div className="grid gap-3">
+              {signalRows.map(([label, value, detail]) => (
+                <div key={label} className="grid grid-cols-[84px_1fr] gap-3 border border-white/10 bg-[#061f1a]/65 p-3">
+                  <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[#8fb4aa]">{label}</span>
+                  <div>
+                    <strong className="block text-lg font-semibold text-[#fffaf0]">{value}</strong>
+                    <small className="text-xs text-[#c8d8d1]/75">{detail}</small>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid content-between border border-[#e2bd76]/25 bg-[#e2bd76]/10 p-5">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#e2bd76]">Private portal</p>
+              <h3 className="mt-5 font-display text-4xl font-medium leading-none text-[#fffaf0]">Right role. Right record. Right next step.</h3>
+              <p className="mt-4 text-sm leading-6 text-[#d8e3de]/75">
+                Owners, consultants, construction teams, vendors, and executives see the work they are allowed to see.
+              </p>
+            </div>
+            <div className="mt-8 flex items-center gap-2 text-sm font-bold text-[#9ae6b4]">
+              <ShieldCheck className="h-4 w-4" />
+              Role based access active
+            </div>
+          </div>
+        </motion.div>
+
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
-          className="relative z-10 grid grid-cols-2 gap-3 mt-10"
+          transition={{ duration: 0.5, delay: 0.25 }}
+          className="relative z-10 grid grid-cols-2 gap-3"
         >
           {features.map((f, i) => (
             <motion.div
               key={f.label}
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35, delay: 0.3 + i * 0.07 }}
-              className="flex items-start gap-3 p-3.5 rounded-xl"
-              style={{
-                background: 'hsl(var(--primary-foreground)/0.04)',
-                border: '1px solid hsl(var(--primary-foreground)/0.08)',
-              }}
+              transition={{ duration: 0.35, delay: 0.32 + i * 0.06 }}
+              className="flex items-start gap-3 border border-white/10 bg-white/[0.045] p-3.5"
             >
               <div
-                className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                style={{ background: `color-mix(in srgb, ${f.color} 15%, transparent)` }}
+                className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center border border-white/10"
+                style={{ background: `color-mix(in srgb, ${f.color} 16%, transparent)` }}
               >
                 <f.icon style={{ color: f.color, width: 15, height: 15 }} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-primary-foreground mb-0.5">{f.label}</p>
-                <p className="text-xs text-primary-foreground/50 leading-relaxed">{f.desc}</p>
+                <p className="mb-0.5 text-sm font-semibold text-[#fffaf0]">{f.label}</p>
+                <p className="text-xs leading-relaxed text-[#c8d8d1]/60">{f.desc}</p>
               </div>
             </motion.div>
           ))}
         </motion.div>
 
-        {/* Footer */}
-        <div className="relative z-10 mt-8">
-          <p className="text-xs text-primary-foreground/35">
-            © 2026 OneWater.ai · Proj OS
-          </p>
+        <div className="relative z-10 mt-8 flex items-center justify-between text-xs text-[#c8d8d1]/45">
+          <span>© 2026 APAS · Proj OS</span>
+          <span className="inline-flex items-center gap-2">
+            Project intelligence <ArrowRight className="h-3.5 w-3.5" />
+          </span>
         </div>
       </div>
 
       {/* ── RIGHT: Sign-in form ── */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-background border-l border-border">
+      <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-[#f8f6ef] border-l border-[#d8d4c7]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -213,27 +223,19 @@ export default function AuthPage() {
         >
           {/* Mobile wordmark */}
           <div className="lg:hidden flex flex-col items-center mb-10">
-            <div className="flex flex-wrap items-baseline justify-center gap-x-2 mb-1.5 select-none">
-              <span className="font-black text-4xl tracking-tight text-foreground" style={{ letterSpacing: '-0.04em' }}>
-                OneWater
-              </span>
-              <span
-                className="font-semibold text-2xl tracking-tight text-accent"
-                style={{
-                  letterSpacing: '-0.03em',
-                }}
-              >
-                Work
-              </span>
+            <div className="mb-3 grid h-12 w-12 place-items-center border border-[#c89443]/45 bg-[#c89443]/10 text-[11px] font-black tracking-[0.14em] text-[#8a6427]">
+              POS
             </div>
-            <p className="text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">Enterprise project intelligence</p>
+            <div className="font-display text-5xl font-medium leading-none tracking-normal text-[#08233b]">Proj OS</div>
+            <p className="mt-2 text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">Project intelligence workspace</p>
             <p className="text-xs text-muted-foreground text-center">Private project-control workspace</p>
           </div>
 
           {/* Card */}
-          <div className="bg-card rounded-2xl border border-border p-8 shadow-sm">
+          <div className="bg-card border border-[#d8d4c7] p-8 shadow-sm">
             <div className="mb-7">
-              <h1 className="text-2xl font-bold tracking-tight text-foreground mb-1">
+              <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-[#8a6427]">Secure sign in</p>
+              <h1 className="font-display text-4xl font-medium tracking-normal text-foreground mb-2">
                 {isClientPortal ? 'Secure client access' : 'Welcome back'}
               </h1>
               <p className="text-sm text-muted-foreground">

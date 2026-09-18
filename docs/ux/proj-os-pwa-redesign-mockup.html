@@ -1,0 +1,877 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Proj OS PWA Redesign Direction</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #071f1a;
+      --ink-2: #133f36;
+      --muted: #5d706b;
+      --paper: #f7f2e8;
+      --panel: #fffaf0;
+      --line: #d9cdb9;
+      --gold: #c89443;
+      --green: #1f7a63;
+      --blue: #174b7a;
+      --coral: #d26d54;
+      --mint: #8fd4be;
+      --shadow: 0 30px 80px rgba(7, 31, 26, .16);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(180deg, rgba(200, 148, 67, .12), transparent 420px),
+        var(--paper);
+      color: var(--ink);
+      letter-spacing: 0;
+    }
+
+    a { color: inherit; }
+    .page { min-height: 100vh; }
+    .hero {
+      display: grid;
+      min-height: 92vh;
+      grid-template-columns: minmax(0, 1fr) minmax(340px, 620px);
+      gap: clamp(28px, 5vw, 72px);
+      align-items: center;
+      padding: clamp(22px, 4vw, 64px);
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 12% 18%, rgba(143, 212, 190, .2), transparent 30%),
+        linear-gradient(135deg, #061f1a 0%, #0b3129 50%, #f7f2e8 50.2%, #f7f2e8 100%);
+      overflow: hidden;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 14px;
+      color: #fffaf0;
+      margin-bottom: 32px;
+    }
+    .mark {
+      display: grid;
+      width: 52px;
+      height: 52px;
+      place-items: center;
+      border: 1px solid rgba(226, 189, 118, .52);
+      background: rgba(226, 189, 118, .12);
+      color: #e2bd76;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: .12em;
+    }
+    .brand strong {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(38px, 5vw, 64px);
+      font-weight: 500;
+      line-height: .9;
+    }
+    .brand span {
+      display: block;
+      margin-top: 8px;
+      color: #b7d2c7;
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .2em;
+      text-transform: uppercase;
+    }
+
+    h1, h2, h3 {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-weight: 500;
+      letter-spacing: 0;
+    }
+    h1 {
+      max-width: 820px;
+      color: #fffaf0;
+      font-size: clamp(48px, 9vw, 112px);
+      line-height: .88;
+    }
+    .hero-copy {
+      max-width: 650px;
+      margin-top: 28px;
+      color: #d5e2dc;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.6;
+    }
+    .hero-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 34px;
+    }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 48px;
+      padding: 0 18px;
+      border: 1px solid rgba(226, 189, 118, .6);
+      background: #e2bd76;
+      color: #061f1a;
+      font-weight: 850;
+      text-decoration: none;
+    }
+    .button.secondary {
+      background: rgba(255, 250, 240, .08);
+      color: #fffaf0;
+      border-color: rgba(255, 250, 240, .22);
+    }
+
+    .hero-visual {
+      position: relative;
+      display: grid;
+      gap: 18px;
+    }
+    .desktop-card {
+      border: 1px solid rgba(255, 250, 240, .22);
+      background: rgba(255, 250, 240, .88);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+      overflow: hidden;
+    }
+    .window-bar {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      height: 42px;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+      background: #fffdf8;
+    }
+    .dot { width: 9px; height: 9px; border-radius: 999px; background: var(--coral); }
+    .dot:nth-child(2) { background: var(--gold); }
+    .dot:nth-child(3) { background: var(--green); }
+    .mock-shell { display: grid; grid-template-columns: 128px 1fr; min-height: 420px; }
+    .mock-sidebar {
+      padding: 16px 12px;
+      background: #08231e;
+      color: #dce9e4;
+    }
+    .mock-nav {
+      display: grid;
+      gap: 8px;
+      margin-top: 18px;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .mock-nav span {
+      padding: 9px 10px;
+      border: 1px solid rgba(255, 255, 255, .08);
+      background: rgba(255, 255, 255, .05);
+    }
+    .mock-nav span:first-child { background: rgba(226, 189, 118, .16); color: #e2bd76; }
+    .mock-main {
+      padding: 20px;
+      background: #f6f2e9;
+    }
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .search {
+      flex: 1;
+      padding: 11px 12px;
+      border: 1px solid var(--line);
+      background: #fffaf0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .status-chip {
+      padding: 10px 12px;
+      background: #103c32;
+      color: #b9f3db;
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .metric {
+      min-height: 110px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      background: #fffaf0;
+    }
+    .metric small {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .12em;
+    }
+    .metric strong {
+      display: block;
+      margin-top: 14px;
+      color: var(--ink);
+      font-size: clamp(22px, 3vw, 34px);
+      line-height: 1;
+    }
+    .work-grid {
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 12px;
+    }
+    .panel {
+      border: 1px solid var(--line);
+      background: #fffaf0;
+      padding: 16px;
+    }
+    .panel h3 {
+      font-size: 22px;
+      color: var(--ink);
+    }
+    .stream {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .stream-row {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid #eadfce;
+      background: #fffdf8;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .stream-row b {
+      color: var(--blue);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .1em;
+    }
+    .phone {
+      position: absolute;
+      right: -22px;
+      bottom: -46px;
+      width: min(220px, 34vw);
+      min-width: 164px;
+      padding: 10px;
+      border: 1px solid rgba(7, 31, 26, .16);
+      border-radius: 34px;
+      background: #071f1a;
+      box-shadow: 0 28px 70px rgba(7, 31, 26, .34);
+    }
+    .phone-screen {
+      min-height: 390px;
+      border-radius: 25px;
+      background: #fffaf0;
+      overflow: hidden;
+    }
+    .phone-head {
+      padding: 20px 14px 12px;
+      background: #0c332a;
+      color: #fffaf0;
+    }
+    .phone-head small {
+      color: #9edfc9;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .phone-head strong {
+      display: block;
+      margin-top: 6px;
+      font-size: 19px;
+    }
+    .capture {
+      display: grid;
+      gap: 10px;
+      padding: 12px;
+    }
+    .photo-slot {
+      display: grid;
+      height: 118px;
+      place-items: center;
+      background: linear-gradient(135deg, #d7eadf, #f3d6bd);
+      color: #0c332a;
+      font-size: 13px;
+      font-weight: 900;
+    }
+    .saved {
+      padding: 10px;
+      background: #e8f6ef;
+      color: #176045;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+    .thumbs span { height: 34px; background: #d9cdb9; }
+
+    section {
+      padding: clamp(46px, 7vw, 96px) clamp(20px, 5vw, 72px);
+      border-bottom: 1px solid var(--line);
+    }
+    .section-head {
+      display: grid;
+      grid-template-columns: minmax(0, 680px) minmax(260px, 1fr);
+      gap: 28px;
+      align-items: end;
+      margin-bottom: 30px;
+    }
+    h2 {
+      color: var(--ink);
+      font-size: clamp(36px, 6vw, 76px);
+      line-height: .95;
+    }
+    .section-head p, .lead {
+      margin: 0;
+      color: var(--muted);
+      font-size: 17px;
+      line-height: 1.65;
+    }
+    .value-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+    }
+    .value {
+      min-height: 220px;
+      padding: 22px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+      box-shadow: 0 16px 35px rgba(7, 31, 26, .06);
+    }
+    .value .icon {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      margin-bottom: 22px;
+      background: #0e3c32;
+      color: #e2bd76;
+      font-size: 20px;
+    }
+    .value h3 { font-size: 26px; }
+    .value p {
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .ia-map {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+    }
+    .device-card {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      padding: 22px;
+    }
+    .device-card h3 { font-size: 34px; margin-bottom: 18px; }
+    .lane {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .lane span {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 13px 14px;
+      border: 1px solid #eadfce;
+      background: #fffdf8;
+      font-weight: 850;
+    }
+    .lane em {
+      color: var(--muted);
+      font-size: 13px;
+      font-style: normal;
+      font-weight: 650;
+    }
+
+    .invoice-flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(160px, 1fr));
+      gap: 12px;
+      overflow-x: auto;
+      padding-bottom: 8px;
+    }
+    .flow-step {
+      position: relative;
+      min-height: 260px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .flow-step strong {
+      display: block;
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 950;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .flow-step h3 { font-size: 25px; }
+    .flow-step p {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+    .flow-step ul {
+      margin: 12px 0 0;
+      padding-left: 18px;
+      color: var(--ink-2);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .contact-band {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 420px;
+      gap: 24px;
+      align-items: stretch;
+      background: #061f1a;
+      color: #fffaf0;
+    }
+    .contact-band h2 { color: #fffaf0; }
+    .contact-card {
+      border: 1px solid rgba(255, 250, 240, .18);
+      background: rgba(255, 250, 240, .08);
+      padding: 24px;
+    }
+    .field {
+      display: block;
+      width: 100%;
+      margin-top: 10px;
+      padding: 13px 12px;
+      border: 1px solid rgba(255, 250, 240, .22);
+      background: rgba(255, 250, 240, .92);
+      color: var(--ink);
+      font: inherit;
+    }
+    .portal-showcase {
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(320px, .95fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .client-shell {
+      border: 1px solid var(--line);
+      background: #fffaf0;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .client-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 18px;
+      border-bottom: 1px solid var(--line);
+      background: #fffdf8;
+    }
+    .client-top strong {
+      display: block;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 30px;
+      font-weight: 500;
+    }
+    .client-top small {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+    .project-switcher {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--line);
+      background: #f8f1e4;
+    }
+    .project-switcher span {
+      padding: 9px 12px;
+      border: 1px solid #ddceb7;
+      background: #fffaf0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .project-switcher span:first-child {
+      border-color: var(--green);
+      background: #e7f4ef;
+      color: var(--green);
+    }
+    .client-body {
+      display: grid;
+      gap: 14px;
+      padding: 18px;
+    }
+    .alert-strip {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: center;
+      padding: 14px;
+      border: 1px solid rgba(210, 109, 84, .35);
+      background: #fff0ea;
+      color: #713322;
+    }
+    .alert-strip b {
+      display: block;
+      color: #713322;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: .11em;
+    }
+    .alert-strip span {
+      color: #8a4b3d;
+      line-height: 1.45;
+    }
+    .client-kpis {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .client-kpi {
+      padding: 15px;
+      border: 1px solid #eadfce;
+      background: #fffdf8;
+    }
+    .client-kpi small {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+    .client-kpi strong {
+      display: block;
+      margin-top: 10px;
+      font-size: 22px;
+    }
+    .client-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .client-action {
+      min-height: 150px;
+      padding: 16px;
+      border: 1px solid #eadfce;
+      background: #fffdf8;
+    }
+    .client-action h3 { font-size: 24px; }
+    .client-action p {
+      color: var(--muted);
+      line-height: 1.5;
+      font-size: 14px;
+    }
+    .message-box {
+      display: grid;
+      gap: 10px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      background: #0b3129;
+      color: #fffaf0;
+    }
+    .message-box h3 { color: #fffaf0; font-size: 32px; }
+    .message-box p { color: #cfe2da; line-height: 1.6; }
+    .message-box textarea {
+      min-height: 126px;
+      padding: 12px;
+      border: 1px solid rgba(255, 250, 240, .22);
+      background: rgba(255, 250, 240, .94);
+      color: var(--ink);
+      font: inherit;
+    }
+    .portal-notes {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .portal-notes span {
+      padding: 12px;
+      border-left: 4px solid var(--gold);
+      background: rgba(200, 148, 67, .12);
+      color: var(--ink-2);
+      line-height: 1.5;
+    }
+    .note {
+      margin-top: 20px;
+      color: #b7d2c7;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 1060px) {
+      .hero { grid-template-columns: 1fr; background: #061f1a; }
+      .hero-visual { margin-bottom: 46px; }
+      .section-head, .ia-map, .portal-showcase, .contact-band { grid-template-columns: 1fr; }
+      .value-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .phone { right: 16px; bottom: -82px; }
+    }
+    @media (max-width: 720px) {
+      .hero { padding: 22px; min-height: auto; }
+      .brand strong { font-size: 42px; }
+      .mock-shell { grid-template-columns: 1fr; }
+      .mock-sidebar { display: none; }
+      .metric-grid, .work-grid, .value-grid { grid-template-columns: 1fr; }
+      .client-kpis, .client-actions { grid-template-columns: 1fr; }
+      .phone { position: relative; right: auto; bottom: auto; width: 100%; max-width: 260px; margin: -20px auto 0; }
+      .section-head { margin-bottom: 22px; }
+      section { padding: 46px 18px; }
+      .invoice-flow { grid-template-columns: 1fr; overflow: visible; }
+      .flow-step { min-height: auto; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div>
+        <div class="brand">
+          <div class="mark">POS</div>
+          <div>
+            <strong>Proj OS</strong>
+            <span>Enterprise project intelligence</span>
+          </div>
+        </div>
+        <h1>Project control that feels expensive because it saves real money.</h1>
+        <p class="hero-copy">
+          A premium Proj OS direction inspired by the OneWater.ai flagship standard: calm authority,
+          clear financial controls, live voice to workflow, mobile site capture, owner portals, and a
+          CRM connected enterprise front door.
+        </p>
+        <div class="hero-actions">
+          <a class="button" href="#contact">Contact us</a>
+          <a class="button secondary" href="#workflow">See the workflow</a>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-label="Proj OS product mockup">
+        <div class="desktop-card">
+          <div class="window-bar"><i class="dot"></i><i class="dot"></i><i class="dot"></i></div>
+          <div class="mock-shell">
+            <aside class="mock-sidebar">
+              <div class="mark">POS</div>
+              <nav class="mock-nav">
+                <span>Today</span>
+                <span>Projects</span>
+                <span>Money</span>
+                <span>Field</span>
+                <span>Clients</span>
+                <span>Admin</span>
+              </nav>
+            </aside>
+            <div class="mock-main">
+              <div class="topline">
+                <div class="search">Command search: invoice, site photo, client, voice ticket</div>
+                <div class="status-chip">Saved live</div>
+              </div>
+              <div class="metric-grid">
+                <div class="metric"><small>Cash protected</small><strong>$53k</strong></div>
+                <div class="metric"><small>Open risk</small><strong>7</strong></div>
+                <div class="metric"><small>Client proof</small><strong>94%</strong></div>
+              </div>
+              <div class="work-grid">
+                <div class="panel">
+                  <h3>AI workstream</h3>
+                  <div class="stream">
+                    <div class="stream-row"><b>Voice</b><span>Client call became three tickets, two assignments, and one invoice hold.</span></div>
+                    <div class="stream-row"><b>Field</b><span>Before photo saved with location, trade, owner note, and follow up status.</span></div>
+                    <div class="stream-row"><b>Money</b><span>Billing is blocked until proposal scope and subcontractor caps are loaded.</span></div>
+                  </div>
+                </div>
+                <div class="panel">
+                  <h3>Enterprise package</h3>
+                  <p class="lead">No public pricing. Contact us routes into CRM with product interest, company, source, and follow up workflow.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="phone" aria-label="Mobile field capture concept">
+          <div class="phone-screen">
+            <div class="phone-head">
+              <small>Walkthrough</small>
+              <strong>Stucco repairs</strong>
+            </div>
+            <div class="capture">
+              <div class="photo-slot">Take photo</div>
+              <div class="saved">Saved automatically</div>
+              <div class="thumbs"><span></span><span></span><span></span><span></span></div>
+              <div class="field">Next location: Elevation B</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <section id="value">
+      <div class="section-head">
+        <h2>Make the value obvious in the first ten seconds.</h2>
+        <p>
+          The product story should lead with the outcomes a buyer feels: fewer leaks in money,
+          fewer missed commitments, faster client confidence, and a documented project record
+          that staff can operate without being experts.
+        </p>
+      </div>
+      <div class="value-grid">
+        <article class="value"><div class="icon">$</div><h3>Money</h3><p>Proposal scope, contract value, subcontractor caps, invoices, reports, and approval locks stay connected.</p></article>
+        <article class="value"><div class="icon">AI</div><h3>Time</h3><p>Voice calls, emails, field notes, and photos become structured project actions instead of loose memory.</p></article>
+        <article class="value"><div class="icon">✓</div><h3>Trust</h3><p>Clients see the proof they need in a private portal while internal records retain audit history.</p></article>
+        <article class="value"><div class="icon">↗</div><h3>ROI</h3><p>The homepage should explain where savings come from: billing discipline, avoided rework, faster closeout, and lower admin drag.</p></article>
+      </div>
+    </section>
+
+    <section id="shell">
+      <div class="section-head">
+        <h2>Simplify the app shell before adding more features.</h2>
+        <p>
+          The current product has many modules. The next redesign should compress navigation into
+          role based work zones, then let project context expose the detailed tools only when they
+          are relevant.
+        </p>
+      </div>
+      <div class="ia-map">
+        <article class="device-card">
+          <h3>Desktop shell</h3>
+          <p class="lead">Best for setup, heavy review, invoice packages, reports, admin, and finance workflows.</p>
+          <div class="lane">
+            <span>Today <em>my queue, approvals, deadlines</em></span>
+            <span>Projects <em>client, scope, field, documents</em></span>
+            <span>Money <em>proposals, invoices, pay apps, reports</em></span>
+            <span>Field <em>walkthroughs, photos, voice tickets</em></span>
+            <span>Clients <em>portals, contacts, CRM handoff</em></span>
+            <span>Admin <em>modules, identity, permissions, company branding</em></span>
+          </div>
+        </article>
+        <article class="device-card">
+          <h3>Mobile shell</h3>
+          <p class="lead">Best for capture, review, approval, phone friendly status, and fast next action.</p>
+          <div class="lane">
+            <span>Today <em>what needs me now</em></span>
+            <span>Projects <em>open project quickly</em></span>
+            <span>Capture <em>photo, voice, issue, QR</em></span>
+            <span>Money <em>approve, preview, attach proof</em></span>
+            <span>More <em>everything else, grouped by purpose</em></span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="client-portal">
+      <div class="section-head">
+        <h2>Client portal must be separate, simple, and always useful.</h2>
+        <p>
+          The existing app already has a dedicated client shell at owner portal routes, project tabs,
+          portal invitations, and token based public actions. The redesign should sharpen that into a
+          client first experience, not a smaller version of the internal staff workspace.
+        </p>
+      </div>
+      <div class="portal-showcase">
+        <div class="client-shell">
+          <div class="client-top">
+            <div>
+              <small>Secure client portal</small>
+              <strong>Client project room</strong>
+            </div>
+            <span class="status-chip">Magic link ready</span>
+          </div>
+          <div class="project-switcher" aria-label="Client project switcher">
+            <span>Stucco repairs</span>
+            <span>Landscaping</span>
+            <span>City engineering</span>
+          </div>
+          <div class="client-body">
+            <div class="alert-strip">
+              <b>Decision needed</b>
+              <span>Approve finish sample by Friday to protect schedule.</span>
+              <strong>Respond</strong>
+            </div>
+            <div class="client-kpis">
+              <div class="client-kpi"><small>Scope</small><strong>82% clear</strong></div>
+              <div class="client-kpi"><small>Schedule</small><strong>On watch</strong></div>
+              <div class="client-kpi"><small>Budget</small><strong>$11.5k billed</strong></div>
+            </div>
+            <div class="client-actions">
+              <article class="client-action"><h3>Waiting on you</h3><p>Two decisions and one document request are open. Clear these first.</p></article>
+              <article class="client-action"><h3>Risk factors</h3><p>Weather delay risk, permit dependency, and scope creep are summarized in plain English.</p></article>
+              <article class="client-action"><h3>Latest proof</h3><p>Before and after photos, reports, and approved invoices stay connected to the project record.</p></article>
+              <article class="client-action"><h3>One tap updates</h3><p>Every alert has a response box. Client messages elevate to the staff dashboard as client originated priority.</p></article>
+            </div>
+          </div>
+        </div>
+        <aside>
+          <div class="message-box">
+            <h3>Client communication should feel immediate.</h3>
+            <p>
+              A client should be able to send a note from the project page, respond to an alert,
+              or ask for clarification without entering the internal app. Staff should see that note
+              in the main dashboard with project, client, priority, and source context.
+            </p>
+            <textarea>Type a client note or response to an alert...</textarea>
+            <button class="button" type="button">Send to project team</button>
+          </div>
+          <div class="portal-notes">
+            <span>Recommended route model: preserve authenticated owner portal paths, plus project specific magic links that land directly on the relevant client project room.</span>
+            <span>Recommended navigation: project switcher, alerts, scope, schedule, budget, decisions, risks, proof, and messages. Everything else is secondary.</span>
+            <span>Recommended design rule: the client portal should answer, What needs me, what changed, what does it cost, and what proof exists?</span>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="workflow">
+      <div class="section-head">
+        <h2>Invoice workflow should teach the user as it protects the company.</h2>
+        <p>
+          The flow below is the recommended implementation pattern for both consulting and construction.
+          It keeps invoices from floating loose and makes the next step obvious to a non technical staff member.
+        </p>
+      </div>
+      <div class="invoice-flow">
+        <article class="flow-step"><strong>Step 1</strong><h3>Project setup gate</h3><p>No invoice can start until company, project type, client, proposal value, and billing method are loaded.</p><ul><li>APAS Build or APAS Consulting</li><li>Construction pay app or consulting invoice</li><li>Owner and sender identity confirmed</li></ul></article>
+        <article class="flow-step"><strong>Step 2</strong><h3>Proposal breakdown</h3><p>Prime amount, consulting amount, subcontractor amount, allowances, and reimbursables are entered as the billing source.</p><ul><li>Warn on missing scope</li><li>Track percent billed</li><li>Prevent over billing</li></ul></article>
+        <article class="flow-step"><strong>Step 3</strong><h3>Create invoice</h3><p>The user picks a percent, milestone, or line amount. Proj OS prorates subcontractor and consulting lines when allowed.</p><ul><li>Drafts are editable</li><li>Errors can be deleted</li><li>Approved invoices lock</li></ul></article>
+        <article class="flow-step"><strong>Step 4</strong><h3>Attach report</h3><p>Reports, photos, evidence, and PDF attachments are collated into one client ready package with a side preview.</p><ul><li>Preview before send</li><li>Email body generated</li><li>Download package</li></ul></article>
+        <article class="flow-step"><strong>Step 5</strong><h3>Approval record</h3><p>Admin override is required after approval. Every change keeps a visible audit note and approval trail.</p><ul><li>Locked after approval</li><li>Admin change reason</li><li>Client delivery record</li></ul></article>
+      </div>
+    </section>
+
+    <section id="contact" class="contact-band">
+      <div>
+        <h2>Enterprise version. Contact us.</h2>
+        <p class="note">
+          The public contact form should create a CRM lead tagged to Proj OS, preserve the source page,
+          and start the sales workflow for demo, discovery, onboarding, and product fit.
+        </p>
+      </div>
+      <form class="contact-card">
+        <label>Work email<input class="field" placeholder="name@company.com" /></label>
+        <label>Company<input class="field" placeholder="Company name" /></label>
+        <label>What do you want to run better?<textarea class="field" rows="5" placeholder="Invoices, field capture, owner portal, voice agents, project controls..."></textarea></label>
+        <button class="button" type="button" style="margin-top: 14px; width: 100%;">Contact us</button>
+      </form>
+    </section>
+  </main>
+</body>
+</html>

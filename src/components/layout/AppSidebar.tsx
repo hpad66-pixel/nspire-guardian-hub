@@ -179,8 +179,8 @@ export function AppSidebar() {
               collapsed && 'justify-center px-0',
             )}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-[8px] font-bold tracking-[0.08em] text-primary-foreground shadow-sm ring-2 ring-accent/60 ring-offset-2 ring-offset-sidebar">
-              OW
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-[7px] font-bold tracking-[0.08em] text-primary-foreground shadow-sm ring-2 ring-accent/60 ring-offset-2 ring-offset-sidebar">
+              POS
             </div>
             {!collapsed && (
               <span className="grid gap-1 leading-none">
