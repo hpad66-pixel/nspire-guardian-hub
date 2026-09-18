@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useProject } from "@/hooks/useProjects";
@@ -56,6 +56,7 @@ const money = (value: number) => new Intl.NumberFormat("en-US", { style: "curren
 export default function ProposalGeneratorPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { data: project } = useProject(projectId ?? null);
   const { data: client } = useClient(project?.client_id ?? undefined);
   const { data: coSettings } = useCoSettings();
@@ -68,7 +69,9 @@ export default function ProposalGeneratorPage() {
 
   const [aiText, setAiText] = useState("");
   const [bgFile, setBgFile] = useState<File | null>(null);
-  const [intakeMode, setIntakeMode] = useState<"scratch" | "upload">("scratch");
+  const [intakeMode, setIntakeMode] = useState<"scratch" | "upload">(
+    searchParams.get("mode") === "upload" ? "upload" : "scratch",
+  );
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -266,9 +269,9 @@ export default function ProposalGeneratorPage() {
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Generate Proposal</h1>
+          <h1 className="text-2xl font-bold">Proposal Intake</h1>
           <p className="text-sm text-muted-foreground">
-            Dictate the story{client ? <> for <span className="font-medium text-foreground">{client.name}</span></> : null} · Claude writes it up · edit anything · live preview on the right.
+            Choose whether to write from scratch or upload a proposal package{client ? <> for <span className="font-medium text-foreground">{client.name}</span></> : null}. Review every extracted component before it becomes invoice authority.
           </p>
         </div>
         <div className="flex gap-2">
@@ -314,7 +317,7 @@ export default function ProposalGeneratorPage() {
           <Card className="border-[var(--apas-sapphire)]/30 bg-[var(--apas-sapphire)]/[0.03]">
             <CardHeader className="pb-2">
               <CardTitle className="flex items-center gap-1.5 text-base"><Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" /> {intakeMode === "upload" ? "Upload and extract proposal" : "Describe the proposal"}</CardTitle>
-              <p className="text-xs text-muted-foreground">{intakeMode === "upload" ? "Attach the proposal package, then add any instructions about what to extract or ignore. Claude will draft the proposal and fee schedule for your review." : "Tell the story: what the client needs, your approach, the fee, subs, consultants, pass-throughs, terms, and deliverables. You can dictate with your mic."}</p>
+              <p className="text-xs text-muted-foreground">{intakeMode === "upload" ? "Attach the proposal package, then add any instructions about what to extract or ignore. Claude will extract the proposal story, scope, deliverables, terms, and invoiceable fee schedule for your review." : "Tell the story: what the client needs, your approach, the fee, subs, consultants, pass-throughs, terms, and deliverables. You can dictate with your mic."}</p>
             </CardHeader>
             <CardContent className="space-y-2">
               <VoiceDictationTextareaWithAI
@@ -338,13 +341,13 @@ export default function ProposalGeneratorPage() {
                 </div>
               ) : (
                 <button type="button" onClick={() => fileRef.current?.click()} className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-muted-foreground/30 px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-[var(--apas-sapphire)]/50 hover:text-foreground">
-                  <Paperclip className="h-3.5 w-3.5" /> Attach proposal, RFP, or quote — click (PDF, image, or text)
+                  <Paperclip className="h-3.5 w-3.5" /> Attach proposal, RFP, quote, or signed package — click to extract
                 </button>
               )}
               <div className="flex justify-end">
                 <Button onClick={draftWithAI} disabled={busy}>
                   {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1.5 h-4 w-4" />}
-                  {busy ? "Writing…" : "Draft with AI"}
+                  {busy ? "Writing…" : intakeMode === "upload" ? "Extract proposal" : "Draft proposal"}
                 </Button>
               </div>
             </CardContent>

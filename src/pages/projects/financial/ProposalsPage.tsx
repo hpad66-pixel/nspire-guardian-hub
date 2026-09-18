@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, Plus, ExternalLink, CheckCircle2, Clock, Send, XCircle, Sparkles, Trash2, Search, Paperclip, Receipt } from "lucide-react";
+import { FileText, ExternalLink, CheckCircle2, Clock, Send, XCircle, Sparkles, Trash2, Search, Paperclip, Receipt, UploadCloud, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { proposalTotals } from "@/lib/financial/proposalPricing";
 
@@ -128,11 +128,11 @@ export default function ProposalsPage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => { setForm({ overhead_pct: Number(coSettings?.default_overhead_pct ?? 10), profit_pct: Number(coSettings?.default_profit_pct ?? 5), proposal_no: nextNo, client_name: client?.name ?? undefined, client_email: client?.contact_email ?? undefined }); setShowCreate(true); }}>
-            <Plus className="h-4 w-4 mr-2" /> Blank
+          <Button variant="outline" onClick={() => navigate(`/projects/${projectId}/financials/proposals/new?mode=scratch`)}>
+            <Wand2 className="h-4 w-4 mr-2" /> Write from scratch
           </Button>
-          <Button onClick={() => navigate(`/projects/${projectId}/financials/proposals/new`)}>
-            <Sparkles className="h-4 w-4 mr-2" /> Generate with AI
+          <Button onClick={() => navigate(`/projects/${projectId}/financials/proposals/new?mode=upload`)}>
+            <UploadCloud className="h-4 w-4 mr-2" /> Upload & extract
           </Button>
         </div>
       </div>
@@ -164,9 +164,14 @@ export default function ProposalsPage() {
                 Build the approved client proposal first, then invoice against its line items so billing cannot drift from the signed amount.
               </p>
             </div>
-            <Button onClick={() => navigate(`/projects/${projectId}/financials/proposals/new`)}>
-              <Sparkles className="mr-2 h-4 w-4" /> Import or draft proposal
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={() => navigate(`/projects/${projectId}/financials/proposals/new?mode=scratch`)}>
+                <Wand2 className="mr-2 h-4 w-4" /> Write from scratch
+              </Button>
+              <Button onClick={() => navigate(`/projects/${projectId}/financials/proposals/new?mode=upload`)}>
+                <UploadCloud className="mr-2 h-4 w-4" /> Upload & extract
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="grid gap-3 lg:grid-cols-4">
