@@ -175,6 +175,23 @@ export function buildProposalBillingRows(
     .sort((a, b) => a.proposal_no.localeCompare(b.proposal_no));
 }
 
+/**
+ * Return the amount needed on this invoice to bring a proposal to the target
+ * cumulative billed percent. Example: a $22,000 subcontract proposal with no
+ * prior billing and a 50% target returns $11,000.
+ */
+export function proposalAmountToReachBillingPercent(
+  row: Pick<ProposalBillingRow, "fee_amount" | "previously_billed" | "remaining">,
+  percent: number,
+): number {
+  const fee = money2(row.fee_amount);
+  if (fee <= 0) return 0;
+  const targetPercent = Math.max(0, Math.min(100, Number(percent) || 0));
+  const targetCumulative = money2((fee * targetPercent) / 100);
+  const neededNow = money2(Math.max(0, targetCumulative - money2(row.previously_billed)));
+  return money2(Math.min(neededNow, Math.max(0, row.remaining)));
+}
+
 /** Convert selected proposal billing rows into consulting invoice lines. */
 export function buildInvoiceLinesFromProposals(
   rows: Array<

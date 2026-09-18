@@ -92,10 +92,30 @@ export interface InvoiceHeaderInput extends InvoiceBillTo {
   po_number?: string | null;
 }
 
+// The generated Supabase type map does not include these newer finance tables yet.
+// Keep the escape hatch local so invoice business rules stay typed above it.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const invoices = () => supabase.from('consulting_invoices' as never) as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const lines = () => supabase.from('consulting_invoice_lines' as never) as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const payments = () => supabase.from('consulting_invoice_payments' as never) as any;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const scopes = () => supabase.from('project_scopes' as never) as any;
+
+function assertProposalLinkedInvoiceLines(inputLines: NewInvoiceLine[]) {
+  if (inputLines.length === 0) {
+    throw new Error('Add at least one billable proposal line before creating the invoice.');
+  }
+  const looseLine = inputLines.find((line) => !line.proposal_id);
+  if (looseLine) {
+    throw new Error('Client invoices must be created from approved proposals. Add or approve the proposal first, then invoice from that proposal.');
+  }
+  const nonPositiveLine = inputLines.find((line) => (Number(line.amount) || 0) <= 0);
+  if (nonPositiveLine) {
+    throw new Error('Every invoice line must have a positive amount.');
+  }
+}
 
 export function useConsultingInvoices(projectId: string | null | undefined) {
   const qc = useQueryClient();
@@ -122,6 +142,7 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
   const create = useMutation({
     mutationFn: async (input: InvoiceHeaderInput & { lines: NewInvoiceLine[] }) => {
       if (!projectId) throw new Error('No project');
+      assertProposalLinkedInvoiceLines(input.lines);
       const { data: auth } = await supabase.auth.getUser();
       const tenant_id = await requireTenantId(auth.user?.id);
       const nextNo = (list.data?.reduce((m, i) => Math.max(m, i.invoice_no), 0) ?? 0) + 1;
@@ -176,6 +197,7 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
 
   const update = useMutation({
     mutationFn: async (input: InvoiceHeaderInput & { id: string; lines: NewInvoiceLine[]; status?: InvoiceStatus }) => {
+      assertProposalLinkedInvoiceLines(input.lines);
       const inv = (list.data ?? []).find((i) => i.id === input.id);
       if (inv && inv.status !== 'draft') {
         throw new Error('Only draft invoices can be fully edited. Void and recreate, or record a payment.');
@@ -254,6 +276,15 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
 
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      let inv = (list.data ?? []).find((i) => i.id === id);
+      if (!inv) {
+        const { data, error: fetchError } = await invoices().select('id, status').eq('id', id).single();
+        if (fetchError) throw fetchError;
+        inv = data as ConsultingInvoice;
+      }
+      if (inv.status !== 'draft') {
+        throw new Error('Only draft invoices can be deleted. Sent, paid, and void invoices stay in the audit trail.');
+      }
       const { error } = await invoices().delete().eq('id', id);
       if (error) throw error;
     },

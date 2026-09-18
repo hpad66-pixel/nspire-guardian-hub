@@ -9,6 +9,7 @@ import {
   buildProposalAccountSummaries,
   defaultInvoiceSubject,
   defaultPaymentTerms,
+  proposalAmountToReachBillingPercent,
 } from '../billing';
 
 describe('consulting billing', () => {
@@ -145,6 +146,19 @@ describe('consulting billing', () => {
       remaining_after: 6000,
       previously_billed: 0,
     });
+  });
+
+  it('calculates a simple cumulative percent draw against an approved proposal', () => {
+    const row = {
+      fee_amount: 22_000,
+      previously_billed: 0,
+      remaining: 22_000,
+    };
+
+    expect(proposalAmountToReachBillingPercent(row, 50)).toBe(11_000);
+    expect(proposalAmountToReachBillingPercent({ ...row, previously_billed: 5500, remaining: 16_500 }, 50)).toBe(5500);
+    expect(proposalAmountToReachBillingPercent({ ...row, previously_billed: 15_000, remaining: 7000 }, 50)).toBe(0);
+    expect(proposalAmountToReachBillingPercent(row, 150)).toBe(22_000);
   });
 
   it('allocates invoice payments across proposal lines by share', () => {

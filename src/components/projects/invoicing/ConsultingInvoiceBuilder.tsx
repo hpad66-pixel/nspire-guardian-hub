@@ -6,7 +6,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Plus, Trash2, FileText } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Loader2, Plus, Trash2, FileText, Info, LockKeyhole, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useProjectScopes } from '@/hooks/useProjectScopes';
 import { useFinancialProposals } from '@/hooks/useFinancialProposals';
 import {
@@ -21,12 +23,15 @@ import {
   buildProposalBillingRows,
   buildInvoiceLinesFromProposals,
   buildProposalAccountSummaries,
+  proposalAmountToReachBillingPercent,
   defaultPaymentTerms,
   defaultInvoiceSubject,
   type ProposalBillingRow,
 } from '@/lib/consulting/billing';
 import { APAS_COMPANY_BRANDS, invoiceDocumentLabelForCompany, type ApasCompanyBrand } from '@/lib/financial/apasCompanyBranding';
 import { money } from './invoiceMeta';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 export interface InvoiceClientSeed {
   name?: string | null;
@@ -228,8 +233,6 @@ export function ConsultingInvoiceBuilder({
     setProposalRows(mappedProposals);
 
     const hasProposalBillable = mappedProposals.some((r) => r.included && r.remaining > 0);
-    const hasScopeBillable = mappedScopes.some((r) => r.included && r.amount !== 0);
-
     const firstTerms = mappedProposals.find((r) => r.included && r.terms)?.terms;
     if (!existing) {
       setPaymentTerms(defaultPaymentTerms(firstTerms));
@@ -242,7 +245,7 @@ export function ConsultingInvoiceBuilder({
     }
 
     if (!(existing && editDetail?.lines?.length)) {
-      setMode(hasProposalBillable ? 'proposals' : hasScopeBillable ? 'scopes' : 'custom');
+      setMode('proposals');
       setCustomRows(
         hasProposalBillable
           ? mappedProposals
@@ -278,6 +281,16 @@ export function ConsultingInvoiceBuilder({
     );
   };
 
+  const setProposalPercent = (proposalId: string, percent: number) => {
+    setProposalRows((prev) =>
+      prev.map((r) => {
+        if (r.proposal_id !== proposalId) return r;
+        const amount = proposalAmountToReachBillingPercent(r, percent);
+        return { ...r, this_amount: amount, included: amount > 0 };
+      }),
+    );
+  };
+
   const includedScopes = useMemo(() => rows.filter((r) => r.included), [rows]);
   const scopeTotal = useMemo(
     () => includedScopes.reduce((s, r) => s + (Number(r.amount) || 0), 0),
@@ -303,17 +316,30 @@ export function ConsultingInvoiceBuilder({
     [mode, proposalRows],
   );
 
-  const canCreate =
-    mode === 'proposals'
-      ? proposalRows.some((r) => r.included && r.this_amount > 0)
-      : mode === 'scopes'
-        ? includedScopes.length > 0 && total !== 0
-        : customRows.some((r) => r.description.trim() && Number(r.amount) !== 0);
-
   const approvedCount = proposals.filter((p) => p.status === 'approved').length;
+  const hasApprovedProposals = approvedCount > 0;
+  const hasBillableProposalBalance = proposalRows.some((r) => r.remaining > 0);
+  const hasSelectedProposalAmount = proposalRows.some((r) => r.included && r.this_amount > 0);
+  const proposalWorkflowLocked = mode !== 'proposals';
+  const invoiceBlocker = !hasApprovedProposals
+    ? 'Approve or import the client proposal before creating this invoice.'
+    : !hasBillableProposalBalance
+      ? 'All approved proposals on this project are already fully billed. Add an approved amendment before invoicing more.'
+      : proposalWorkflowLocked
+        ? 'Use Approved proposals for client invoices so billing stays tied to the approved amount.'
+        : !hasSelectedProposalAmount
+          ? 'Select at least one proposal amount to bill.'
+          : null;
+  const canCreate = !invoiceBlocker;
   const saving = create.isPending || update.isPending;
   const consultingBrand = billingBrand;
   const invoiceDocumentLabel = invoiceDocumentLabelForCompany(consultingBrand);
+  const setupSteps = [
+    'Open Financials and go to Proposals.',
+    'Create or import the approved proposal with the full client amount, including any subcontractor portion.',
+    'Mark the proposal approved or executed so it becomes the billing authority.',
+    'Return here and bill a percent complete, the remaining balance, or a typed amount inside the approved balance.',
+  ];
 
   const buildHeader = (): InvoiceHeaderInput => ({
     issue_date: issueDate,
@@ -350,6 +376,10 @@ export function ConsultingInvoiceBuilder({
 
   const handleSave = async () => {
     try {
+      if (invoiceBlocker) {
+        toast.error(invoiceBlocker);
+        return;
+      }
       const header = buildHeader();
       const lines = buildLines();
       if (editing && editInvoiceId) {
@@ -394,16 +424,78 @@ export function ConsultingInvoiceBuilder({
           </div>
         </div>
 
-        <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)}>
+        {!hasApprovedProposals && !editing && (
+          <Alert className="border-amber-300 bg-amber-50 text-amber-950">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Start the project correctly before invoicing</AlertTitle>
+            <AlertDescription>
+              <p>This invoice is locked until the approved proposal is fed into the project. That keeps stucco, consulting, and subcontractor billing tied to the real approved amount.</p>
+              <ol className="mt-3 grid gap-2 sm:grid-cols-2">
+                {setupSteps.map((step, index) => (
+                  <li key={step} className="flex gap-2 rounded-md bg-white/70 p-2 text-xs leading-5">
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200 font-bold text-amber-950">{index + 1}</span>
+                    <span>{step}</span>
+                  </li>
+                ))}
+              </ol>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {hasApprovedProposals && (
+          <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
+            <div className="flex items-start gap-2">
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <p className="font-semibold">Proposal-linked billing is active</p>
+                <p className="mt-1 text-xs leading-5 text-emerald-900">
+                  Pick the approved proposal, choose a billing percent or amount, and the system caps the invoice at the remaining approved balance. Drafts can be edited or deleted. Once issued, the invoice stays locked in the audit trail.
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-medium text-emerald-900">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-1"><CheckCircle2 className="h-3 w-3" />Approved amount controls the ceiling</span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-1"><CheckCircle2 className="h-3 w-3" />Drafts stay editable until issued</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <TooltipProvider>
+        <Tabs value={mode} onValueChange={(v) => {
+          if (v !== 'proposals') {
+            toast.info('Use Approved proposals for client invoices so billing stays tied to the approved project amount.');
+            return;
+          }
+          setMode(v as Mode);
+        }}>
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="proposals" className="gap-1.5">
               <FileText className="h-3.5 w-3.5" />
               Approved proposals
             </TabsTrigger>
-            <TabsTrigger value="scopes">From scopes</TabsTrigger>
-            <TabsTrigger value="custom">Custom / lump sum</TabsTrigger>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="min-w-0">
+                  <TabsTrigger value="scopes" disabled className="w-full">From scopes</TabsTrigger>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Scope billing is legacy support. Create the approved proposal first, then invoice from that proposal.
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="min-w-0">
+                  <TabsTrigger value="custom" disabled className="w-full">Custom / lump sum</TabsTrigger>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-xs">
+                Custom client invoices are disabled because they can drift from the approved proposal amount.
+              </TooltipContent>
+            </Tooltip>
           </TabsList>
         </Tabs>
+        </TooltipProvider>
 
         <div className="grid gap-3 rounded-lg border bg-muted/20 p-3">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-[#C4A35A]">Bill to</div>
@@ -470,24 +562,60 @@ export function ConsultingInvoiceBuilder({
         </div>
 
         {mode === 'proposals' ? (
+          <TooltipProvider>
           <div className="rounded-lg border overflow-hidden mt-1">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b bg-muted/40">
                   <th className="px-2 py-2 w-8"></th>
                   <th className="font-medium px-2 py-2">Proposal</th>
-                  <th className="font-medium px-2 py-2 text-right">Approved</th>
-                  <th className="font-medium px-2 py-2 text-right">Billed</th>
-                  <th className="font-medium px-2 py-2 text-right">Paid</th>
-                  <th className="font-medium px-2 py-2 text-right w-[120px]">This invoice</th>
+                  <th className="font-medium px-2 py-2 text-right">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="inline-flex items-center gap-1">
+                          Approved <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">The total approved proposal amount. This is the ceiling for all invoices tied to this proposal.</TooltipContent>
+                    </Tooltip>
+                  </th>
+                  <th className="font-medium px-2 py-2 text-right">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="inline-flex items-center gap-1">
+                          Billed <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">Amount already included on non-void invoices for this proposal.</TooltipContent>
+                    </Tooltip>
+                  </th>
+                  <th className="font-medium px-2 py-2 text-right">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="inline-flex items-center gap-1">
+                          Paid <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">Cash received and allocated back to this proposal from invoice payments.</TooltipContent>
+                    </Tooltip>
+                  </th>
+                  <th className="font-medium px-2 py-2 text-right w-[220px]">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button type="button" className="inline-flex items-center gap-1">
+                          This invoice <Info className="h-3 w-3" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">Choose a percent complete or type an amount. The amount cannot exceed the remaining approved balance.</TooltipContent>
+                    </Tooltip>
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {proposalRows.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
-                      No approved proposals yet. Approve a proposal under Financials → Proposals,
-                      or switch to Custom / lump sum.
+                      No approved proposals yet. Go to Financials, create or import the proposal, then mark it approved before invoicing.
                     </td>
                   </tr>
                 ) : proposalRows.map((r) => (
@@ -519,6 +647,34 @@ export function ConsultingInvoiceBuilder({
                       {money(r.previously_paid)}
                     </td>
                     <td className="px-2 py-2 text-right">
+                      <div className="mb-1 flex flex-wrap justify-end gap-1">
+                        {[25, 50, 100].map((percent) => (
+                          <Button
+                            key={percent}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            disabled={r.remaining <= 0}
+                            className={cn(
+                              'h-7 px-2 text-[11px]',
+                              r.included && money2(r.this_amount) === proposalAmountToReachBillingPercent(r, percent) && 'border-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]',
+                            )}
+                            onClick={() => setProposalPercent(r.proposal_id, percent)}
+                          >
+                            {percent}%
+                          </Button>
+                        ))}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={r.remaining <= 0}
+                          className="h-7 px-2 text-[11px]"
+                          onClick={() => setProposalAmount(r.proposal_id, r.remaining)}
+                        >
+                          Remaining
+                        </Button>
+                      </div>
                       <Input
                         type="number"
                         step="0.01"
@@ -529,12 +685,16 @@ export function ConsultingInvoiceBuilder({
                         onChange={(e) => setProposalAmount(r.proposal_id, Number(e.target.value))}
                         className="h-8 text-right tabular-nums"
                       />
+                      <div className="mt-1 text-[11px] text-muted-foreground">
+                        Left after this: {money(Math.max(0, r.remaining - (r.included ? r.this_amount : 0)))}
+                      </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          </TooltipProvider>
         ) : mode === 'scopes' ? (
           <div className="rounded-lg border overflow-hidden mt-1">
             <table className="w-full text-sm">
@@ -650,6 +810,16 @@ export function ConsultingInvoiceBuilder({
           />
         </div>
 
+        {invoiceBlocker && (
+          <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+            <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="font-semibold">Invoice cannot be created yet</p>
+              <p className="mt-0.5 text-xs leading-5">{invoiceBlocker}</p>
+            </div>
+          </div>
+        )}
+
         <DialogFooter>
           <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
@@ -658,7 +828,7 @@ export function ConsultingInvoiceBuilder({
             disabled={!canCreate || saving}
             className="bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90"
           >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? 'Save changes' : 'Create invoice'}
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? 'Save changes' : 'Create proposal-linked invoice'}
           </Button>
         </DialogFooter>
       </DialogContent>
