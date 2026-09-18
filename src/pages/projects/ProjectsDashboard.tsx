@@ -311,20 +311,27 @@ export default function ProjectsDashboard() {
     return (
       <div
         className={cn(
-          'p-4 rounded-lg border border-l-4 hover:shadow-md transition-all cursor-pointer group relative',
+          'group relative overflow-hidden rounded-xl border border-l-4 p-4 cursor-pointer transition-all duration-200',
+          'hover:-translate-y-0.5 hover:shadow-xl focus-within:ring-2 focus-within:ring-primary/30',
           projectKindTileClass(kind),
-          isClosed && 'border-amber-300/80 bg-gradient-to-br from-amber-50/70 via-card to-emerald-50/50 shadow-sm hover:shadow-lg',
+          isClosed && 'border-amber-300/80 bg-gradient-to-br from-amber-50/70 via-card to-emerald-50/50 shadow-sm',
         )}
         onClick={() => navigate(`/projects/${project.id}`)}
       >
+        <div
+          className={cn(
+            'pointer-events-none absolute -right-8 -top-10 h-28 w-28 rounded-full opacity-15 blur-2xl transition-opacity group-hover:opacity-30',
+            kind === 'consulting' ? 'bg-[var(--kind-consulting-accent)]' : 'bg-[var(--kind-construction-accent)]',
+          )}
+        />
         {/* More actions */}
         <div
-          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute top-3 right-3 z-10 opacity-80 transition-opacity group-hover:opacity-100"
           onClick={(e) => e.stopPropagation()}
         >
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-7 w-7">
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-background/40 shadow-sm backdrop-blur-sm">
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -354,69 +361,96 @@ export default function ProjectsDashboard() {
           </DropdownMenu>
         </div>
 
-        <div className="flex items-start justify-between mb-3 pr-8">
-          <div>
-            <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h4 className="font-semibold">{project.name}</h4>
-              <ProjectKindBadge project={project} />
-              <Badge
-                variant={project.status === 'active' ? 'default' : 'secondary'}
-                className={cn('text-xs capitalize', isClosed && 'border border-amber-300 bg-amber-100 text-amber-950')}
-              >
-                {project.status === 'active' ? 'Active' : project.status}
-              </Badge>
-              <span className={cn(
-                'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border',
-                sc.bg, sc.text, sc.border,
-              )}>
-                <SIcon className="h-3 w-3" />
-                {sc.label}
-              </span>
+        <div className="relative flex min-h-[144px] flex-col gap-4">
+          <div className="flex items-start gap-3 pr-8">
+            <div
+              className={cn(
+                'mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border shadow-sm',
+                kind === 'consulting'
+                  ? 'border-white/25 bg-white/10 text-[var(--kind-consulting-accent)]'
+                  : 'border-[var(--kind-construction-accent)]/30 bg-white/70 text-[var(--kind-construction-accent)]',
+              )}
+            >
+              {kind === 'consulting' ? <Briefcase className="h-5 w-5" /> : <Building2 className="h-5 w-5" />}
             </div>
-            {parentName && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                {isClientProject ? <Briefcase className="h-3.5 w-3.5" /> : <Building2 className="h-3.5 w-3.5" />}
-                <span>{parentName}</span>
+            <div className="min-w-0 flex-1">
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <ProjectKindBadge project={project} />
+                <Badge
+                  variant={project.status === 'active' ? 'default' : 'secondary'}
+                  className={cn('text-xs capitalize', isClosed && 'border border-amber-300 bg-amber-100 text-amber-950')}
+                >
+                  {project.status === 'active' ? 'Active' : project.status}
+                </Badge>
+                <span className={cn(
+                  'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border',
+                  sc.bg, sc.text, sc.border,
+                )}>
+                  <SIcon className="h-3 w-3" />
+                  {sc.label}
+                </span>
               </div>
-            )}
+              <h4 className="line-clamp-2 text-base font-semibold leading-snug tracking-tight">{project.name}</h4>
+              {parentName && (
+                <div className="mt-2 flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+                  {isClientProject ? <Briefcase className="h-3.5 w-3.5" /> : <Building2 className="h-3.5 w-3.5" />}
+                  <span className="truncate">{parentName}</span>
+                </div>
+              )}
+            </div>
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-2">
-            <ProjectOwnerBadge project={project} prominent />
-            <span className={cn(
-              'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border',
-              hc.bg, hc.text, hc.border
-            )}>
-              <HIcon className="h-3 w-3" />
-              {hc.label}
-            </span>
-          </div>
-        </div>
 
-        {isClosed ? (
-          <ProjectClosedCardStamp project={project} />
-        ) : (
-          <div className="mt-3 flex items-center gap-3">
-            <div className="flex-1">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs text-muted-foreground">
-                  {kind === 'consulting' ? 'Approved fees' : 'Budget'}
-                </span>
-                <span className="text-xs font-medium">
-                  {formatCurrency(spentVal)} / {formatCurrency(budgetVal)}
-                </span>
+          {isClosed ? (
+            <ProjectClosedCardStamp project={project} />
+          ) : (
+            <>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <ProjectOwnerBadge project={project} prominent className="max-w-full justify-start" />
+                <div
+                  className={cn(
+                    'flex min-h-[52px] items-center justify-between gap-2 rounded-xl border px-3 py-2 text-xs shadow-sm backdrop-blur-sm',
+                    kind === 'consulting'
+                      ? 'border-white/15 bg-white/10 text-white'
+                      : 'border-[var(--kind-construction-ink)]/10 bg-white/60 text-[var(--kind-construction-ink)]',
+                  )}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[9px] font-extrabold uppercase tracking-[0.16em] opacity-65">Health</span>
+                    <span className="block truncate font-bold">{hc.label}</span>
+                  </span>
+                  <span className={cn(
+                    'flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 font-medium',
+                    hc.bg, hc.text, hc.border,
+                  )}>
+                    <HIcon className="h-3 w-3" />
+                  </span>
+                </div>
               </div>
-              <Progress value={progress} className="h-1.5" />
-            </div>
-            {project.target_end_date && (
-              <div className="text-right shrink-0">
-                <span className="text-xs text-muted-foreground">Due</span>
-                <p className="text-xs font-medium">
-                  {new Date(project.target_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                </p>
+
+              <div className="flex items-end gap-3 border-t border-current/10 pt-3">
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
+                      {kind === 'consulting' ? 'Approved fees' : 'Budget'}
+                    </span>
+                    <span className="text-xs font-bold tabular-nums">
+                      {formatCurrency(spentVal)} / {formatCurrency(budgetVal)}
+                    </span>
+                  </div>
+                  <Progress value={progress} className="h-1.5" />
+                </div>
+                {project.target_end_date && (
+                  <div className="shrink-0 rounded-xl border border-current/10 bg-background/20 px-2.5 py-1.5 text-right shadow-sm backdrop-blur-sm">
+                    <span className="block text-[9px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">Due</span>
+                    <p className="text-xs font-bold tabular-nums">
+                      {new Date(project.target_end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </div>
     );
   };
