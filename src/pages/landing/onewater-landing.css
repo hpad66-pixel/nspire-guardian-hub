@@ -1018,7 +1018,7 @@
 
 .ow-access-pass {
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: 124px 1fr;
   gap: 16px;
   align-items: center;
   margin-top: 18px;
@@ -1029,33 +1029,39 @@
     rgba(255, 255, 255, .04);
 }
 
-.ow-access-pass-mark {
+.ow-access-qr {
   display: grid;
-  width: 72px;
-  height: 72px;
+  width: 124px;
+  min-height: 124px;
   place-items: center;
   border: 1px solid rgba(226, 189, 118, .58);
-  background: rgba(226, 189, 118, .12);
-  color: var(--ow-gold-soft);
-  font-size: 17px;
-  font-weight: 850;
-  letter-spacing: .11em;
+  background: #fffdf7;
+  padding: 6px;
+}
+
+.ow-access-qr img {
+  width: 100%;
+  height: auto;
 }
 
 .ow-access-pass-lines {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .ow-access-pass-lines span {
-  display: block;
-  height: 10px;
-  background: rgba(255, 255, 255, .16);
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, .12);
+  color: #e8f4ef;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
-
-.ow-access-pass-lines span:nth-child(1) { width: 86%; }
-.ow-access-pass-lines span:nth-child(2) { width: 62%; background: rgba(77, 182, 189, .26); }
-.ow-access-pass-lines span:nth-child(3) { width: 74%; background: rgba(226, 189, 118, .24); }
 
 .ow-access-link {
   display: inline-flex;
@@ -1401,13 +1407,12 @@
   }
 
   .ow-access-pass {
-    grid-template-columns: 62px 1fr;
+    grid-template-columns: 104px 1fr;
   }
 
-  .ow-access-pass-mark {
-    width: 62px;
-    height: 62px;
-    font-size: 14px;
+  .ow-access-qr {
+    width: 104px;
+    min-height: 104px;
   }
 
   .ow-workflow-grid article {

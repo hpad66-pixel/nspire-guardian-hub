@@ -335,9 +335,9 @@ export function ConsultingInvoiceBuilder({
   const consultingBrand = billingBrand;
   const invoiceDocumentLabel = invoiceDocumentLabelForCompany(consultingBrand);
   const setupSteps = [
-    'Open Financials and go to Proposals.',
-    'Create or import the approved proposal with the full client amount, including any subcontractor portion.',
-    'Mark the proposal approved or executed so it becomes the billing authority.',
+    'Open the proposal intake page for this project.',
+    'Create or import the client-approved proposal package with every consulting, vendor, and subcontractor amount.',
+    'Review the extracted rows or enter them manually, then upload the signed proposal and mark it approved.',
     'Return here and bill a percent complete, the remaining balance, or a typed amount inside the approved balance.',
   ];
 
@@ -438,6 +438,15 @@ export function ConsultingInvoiceBuilder({
                   </li>
                 ))}
               </ol>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3 border-amber-400 bg-white text-amber-950 hover:bg-amber-100"
+                onClick={() => { window.location.href = `/projects/${projectId}/financials/proposals`; }}
+              >
+                Open proposal intake
+              </Button>
             </AlertDescription>
           </Alert>
         )}

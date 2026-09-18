@@ -155,6 +155,57 @@ export default function ProposalsPage() {
         ))}
       </div>
 
+      <Card className="border-[var(--apas-sapphire)]/25 bg-[var(--apas-sapphire)]/[0.03]">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Proposal intake to invoice path</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Build the approved client proposal first, then invoice against its line items so billing cannot drift from the signed amount.
+              </p>
+            </div>
+            <Button onClick={() => navigate(`/projects/${projectId}/financials/proposals/new`)}>
+              <Sparkles className="mr-2 h-4 w-4" /> Import or draft proposal
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-3 lg:grid-cols-4">
+          {[
+            {
+              icon: FileText,
+              title: "1. Capture the proposal",
+              copy: "Create a blank proposal or import a PDF, subcontractor quote, scope sheet, or client-signed package.",
+            },
+            {
+              icon: Sparkles,
+              title: "2. Extract or enter lines",
+              copy: "Use AI draft/extraction or manually enter client, vendor, subcontractor, labor, material, and lump-sum rows.",
+            },
+            {
+              icon: CheckCircle2,
+              title: "3. Execute and approve",
+              copy: "Upload the signed proposal, mark it approved, and lock the proposal total as the billing authority.",
+            },
+            {
+              icon: Receipt,
+              title: "4. Create the invoice",
+              copy: "Bill a percent, a typed amount, or the remaining approved balance without exceeding the proposal ceiling.",
+            },
+          ].map((step) => {
+            const Icon = step.icon;
+            return (
+              <div key={step.title} className="rounded-lg border bg-background p-3">
+                <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-md bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]">
+                  <Icon className="h-4 w-4" />
+                </div>
+                <p className="font-semibold">{step.title}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.copy}</p>
+              </div>
+            );
+          })}
+        </CardContent>
+      </Card>
+
       {/* Proposals List */}
       <Card>
         <CardHeader className="pb-3">

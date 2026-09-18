@@ -30,6 +30,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { QRCodeGenerator } from '@/components/qr/QRCodeGenerator';
 import './onewater-landing.css';
 
 const NAV = [
@@ -130,6 +131,8 @@ const INITIAL_CONTACT: ContactState = {
   interest: 'Enterprise deployment',
   message: '',
 };
+
+const INSTALL_URL = 'https://projos.ai/install';
 
 function BrandMark() {
   return (
@@ -427,16 +430,18 @@ function MobileSection() {
               <span><QrCode aria-hidden="true" /> Private web app access</span>
               <small>PWA ready</small>
             </div>
-            <div className="ow-access-pass" aria-hidden="true">
-              <div className="ow-access-pass-mark">POS</div>
+            <div className="ow-access-pass">
+              <div className="ow-access-qr" aria-label="QR code to open the Proj OS install page">
+                <QRCodeGenerator value={INSTALL_URL} size={112} />
+              </div>
               <div className="ow-access-pass-lines">
-                <span />
-                <span />
-                <span />
+                <span>Scan to open</span>
+                <span>Install Proj OS</span>
+                <span>Secure mobile access</span>
               </div>
             </div>
-            <strong>Open Proj OS from an invitation, access card, or install link.</strong>
-            <p>Staff and clients use secure links, APAS access cards, or install prompts. This card previews the access pattern until each final private route is issued.</p>
+            <strong>Scan this code to open the install path on your phone.</strong>
+            <p>Staff and clients can open Proj OS from the QR code, an invitation, an access card, or the install link. The install page explains how to add it to the home screen.</p>
             <Link to="/install" className="ow-access-link">View install path <ArrowRight aria-hidden="true" /></Link>
           </div>
         </div>

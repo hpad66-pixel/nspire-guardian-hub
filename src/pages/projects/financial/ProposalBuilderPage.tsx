@@ -18,6 +18,7 @@ import {
   RenumberFinancialProposalDialog,
   UploadFinancialProposalHardcopyDialog,
 } from "@/components/financial/FinancialProposalRecordDialogs";
+import { AttachmentField } from "@/components/common/AttachmentField";
 import { useClient } from "@/hooks/useClients";
 import { useCurrentUserRole } from "@/hooks/useUserManagement";
 import { isAdminRole } from "@/lib/rbac";
@@ -295,6 +296,50 @@ export default function ProposalBuilderPage() {
         </div>
       )}
 
+      <Card className="border-[var(--apas-sapphire)]/25 bg-[var(--apas-sapphire)]/[0.03]">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">Step 1 · Proposal intake package</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                This is the place to feed the proposal before anyone creates an invoice. Upload the client proposal, subcontractor quote, or signed approval package, then extract or enter the billing rows below.
+              </p>
+            </div>
+            {executed ? <Badge className="bg-emerald-600 text-white">Ready for invoicing</Badge> : <Badge variant="outline">Invoice prerequisite</Badge>}
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
+          <div className="rounded-lg border bg-background p-3">
+            <AttachmentField
+              url={proposal.pdf_path}
+              onChange={(pdf_path) => proposalQuery.update.mutateAsync({ id: proposal.id, pdf_path })}
+              projectId={projectId!}
+              folder="proposals/source"
+              label={executed ? "Approved proposal PDF" : "Source proposal package"}
+              preview={false}
+              readOnly={!editable}
+            />
+            <p className="mt-3 text-xs leading-5 text-muted-foreground">
+              Draft uploads are supporting source packages. When the client signs, use <span className="font-medium text-foreground">Execute signed proposal</span> so the signed PDF becomes the approved record and the invoice builder unlocks.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              ["1", "Upload", "Attach the proposal, subcontractor quote, client authorization, or scope PDF."],
+              ["2", "Review", "Confirm client, vendor names, subcontractor amounts, scope, terms, and total."],
+              ["3", "Break out lines", "Use one row per approved billing bucket: consulting fee, subcontractor, material, labor, or other."],
+              ["4", "Approve", "Execute the signed proposal so invoices can bill against approved rows only."],
+            ].map(([no, title, copy]) => (
+              <div key={title} className="rounded-lg border bg-white/80 p-3">
+                <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--apas-sapphire)] text-xs font-bold text-white">{no}</div>
+                <p className="font-semibold">{title}</p>
+                <p className="mt-1 text-xs leading-5 text-muted-foreground">{copy}</p>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
       <FinancialProposalWorkflow proposal={proposal} />
 
       {editingDetails && (
@@ -339,7 +384,7 @@ export default function ProposalBuilderPage() {
         />
       )}
 
-      <Card><CardHeader><CardTitle className="text-base">Cost-of-work line items</CardTitle></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><th className="p-3 text-left">#</th><th className="p-3 text-left">Category</th><th className="p-3 text-left">Description</th><th className="p-3 text-right">Qty</th><th className="p-3 text-left">Unit</th><th className="p-3 text-right">Unit cost</th><th className="p-3 text-right">Extended</th><th /></tr></thead><tbody>
+      <Card><CardHeader><CardTitle className="text-base">Approved proposal billing schedule</CardTitle><p className="text-xs text-muted-foreground">Enter each billable bucket that the client approved. For subcontractors, choose <span className="font-medium text-foreground">subcontract</span>, put the contractor name in the description, and enter the approved lump-sum amount. The invoice builder will cap billing against this approved proposal total.</p></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><th className="p-3 text-left">#</th><th className="p-3 text-left">Category</th><th className="p-3 text-left">Description</th><th className="p-3 text-right">Qty</th><th className="p-3 text-left">Unit</th><th className="p-3 text-right">Unit cost</th><th className="p-3 text-right">Extended</th><th /></tr></thead><tbody>
         {lines.map(line => <EditableProposalLine key={line.id} line={line} editable={editable} onSave={saveLine} onRemove={() => lineQuery.remove.mutate(line.id)} />)}
         {editable && <tr className="border-t-2 bg-muted/10"><td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td><td className="p-2"><Select value={newLine.category} onValueChange={value => setNewLine(current => ({ ...current, category: value as FinancialProposalLine["category"] }))}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td><td className="p-2"><Input className="h-8 min-w-48 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Description…" /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.quantity} onChange={event => setNewLine(current => ({ ...current, quantity: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-xs" value={newLine.unit} onChange={event => setNewLine(current => ({ ...current, unit: event.target.value }))} /></td><td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td><td className="p-2 text-right text-xs text-muted-foreground">{fmt(Number(newLine.quantity) * Number(newLine.unit_cost))}</td><td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td></tr>}
       </tbody><tfoot><tr className="border-t bg-muted/50 font-bold"><td colSpan={6} className="p-3 text-right">Cost-of-work subtotal</td><td className="p-3 text-right font-mono text-base">{fmt(totals.subtotal)}</td><td /></tr></tfoot></table></div></CardContent></Card>
