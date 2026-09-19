@@ -392,6 +392,83 @@ function MobileDailyCommand({
   );
 }
 
+function ProductValueMoments({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const moments = [
+    {
+      eyebrow: 'Voice intake',
+      from: 'Call or voicemail',
+      to: 'Ticket with owner, urgency, and follow-up path',
+      why: 'No one has to remember what was said after the call ends.',
+      icon: Phone,
+      path: '/voice-agent',
+      tone: 'border-[var(--apas-sapphire)]/25 bg-[var(--apas-sapphire)]/5 text-[var(--apas-sapphire)]',
+    },
+    {
+      eyebrow: 'Field proof',
+      from: 'Site photo or walkthrough note',
+      to: 'Before/after record tied to the project',
+      why: 'The team can prove what was found, what changed, and what is done.',
+      icon: Camera,
+      path: '/site-accountability',
+      tone: 'border-[var(--apas-emerald)]/25 bg-[var(--apas-emerald)]/5 text-[var(--apas-emerald)]',
+    },
+    {
+      eyebrow: 'Money control',
+      from: 'Approved proposal value',
+      to: 'Invoice guardrails and billing context',
+      why: 'Invoices stop floating by themselves and stay connected to the approved work.',
+      icon: ReceiptText,
+      path: '/projects',
+      tone: 'border-[var(--apas-amber)]/30 bg-[var(--apas-amber)]/8 text-[var(--apas-amber)]',
+    },
+    {
+      eyebrow: 'Client communication',
+      from: 'Internal project activity',
+      to: 'Client-ready update, report, or portal view',
+      why: 'The owner sees a clean story instead of scattered internal records.',
+      icon: FileText,
+      path: '/reports',
+      tone: 'border-primary/20 bg-primary/5 text-primary',
+    },
+  ];
+
+  return (
+    <ZoneSection
+      icon={Sparkles}
+      iconClass="text-[var(--apas-amber)]"
+      accentClass="border-[var(--apas-amber)]"
+      title="Where Proj OS creates value"
+      subtext="Four practical moments where messy project activity becomes something your team can use"
+    >
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+        {moments.map((moment) => (
+          <button
+            key={moment.eyebrow}
+            type="button"
+            onClick={() => onNavigate(moment.path)}
+            className="group min-h-[190px] rounded-2xl border border-border/70 bg-card p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+          >
+            <span className={cn('mb-4 grid h-10 w-10 place-items-center rounded-xl border', moment.tone)}>
+              <moment.icon className="h-5 w-5" />
+            </span>
+            <span className="block text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">
+              {moment.eyebrow}
+            </span>
+            <span className="mt-3 block text-sm font-semibold leading-snug text-muted-foreground">
+              {moment.from}
+            </span>
+            <span className="my-2 inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-[0.12em] text-primary">
+              becomes <ArrowRight className="h-3 w-3" />
+            </span>
+            <span className="block text-base font-bold leading-snug text-foreground">{moment.to}</span>
+            <span className="mt-3 block text-xs leading-relaxed text-muted-foreground">{moment.why}</span>
+          </button>
+        ))}
+      </div>
+    </ZoneSection>
+  );
+}
+
 // ─── Main Dashboard ─────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -693,6 +770,8 @@ export default function Dashboard() {
           hasClientPortal={hasClientPortal}
           onNavigate={navigate}
         />
+
+        <ProductValueMoments onNavigate={navigate} />
 
         {/* Pulse metrics */}
         {isVisible('kpi-strip') && (
