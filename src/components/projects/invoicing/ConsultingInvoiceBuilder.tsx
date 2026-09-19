@@ -8,6 +8,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { ResizableWorkspace } from '@/components/layout/ResizableWorkspace';
 import { Loader2, Plus, Trash2, FileText, Info, LockKeyhole, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useProjectScopes } from '@/hooks/useProjectScopes';
 import { useFinancialProposals } from '@/hooks/useFinancialProposals';
@@ -394,7 +395,7 @@ export function ConsultingInvoiceBuilder({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[860px] max-h-[92vh] overflow-y-auto">
+      <DialogContent className="max-h-[92vh] w-[96vw] overflow-y-auto sm:max-w-none xl:w-[min(96vw,1320px)]">
         <DialogHeader>
           <DialogTitle className="font-[Playfair_Display] text-xl">
             {editing ? `Edit invoice #${existing?.invoice_no ?? ''}` : 'New client invoice'}
@@ -507,9 +508,18 @@ export function ConsultingInvoiceBuilder({
         </Tabs>
         </TooltipProvider>
 
+        <ResizableWorkspace
+          className="gap-5"
+          defaultPrimarySize={38}
+          defaultSecondarySize={62}
+          minPrimarySize={28}
+          minSecondarySize={42}
+          storageId="invoice-builder-workspace"
+        >
+        <div className="space-y-3">
         <div className="grid gap-3 rounded-lg border bg-muted/20 p-3">
           <div className="text-[11px] font-semibold uppercase tracking-wide text-[#C4A35A]">Bill to</div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid gap-3 sm:grid-cols-2">
             <div className="grid gap-1.5">
               <Label>Contact name</Label>
               <Input value={billToName} onChange={(e) => setBillToName(e.target.value)} placeholder="Chris Sullivan" />
@@ -570,11 +580,14 @@ export function ConsultingInvoiceBuilder({
             <Input value={paymentTerms} onChange={(e) => setPaymentTerms(e.target.value)} />
           </div>
         </div>
+        </div>
+
+        <div className="space-y-3">
 
         {mode === 'proposals' ? (
           <TooltipProvider>
-          <div className="rounded-lg border overflow-hidden mt-1">
-            <table className="w-full text-sm">
+          <div className="mt-1 overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[1040px] text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b bg-muted/40">
                   <th className="px-2 py-2 w-8"></th>
@@ -706,8 +719,8 @@ export function ConsultingInvoiceBuilder({
           </div>
           </TooltipProvider>
         ) : mode === 'scopes' ? (
-          <div className="rounded-lg border overflow-hidden mt-1">
-            <table className="w-full text-sm">
+          <div className="mt-1 overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[820px] text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b bg-muted/40">
                   <th className="px-2 py-2 w-8"></th>
@@ -841,6 +854,8 @@ export function ConsultingInvoiceBuilder({
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? 'Save changes' : 'Create proposal-linked invoice'}
           </Button>
         </DialogFooter>
+        </div>
+        </ResizableWorkspace>
       </DialogContent>
     </Dialog>
   );

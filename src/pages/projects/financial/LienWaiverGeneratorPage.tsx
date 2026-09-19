@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { useLienWaivers } from "@/hooks/useLienWaivers";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
+import { ResizableWorkspace } from "@/components/layout/ResizableWorkspace";
 import { useProject } from "@/hooks/useProjects";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { useCoSettings } from "@/hooks/useCoSettings";
@@ -77,7 +78,7 @@ export default function LienWaiverGeneratorPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl space-y-4">
+    <div className="mx-auto w-full max-w-[1800px] space-y-4 p-4 sm:p-6">
       <FinancialSubNav />
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap print:hidden">
         <Link to="/dashboard" className="hover:text-foreground flex items-center gap-1"><LayoutDashboard className="h-3.5 w-3.5" />Dashboard</Link>
@@ -101,7 +102,14 @@ export default function LienWaiverGeneratorPage() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <ResizableWorkspace
+        className="gap-6 print:grid"
+        defaultPrimarySize={48}
+        defaultSecondarySize={52}
+        minPrimarySize={30}
+        minSecondarySize={34}
+        storageId="lien-waiver-generator-workspace"
+      >
         {/* Editor */}
         <div className="print:hidden">
           <LienWaiverEditor spec={spec} onPatch={patch} />
@@ -116,7 +124,7 @@ export default function LienWaiverGeneratorPage() {
             </div>
           </div>
         </div>
-      </div>
+      </ResizableWorkspace>
     </div>
   );
 }

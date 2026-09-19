@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
+import { ResizableWorkspace } from "@/components/layout/ResizableWorkspace";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { useChangeOrdersByProject } from "@/hooks/useChangeOrders";
 import { useProject } from "@/hooks/useProjects";
@@ -209,7 +210,7 @@ export default function ChangeOrderGeneratorPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl space-y-4">
+    <div className="mx-auto w-full max-w-[1800px] space-y-4 p-4 sm:p-6">
       <FinancialSubNav />
       <nav className="flex items-center gap-1.5 text-sm text-muted-foreground flex-wrap">
         <Link to="/dashboard" className="hover:text-foreground flex items-center gap-1"><LayoutDashboard className="h-3.5 w-3.5" />Dashboard</Link>
@@ -230,7 +231,14 @@ export default function ChangeOrderGeneratorPage() {
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <ResizableWorkspace
+        className="gap-6"
+        defaultPrimarySize={58}
+        defaultSecondarySize={42}
+        minPrimarySize={35}
+        minSecondarySize={30}
+        storageId="change-order-generator-workspace"
+      >
         {/* ── Editor ─────────────────────────────────────────── */}
         <div className="space-y-4">
           {/* Describe it in plain language → AI drafts the scope + pricing */}
@@ -300,7 +308,7 @@ export default function ChangeOrderGeneratorPage() {
             </div>
           </div>
         </div>
-      </div>
+      </ResizableWorkspace>
     </div>
   );
 }

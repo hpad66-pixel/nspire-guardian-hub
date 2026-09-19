@@ -10,6 +10,7 @@ import { useProjectDirectory, type DirectoryEntry } from "@/hooks/useProjectDire
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { FinancialProposalDocument } from "@/components/financial/FinancialProposalDocument";
 import { AttachmentField } from "@/components/common/AttachmentField";
+import { ResizableWorkspace } from "@/components/layout/ResizableWorkspace";
 import { fileToBackgroundDoc } from "@/lib/ai/backgroundDoc";
 import { proposalTotals } from "@/lib/financial/proposalPricing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -329,7 +330,7 @@ export default function ProposalGeneratorPage() {
   );
 
   return (
-    <div className="container mx-auto max-w-7xl space-y-4 p-6">
+    <div className="mx-auto w-full max-w-[1800px] space-y-4 p-4 sm:p-6">
       <FinancialSubNav />
       <nav className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground">
         <Link to="/dashboard" className="flex items-center gap-1 hover:text-foreground"><LayoutDashboard className="h-3.5 w-3.5" />Dashboard</Link>
@@ -355,7 +356,14 @@ export default function ProposalGeneratorPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <ResizableWorkspace
+        className="gap-6"
+        defaultPrimarySize={60}
+        defaultSecondarySize={40}
+        minPrimarySize={38}
+        minSecondarySize={28}
+        storageId="proposal-generator-workspace"
+      >
         {/* ── Author ─────────────────────────────── */}
         <div className="space-y-4">
           <Card>
@@ -577,7 +585,7 @@ export default function ProposalGeneratorPage() {
             </div>
           </div>
         </div>
-      </div>
+      </ResizableWorkspace>
     </div>
   );
 }
