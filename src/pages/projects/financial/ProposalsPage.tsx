@@ -161,7 +161,7 @@ export default function ProposalsPage() {
             <div>
               <CardTitle className="text-base">Proposal intake to invoice path</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
-                Build the approved client proposal first, then invoice against its Schedule of Values so billing cannot drift from the signed amount.
+                Build or record the approved client proposal first, then invoice against the approved value lines so billing cannot drift from the signed amount.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -183,8 +183,8 @@ export default function ProposalsPage() {
             },
             {
               icon: Sparkles,
-              title: "2. Extract approved numbers",
-              copy: "For uploaded proposals, capture only the Schedule of Values: scope, contractor, fee, APAS markup, subtotal, and grand total. No AI rewrite.",
+              title: "2. Type approved values",
+              copy: "For uploaded proposals, do not use AI. Type each approved value line, select APAS, contractor, or consultant, and choose non-APAS leads from the project directory.",
             },
             {
               icon: CheckCircle2,

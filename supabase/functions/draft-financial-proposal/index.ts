@@ -6,8 +6,8 @@
 //
 // Important boundary:
 // - scratch_draft may write proposal narrative from the user's direction.
-// - signed_upload_extract treats the uploaded proposal as the permanent executed
-//   source record and extracts only commercial schedule values for billing.
+// - signed or executed client proposals are not processed here. They are uploaded
+//   as source records and their approved value lines are entered manually.
 //
 // The background document is sent to Claude natively as a document/image content
 // block (no lossy client-side text extraction). The project's client is fetched
@@ -29,7 +29,7 @@ const MODEL = "claude-opus-4-8";
 
 const DRAFT_TOOL = {
   name: "draft_financial_proposal",
-  description: "Return a structured financial proposal draft for scratch mode, or a numbers-only Schedule of Values extraction for signed-upload mode.",
+  description: "Return a structured financial proposal draft for scratch mode.",
   input_schema: {
     type: "object",
     properties: {
@@ -91,15 +91,14 @@ serve(async (req) => {
     if (!key) return json({ error: "ANTHROPIC_API_KEY not configured" }, 500);
 
     const { description, projectId, overheadPct, profitPct, document, documentName, mode } = await req.json();
-    const extractionOnly = mode === "signed_upload_extract";
+    if (mode && mode !== "scratch_draft") {
+      return json({ error: "AI drafting is only available for proposals written from scratch." }, 400);
+    }
 
     const hasDoc = document && typeof document.data === "string" && document.data.length > 0;
     const hasDescription = description && String(description).trim().length >= 5;
     if (!hasDoc && !hasDescription) {
       return json({ error: "Attach a background document or describe the proposal first." }, 400);
-    }
-    if (extractionOnly && !hasDoc) {
-      return json({ error: "Upload the signed proposal before extracting approved billing rows." }, 400);
     }
     if (hasDoc && !["pdf", "image", "text"].includes(document.kind)) {
       return json({ error: `Unsupported document kind: ${document.kind}` }, 400);
@@ -149,17 +148,7 @@ Rules:
 - LINES: break the cost of work into priced items (category, description, quantity, unit, numeric unit_cost, markup_pct). unit_cost is the source cost. markup_pct is APAS line markup, 0 for pass-through. If a subconsultant quote is attached, carry its cost as a 'subcontract' line. If only a lump sum is available, make one 'other' line, unit 'ls', quantity 1.
 - OVERHEAD AND PROFIT: return overhead_pct and profit_pct separately. They are calculated percentages of the full cost-of-work subtotal, exactly like a change order. Never create overhead, profit, fee, or markup line items.
 - Never use em dashes. Always call the draft_financial_proposal tool.`;
-    const extractionSystem = `You are a commercial schedule extractor for APAS Consulting. The attached document is a client-signed or client-approved proposal package. It is the permanent source record.
-Rules:
-- Do NOT rewrite, improve, summarize, polish, or replace the proposal language.
-- Do NOT generate a new overview, scope narrative, deliverables, or terms.
-- Extract only the approved Schedule of Values needed for invoicing: scope of work, vendors, subcontractors, consultants, pass-throughs, categories, quantities, units, source costs, lump sums, APAS line markup percentage if stated, overhead percentage, profit percentage, subtotals, and grand total.
-- The line descriptions may name the vendor or billing bucket, but must stay short and factual. Do not invent scope language.
-- If only a lump sum is visible, return one line with unit 'ls', quantity 1, unit_cost equal to the approved lump-sum amount, and markup_pct 0 unless the source separately states markup.
-- If overhead or profit are not stated in the source, use the provided defaults.
-- Return empty strings for overview and terms, and empty arrays for scope_bullets and deliverables. The UI will not apply narrative fields in this mode.
-- Never use em dashes. Always call the draft_financial_proposal tool.`;
-    const system = extractionOnly ? extractionSystem : scratchSystem;
+    const system = scratchSystem;
 
     const promptLines = [
       `Project: ${projectName || "consulting engagement"}`,
@@ -168,9 +157,7 @@ Rules:
     ];
     if (clientBlock) promptLines.push(`\nClient this proposal is addressed to:\n${clientBlock}`);
     if (hasDoc) {
-      promptLines.push(extractionOnly
-        ? `\nA signed or approved proposal package (${docLabel}) is attached. Extract only approved commercial schedule values. Do not rewrite proposal content.`
-        : `\nA background document (${docLabel}) is attached. Extract concrete scope, quantities, and unit costs from it.`);
+      promptLines.push(`\nA background document (${docLabel}) is attached. Extract concrete scope, quantities, and unit costs from it.`);
     }
     promptLines.push(
       hasDescription

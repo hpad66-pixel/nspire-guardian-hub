@@ -10428,6 +10428,8 @@ export type Database = {
           created_at: string
           description: string
           id: string
+          lead_directory_entry_id: string | null
+          lead_type: string
           line_no: number
           markup_pct: number
           proposal_id: string
@@ -10441,6 +10443,8 @@ export type Database = {
           created_at?: string
           description: string
           id?: string
+          lead_directory_entry_id?: string | null
+          lead_type?: string
           line_no?: number
           markup_pct?: number
           proposal_id: string
@@ -10454,6 +10458,8 @@ export type Database = {
           created_at?: string
           description?: string
           id?: string
+          lead_directory_entry_id?: string | null
+          lead_type?: string
           line_no?: number
           markup_pct?: number
           proposal_id?: string
@@ -10463,6 +10469,13 @@ export type Database = {
           unit_cost?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "proposal_lines_lead_directory_entry_id_fkey"
+            columns: ["lead_directory_entry_id"]
+            isOneToOne: false
+            referencedRelation: "project_directory_entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "proposal_lines_proposal_id_fkey"
             columns: ["proposal_id"]

@@ -98,9 +98,9 @@ export const FinancialProposalDocument = forwardRef<HTMLDivElement, {
         </>
       )}
 
-      <h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>SCHEDULE OF VALUES</h3>
+      <h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>APPROVED VALUE LINES</h3>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead><tr><th style={th}>#</th><th style={th}>Scope / Contractor</th><th style={th}>Category</th><th style={{ ...th, textAlign: "right" }}>Qty</th><th style={th}>Unit</th><th style={{ ...th, textAlign: "right" }}>Source cost</th><th style={{ ...th, textAlign: "right" }}>APAS markup</th><th style={{ ...th, textAlign: "right" }}>Client value</th></tr></thead>
+        <thead><tr><th style={th}>#</th><th style={th}>Description</th><th style={th}>Category</th><th style={{ ...th, textAlign: "right" }}>Qty</th><th style={th}>Unit</th><th style={{ ...th, textAlign: "right" }}>Approved amount</th><th style={{ ...th, textAlign: "right" }}>APAS markup</th><th style={{ ...th, textAlign: "right" }}>Client value</th></tr></thead>
         <tbody>
           {lines.map((line) => {
             const source = Number(line.quantity) * Number(line.unit_cost);

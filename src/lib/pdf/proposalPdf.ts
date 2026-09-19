@@ -159,7 +159,7 @@ export async function buildProposalPdf(
     markup: Number(l.quantity) * Number(l.unit_cost) * ((Number(l.markup_pct) || 0) / 100),
   }));
 
-  sectionHeading('SCHEDULE OF VALUES');
+  sectionHeading('APPROVED VALUE LINES');
 
   // Column widths (sum === cw so nothing overflows the page).
   const wNo = 18, wCat = 56, wQty = 28, wUnit = 28, wCost = 62, wMarkup = 48, wExt = 72;
@@ -180,10 +180,10 @@ export async function buildProposalPdf(
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); setColor(INK);
     doc.text('#', xNo + 1, y + 9);
     doc.text('Category', xCat, y + 9);
-    doc.text('Scope / contractor', xDesc, y + 9);
+    doc.text('Description', xDesc, y + 9);
     doc.text('Qty', xQtyR, y + 9, { align: 'right' });
     doc.text('Unit', xUnit, y + 9);
-    doc.text('Source cost', xCostR, y + 9, { align: 'right' });
+    doc.text('Approved amount', xCostR, y + 9, { align: 'right' });
     doc.text('Markup', xMarkupR, y + 9, { align: 'right' });
     doc.text('Client value', xExtR, y + 9, { align: 'right' });
     y += 18;

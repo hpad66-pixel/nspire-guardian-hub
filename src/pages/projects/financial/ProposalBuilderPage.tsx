@@ -21,6 +21,7 @@ import {
 import { AttachmentField } from "@/components/common/AttachmentField";
 import { useClient } from "@/hooks/useClients";
 import { useCurrentUserRole } from "@/hooks/useUserManagement";
+import { useProjectDirectory, type DirectoryEntry } from "@/hooks/useProjectDirectory";
 import { isAdminRole } from "@/lib/rbac";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,14 +29,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { VoiceDictationTextareaWithAI } from "@/components/ui/voice-dictation-textarea-ai";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { generateProposalPdf } from "@/lib/pdf/proposalPdf";
 import {
   CheckCircle2, ChevronLeft, Download, FileCheck, FileDown, FileText, Hash, Lock, Pencil, PenLine, Plus, Receipt, RotateCcw, Save, Send, Trash2,
 } from "lucide-react";
 
-const CATEGORIES: FinancialProposalLine["category"][] = ["labor", "material", "equipment", "subcontract", "other"];
 const fmt = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(value || 0);
+const directoryLabel = (entry: DirectoryEntry) =>
+  entry.external_display_name || entry.external_company_name || entry.role_label || "Project directory entry";
 const rowSource = (line: Pick<FinancialProposalLine, "quantity" | "unit_cost">) => Number(line.quantity) * Number(line.unit_cost);
 const rowMarkup = (line: Pick<FinancialProposalLine, "quantity" | "unit_cost" | "markup_pct">) => rowSource(line) * ((Number(line.markup_pct) || 0) / 100);
 const rowClientValue = (line: Pick<FinancialProposalLine, "quantity" | "unit_cost" | "markup_pct">) => rowSource(line) + rowMarkup(line);
@@ -48,9 +49,10 @@ function statusClass(status: FinancialProposal["status"]) {
   return "bg-gray-100 text-gray-700";
 }
 
-function EditableProposalLine({ line, editable, onSave, onRemove }: {
+function EditableProposalLine({ line, editable, directoryEntries, onSave, onRemove }: {
   line: FinancialProposalLine;
   editable: boolean;
+  directoryEntries: DirectoryEntry[];
   onSave: (line: FinancialProposalLine) => Promise<void>;
   onRemove: () => void;
 }) {
@@ -62,12 +64,26 @@ function EditableProposalLine({ line, editable, onSave, onRemove }: {
   const clientValue = source + markup;
   const changed = JSON.stringify(draft) !== JSON.stringify(line);
   const patch = <K extends keyof FinancialProposalLine>(key: K, value: FinancialProposalLine[K]) => setDraft(current => ({ ...current, [key]: value }));
+  const setLeadType = (leadType: FinancialProposalLine["lead_type"]) => setDraft(current => ({
+    ...current,
+    lead_type: leadType,
+    lead_directory_entry_id: leadType === "apas" ? null : current.lead_directory_entry_id,
+    category: leadType === "contractor" ? "subcontract" : leadType === "consultant" ? "other" : current.category,
+  }));
   async function save() { setSaving(true); try { await onSave(draft); } finally { setSaving(false); } }
 
   if (!editable) return (
     <tr className="border-b last:border-0 hover:bg-muted/20">
-      <td className="p-3 font-mono text-muted-foreground">{line.line_no}</td><td className="p-3 capitalize">{line.category}</td><td className="p-3">{line.description}</td>
-      <td className="p-3 text-right font-mono">{line.quantity}</td><td className="p-3">{line.unit}</td><td className="p-3 text-right font-mono">{fmt(Number(line.unit_cost))}</td>
+      <td className="p-3 font-mono text-muted-foreground">{line.line_no}</td><td className="p-3">{line.description}</td>
+      <td className="p-3 capitalize">{line.lead_type === "apas" ? "APAS" : line.lead_type}</td>
+      <td className="p-3">
+        {line.lead_type === "apas"
+          ? "APAS internal"
+          : (directoryEntries.find((entry) => entry.id === line.lead_directory_entry_id)
+              ? directoryLabel(directoryEntries.find((entry) => entry.id === line.lead_directory_entry_id)!)
+              : "Missing project directory entry")}
+      </td>
+      <td className="p-3 text-right font-mono">{fmt(Number(line.unit_cost))}</td>
       <td className="p-3 text-right font-mono">{Number(line.markup_pct || 0)}%</td>
       <td className="p-3 text-right font-mono font-semibold">{fmt(rowClientValue(line))}</td><td />
     </tr>
@@ -76,10 +92,24 @@ function EditableProposalLine({ line, editable, onSave, onRemove }: {
   return (
     <tr className="border-b last:border-0 bg-muted/5">
       <td className="p-2 font-mono text-xs text-muted-foreground">{line.line_no}</td>
-      <td className="p-2"><Select value={draft.category} onValueChange={value => patch("category", value as FinancialProposalLine["category"])}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td>
       <td className="p-2"><Input className="h-8 min-w-48 text-xs" value={draft.description} onChange={event => patch("description", event.target.value)} /></td>
-      <td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" step="any" value={draft.quantity} onChange={event => patch("quantity", Number(event.target.value))} /></td>
-      <td className="p-2"><Input className="h-8 w-16 text-xs" value={draft.unit} onChange={event => patch("unit", event.target.value)} /></td>
+      <td className="p-2">
+        <select className="h-8 rounded-md border bg-background px-2 text-xs" value={draft.lead_type} onChange={event => setLeadType(event.target.value as FinancialProposalLine["lead_type"])}>
+          <option value="apas">APAS</option>
+          <option value="contractor">Contractor</option>
+          <option value="consultant">Consultant</option>
+        </select>
+      </td>
+      <td className="p-2">
+        {draft.lead_type === "apas" ? (
+          <span className="inline-flex h-8 items-center rounded-md border bg-muted/40 px-2 text-xs font-medium">APAS internal</span>
+        ) : (
+          <select className="h-8 min-w-52 rounded-md border bg-background px-2 text-xs" value={draft.lead_directory_entry_id ?? ""} onChange={event => patch("lead_directory_entry_id", event.target.value || null)}>
+            <option value="">Choose from project directory</option>
+            {directoryEntries.map((entry) => <option key={entry.id} value={entry.id}>{directoryLabel(entry)}</option>)}
+          </select>
+        )}
+      </td>
       <td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" step="any" value={draft.unit_cost} onChange={event => patch("unit_cost", Number(event.target.value))} /></td>
       <td className="p-2"><Input className="h-8 w-20 text-right text-xs" type="number" step="any" value={draft.markup_pct} onChange={event => patch("markup_pct", Number(event.target.value))} /></td>
       <td className="p-2 text-right font-mono text-xs"><div>{fmt(clientValue)}</div>{markup > 0 && <div className="text-[10px] text-emerald-700">profit {fmt(markup)}</div>}</td>
@@ -95,6 +125,7 @@ export default function ProposalBuilderPage() {
   const queryClient = useQueryClient();
   const { data: project } = useProject(projectId ?? null);
   const { data: client } = useClient(project?.client_id ?? undefined);
+  const { data: directoryEntries = [] } = useProjectDirectory(projectId ?? null);
   const proposalQuery = useFinancialProposals(projectId ?? null);
   const proposal = proposalQuery.data?.find(item => item.id === proposalId) ?? null;
   const lineQuery = useFinancialProposalLines(proposalId ?? null);
@@ -110,7 +141,15 @@ export default function ProposalBuilderPage() {
   const [pdfBusy, setPdfBusy] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const [description, setDescription] = useState("");
-  const [newLine, setNewLine] = useState<Partial<FinancialProposalLine>>({ category: "labor", quantity: 1, unit: "ls", unit_cost: 0, markup_pct: 0 });
+  const [newLine, setNewLine] = useState<Partial<FinancialProposalLine>>({
+    category: "other",
+    lead_type: "apas",
+    lead_directory_entry_id: null,
+    quantity: 1,
+    unit: "ls",
+    unit_cost: 0,
+    markup_pct: 0,
+  });
   const [pricingDraft, setPricingDraft] = useState({ overhead_pct: 10, profit_pct: 5 });
   const { data: role } = useCurrentUserRole();
   const canRenumber = isAdminRole(role);
@@ -175,13 +214,42 @@ export default function ProposalBuilderPage() {
 
   async function addLine() {
     if (!description.trim()) return toast.error("Description is required.");
+    if (newLine.lead_type !== "apas" && !newLine.lead_directory_entry_id) {
+      return toast.error("Choose the contractor or consultant from the project directory.");
+    }
     const nextNo = lines.length ? Math.max(...lines.map(line => line.line_no)) + 1 : 1;
-    await lineQuery.create.mutateAsync({ proposal_id: proposal.id, description: description.trim(), line_no: nextNo, category: newLine.category ?? "labor", quantity: Number(newLine.quantity) || 1, unit: newLine.unit || "ls", unit_cost: Number(newLine.unit_cost) || 0, markup_pct: Number(newLine.markup_pct) || 0 });
-    setDescription(""); setNewLine({ category: "labor", quantity: 1, unit: "ls", unit_cost: 0, markup_pct: 0 }); toast.success("Line added");
+    await lineQuery.create.mutateAsync({
+      proposal_id: proposal.id,
+      description: description.trim(),
+      line_no: nextNo,
+      category: newLine.lead_type === "contractor" ? "subcontract" : newLine.category ?? "other",
+      lead_type: newLine.lead_type ?? "apas",
+      lead_directory_entry_id: newLine.lead_type === "apas" ? null : newLine.lead_directory_entry_id ?? null,
+      quantity: 1,
+      unit: "ls",
+      unit_cost: Number(newLine.unit_cost) || 0,
+      markup_pct: Number(newLine.markup_pct) || 0,
+    });
+    setDescription("");
+    setNewLine({ category: "other", lead_type: "apas", lead_directory_entry_id: null, quantity: 1, unit: "ls", unit_cost: 0, markup_pct: 0 });
+    toast.success("Line added");
   }
 
   async function saveLine(line: FinancialProposalLine) {
-    await lineQuery.update.mutateAsync({ id: line.id, category: line.category, description: line.description, quantity: Number(line.quantity), unit: line.unit, unit_cost: Number(line.unit_cost), markup_pct: Number(line.markup_pct) || 0 });
+    if (line.lead_type !== "apas" && !line.lead_directory_entry_id) {
+      return toast.error("Choose the contractor or consultant from the project directory.");
+    }
+    await lineQuery.update.mutateAsync({
+      id: line.id,
+      category: line.lead_type === "contractor" ? "subcontract" : line.category,
+      description: line.description,
+      lead_type: line.lead_type,
+      lead_directory_entry_id: line.lead_type === "apas" ? null : line.lead_directory_entry_id,
+      quantity: 1,
+      unit: "ls",
+      unit_cost: Number(line.unit_cost),
+      markup_pct: Number(line.markup_pct) || 0,
+    });
     toast.success("Line updated");
   }
 
@@ -236,6 +304,8 @@ export default function ProposalBuilderPage() {
         unit: line.unit || "ls",
         unit_cost: Number(line.unit_cost) || 0,
         markup_pct: Number(line.markup_pct) || 0,
+        lead_type: "apas",
+        lead_directory_entry_id: null,
       })));
       return;
     }
@@ -251,6 +321,8 @@ export default function ProposalBuilderPage() {
         unit: line.unit || "ls",
         unit_cost: Number(line.unit_cost) || 0,
         markup_pct: Number(line.markup_pct) || 0,
+        lead_type: "apas",
+        lead_directory_entry_id: null,
       });
     }
   }
@@ -307,9 +379,9 @@ export default function ProposalBuilderPage() {
         <CardHeader className="pb-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <CardTitle className="text-base">Step 1 · Proposal intake package</CardTitle>
+              <CardTitle className="text-base">Step 1 · Executed proposal intake</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
-                This is the place to feed the signed proposal before anyone creates an invoice. The uploaded client-approved PDF stays permanent. Only the approved billing numbers below become the schedule of values for invoicing.
+                This is the place to record a client-approved proposal before anyone creates an invoice. The signed PDF stays untouched. The value rows below are typed by your team and become the billing authority for client invoices and contractor or consultant bills.
               </p>
             </div>
             {executed ? <Badge className="bg-emerald-600 text-white">Ready for invoicing</Badge> : <Badge variant="outline">Invoice prerequisite</Badge>}
@@ -333,8 +405,8 @@ export default function ProposalBuilderPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             {[
               ["1", "Upload", "Attach the final client-signed proposal or approved pricing package."],
-              ["2", "Extract numbers", "Capture only approved vendors, subcontractors, percentages, amounts, and totals."],
-              ["3", "Break out SOV", "Use one row per approved billing bucket: consulting fee, subcontractor, material, labor, or other."],
+              ["2", "Project team", "Make sure every contractor and consultant exists in the project directory."],
+              ["3", "Type values", "Enter one row per approved billing bucket, including markup or pass-through."],
               ["4", "Approve", "Execute the signed proposal so invoices can bill against approved rows only."],
             ].map(([no, title, copy]) => (
               <div key={title} className="rounded-lg border bg-white/80 p-3">
@@ -393,10 +465,100 @@ export default function ProposalBuilderPage() {
         />
       )}
 
-      <Card><CardHeader><CardTitle className="text-base">Approved proposal Schedule of Values</CardTitle><p className="text-xs text-muted-foreground">Enter each billable bucket that the client approved. This table is the extracted commercial schedule from the signed proposal, not a rewritten proposal. For subcontractors, choose <span className="font-medium text-foreground">subcontract</span>, put the contractor name in the description, enter the source cost, and set APAS markup to 0% for pass-through. The invoice builder will cap billing against this approved proposal total.</p></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><th className="p-3 text-left">#</th><th className="p-3 text-left">Category</th><th className="p-3 text-left">Scope / contractor</th><th className="p-3 text-right">Qty</th><th className="p-3 text-left">Unit</th><th className="p-3 text-right">Source cost</th><th className="p-3 text-right">APAS markup</th><th className="p-3 text-right">Client value</th><th /></tr></thead><tbody>
-        {lines.map(line => <EditableProposalLine key={line.id} line={line} editable={editable} onSave={saveLine} onRemove={() => lineQuery.remove.mutate(line.id)} />)}
-        {editable && <tr className="border-t-2 bg-muted/10"><td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td><td className="p-2"><Select value={newLine.category} onValueChange={value => setNewLine(current => ({ ...current, category: value as FinancialProposalLine["category"] }))}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td><td className="p-2"><Input className="h-8 min-w-48 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Scope item, contractor, subcontractor, consultant, or pass-through" /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.quantity} onChange={event => setNewLine(current => ({ ...current, quantity: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-xs" value={newLine.unit} onChange={event => setNewLine(current => ({ ...current, unit: event.target.value }))} /></td><td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-20 text-right text-xs" type="number" value={newLine.markup_pct} onChange={event => setNewLine(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></td><td className="p-2 text-right text-xs text-muted-foreground">{fmt(rowClientValue({ quantity: Number(newLine.quantity) || 0, unit_cost: Number(newLine.unit_cost) || 0, markup_pct: Number(newLine.markup_pct) || 0 } as FinancialProposalLine))}</td><td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td></tr>}
-      </tbody><tfoot><tr className="border-t bg-muted/50"><td colSpan={7} className="p-3 text-right">Source cost subtotal</td><td className="p-3 text-right font-mono">{fmt(totals.sourceSubtotal)}</td><td /></tr><tr className="bg-muted/50"><td colSpan={7} className="p-3 text-right">APAS row markup</td><td className="p-3 text-right font-mono text-emerald-700">{fmt(totals.lineMarkup)}</td><td /></tr><tr className="border-t bg-muted/60 font-bold"><td colSpan={7} className="p-3 text-right">Grand total</td><td className="p-3 text-right font-mono text-base">{fmt(totals.total)}</td><td /></tr></tfoot></table></div></CardContent></Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Approved proposal value lines</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Enter each billable bucket that the client approved. Contractor and consultant names come from the project directory, so billing, vendor payments, and APAS profit stay tied to the right company. The invoice builder caps billing against these approved values.
+          </p>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-sm">
+              <thead>
+                <tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
+                  <th className="p-3 text-left">#</th>
+                  <th className="p-3 text-left">Description</th>
+                  <th className="p-3 text-left">Lead</th>
+                  <th className="p-3 text-left">Project team</th>
+                  <th className="p-3 text-right">Approved amount</th>
+                  <th className="p-3 text-right">Markup</th>
+                  <th className="p-3 text-right">Client value</th>
+                  <th />
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map(line => (
+                  <EditableProposalLine
+                    key={line.id}
+                    line={line}
+                    editable={editable}
+                    directoryEntries={directoryEntries}
+                    onSave={saveLine}
+                    onRemove={() => lineQuery.remove.mutate(line.id)}
+                  />
+                ))}
+                {editable && (
+                  <tr className="border-t-2 bg-muted/10">
+                    <td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td>
+                    <td className="p-2">
+                      <Input className="h-8 min-w-52 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Approved line item description" />
+                    </td>
+                    <td className="p-2">
+                      <select
+                        className="h-8 rounded-md border bg-background px-2 text-xs"
+                        value={newLine.lead_type ?? "apas"}
+                        onChange={event => setNewLine(current => ({
+                          ...current,
+                          lead_type: event.target.value as FinancialProposalLine["lead_type"],
+                          lead_directory_entry_id: event.target.value === "apas" ? null : current.lead_directory_entry_id ?? null,
+                          category: event.target.value === "contractor" ? "subcontract" : current.category ?? "other",
+                        }))}
+                      >
+                        <option value="apas">APAS</option>
+                        <option value="contractor">Contractor</option>
+                        <option value="consultant">Consultant</option>
+                      </select>
+                    </td>
+                    <td className="p-2">
+                      {(newLine.lead_type ?? "apas") === "apas" ? (
+                        <span className="inline-flex h-8 items-center rounded-md border bg-muted/40 px-2 text-xs font-medium">APAS internal</span>
+                      ) : (
+                        <select
+                          className="h-8 min-w-52 rounded-md border bg-background px-2 text-xs"
+                          value={newLine.lead_directory_entry_id ?? ""}
+                          onChange={event => setNewLine(current => ({ ...current, lead_directory_entry_id: event.target.value || null }))}
+                        >
+                          <option value="">Choose from project directory</option>
+                          {directoryEntries.map((entry) => <option key={entry.id} value={entry.id}>{directoryLabel(entry)}</option>)}
+                        </select>
+                      )}
+                    </td>
+                    <td className="p-2"><Input className="h-8 w-28 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td>
+                    <td className="p-2"><Input className="h-8 w-20 text-right text-xs" type="number" value={newLine.markup_pct} onChange={event => setNewLine(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></td>
+                    <td className="p-2 text-right text-xs text-muted-foreground">{fmt(rowClientValue({ quantity: 1, unit_cost: Number(newLine.unit_cost) || 0, markup_pct: Number(newLine.markup_pct) || 0 } as FinancialProposalLine))}</td>
+                    <td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td>
+                  </tr>
+                )}
+              </tbody>
+              <tfoot>
+                <tr className="border-t bg-muted/50"><td colSpan={6} className="p-3 text-right">Source cost subtotal</td><td className="p-3 text-right font-mono">{fmt(totals.sourceSubtotal)}</td><td /></tr>
+                <tr className="bg-muted/50"><td colSpan={6} className="p-3 text-right">APAS row markup</td><td className="p-3 text-right font-mono text-emerald-700">{fmt(totals.lineMarkup)}</td><td /></tr>
+                <tr className="border-t bg-muted/60 font-bold"><td colSpan={6} className="p-3 text-right">Grand total</td><td className="p-3 text-right font-mono text-base">{fmt(totals.total)}</td><td /></tr>
+              </tfoot>
+            </table>
+          </div>
+          {directoryEntries.length === 0 && editable && (
+            <div className="m-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+              <p className="font-semibold">Need a contractor or consultant?</p>
+              <p className="mt-1 text-xs leading-5">Add them to the project directory first, then come back and choose them from the dropdown. This avoids misspelled vendors and orphan bills.</p>
+              <Button asChild variant="outline" size="sm" className="mt-3 border-amber-300 bg-white text-amber-950 hover:bg-amber-100">
+                <Link to={`/projects/${projectId}/directory`}>Open project directory</Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><div><CardTitle>{executed ? "Executed proposal document" : "Proposal document"}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{executed ? "The final client-signed PDF below is the primary document of record." : proposal.submitted_signed_at ? `Signed by APAS ${new Date(proposal.submitted_signed_at).toLocaleDateString()}.` : "Review the document, then sign to lock this version."}</p></div><div className="flex gap-2">{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />{executed ? "Executed & locked" : "Signed version"}</Badge>}</div></div></CardHeader><CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">

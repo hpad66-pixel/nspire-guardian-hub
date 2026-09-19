@@ -169,7 +169,7 @@ export function ProposalAiDraftCard({
         ) : (
           <p className="text-xs text-muted-foreground">
             AI prepares a candidate first. You choose whether to replace the current draft or add its fee lines; nothing is sent automatically.
-            Do not use this card to rewrite a client-signed proposal. Use proposal upload for signed records and extract only the schedule values.
+            Do not use this card to rewrite a client-signed proposal. Use proposal upload for signed records and type the approved value lines manually.
           </p>
         )}
       </CardContent>

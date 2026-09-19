@@ -646,6 +646,8 @@ async function routeProposals(
         unit: cleanOptionalText(line?.unit, 40) || "ea",
         unit_cost: Number.isFinite(Number(line?.unit_cost)) ? Number(line.unit_cost) : 0,
         markup_pct: Number.isFinite(Number(line?.markup_pct)) ? Number(line.markup_pct) : 0,
+        lead_type: ["apas", "contractor", "consultant"].includes(line?.lead_type) ? line.lead_type : "apas",
+        lead_directory_entry_id: line?.lead_type === "apas" ? null : cleanOptionalText(line?.lead_directory_entry_id, 80),
       }));
       const { error: lineError } = await admin.from("proposal_lines").insert(lineRows);
       if (lineError) throw lineError;
@@ -1496,7 +1498,7 @@ const PROJECT_CONDITION_WRITE_FIELDS = [
 ] as const;
 const CHANGE_ORDER_SELECT = "id, project_id, prime_contract_id, commitment_id, co_type, co_no, title, description, amount, days_impact, status, created_at, updated_at";
 const CHANGE_ORDER_WRITE_FIELDS = ["title", "description", "amount", "days_impact", "status"] as const;
-const PROPOSAL_SELECT = "id, project_id, proposal_no, title, client_name, client_email, valid_until, status, notes, terms, scope_bullets, deliverables, markup_pct, overhead_pct, profit_pct, revision_no, locked, created_at, updated_at, proposal_lines(id, line_no, category, description, quantity, unit, unit_cost, markup_pct)";
+const PROPOSAL_SELECT = "id, project_id, proposal_no, title, client_name, client_email, valid_until, status, notes, terms, scope_bullets, deliverables, markup_pct, overhead_pct, profit_pct, revision_no, locked, created_at, updated_at, proposal_lines(id, line_no, category, description, lead_type, lead_directory_entry_id, quantity, unit, unit_cost, markup_pct)";
 const PROPOSAL_WRITE_FIELDS = ["title", "client_name", "client_email", "valid_until", "notes", "terms", "scope_bullets", "deliverables", "markup_pct", "overhead_pct", "profit_pct"] as const;
 const PAY_APP_SELECT = "id, prime_contract_id, pay_app_no, period_end, status, submitted_amount, approved_amount, retainage_held, invoice_no, pay_app_data, created_at, updated_at";
 const PAY_APP_WRITE_FIELDS = ["period_end", "submitted_amount", "retainage_held", "invoice_no", "pay_app_data"] as const;

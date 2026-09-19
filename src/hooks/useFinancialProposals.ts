@@ -8,6 +8,8 @@ export interface FinancialProposalLine {
   line_no: number;
   category: 'labor' | 'material' | 'equipment' | 'subcontract' | 'other';
   description: string;
+  lead_type: 'apas' | 'contractor' | 'consultant';
+  lead_directory_entry_id: string | null;
   quantity: number;
   unit: string;
   unit_cost: number;

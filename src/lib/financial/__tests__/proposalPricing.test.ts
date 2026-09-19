@@ -27,7 +27,7 @@ describe("proposalTotals", () => {
       .toEqual({ sourceSubtotal: 1000, lineMarkup: 0, subtotal: 1000, overhead: 120, profit: 0, total: 1120, apasProfit: 120 });
   });
 
-  it("tracks line-level APAS markup for Schedule of Values rows", () => {
+  it("tracks line-level APAS markup for approved value rows", () => {
     expect(proposalTotals([{ quantity: 1, unit_cost: 22000, markup_pct: 10 }], { overhead_pct: 0, profit_pct: 0 }))
       .toEqual({ sourceSubtotal: 22000, lineMarkup: 2200, subtotal: 24200, overhead: 0, profit: 0, total: 24200, apasProfit: 2200 });
   });

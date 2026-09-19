@@ -337,8 +337,8 @@ export function ConsultingInvoiceBuilder({
   const setupSteps = [
     'Open the proposal intake page for this project.',
     'Choose one path: write from scratch with AI, or upload the already signed proposal as the permanent source record.',
-    'For uploaded proposals, build the Schedule of Values only: scope, contractor, source cost, APAS markup, subtotal, and grand total.',
-    'Approve the proposal so that Schedule of Values becomes the billing authority.',
+    'For uploaded proposals, type the approved value lines by hand and select contractors or consultants from the project directory.',
+    'Approve the proposal so those value lines become the billing authority.',
     'Return here and bill a percent complete, the remaining balance, or a typed amount inside the approved balance.',
   ];
 
