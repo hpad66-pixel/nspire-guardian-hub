@@ -9,6 +9,7 @@ import { useFinancialProposals, type FinancialProposal, type FinancialProposalLi
 import { FinancialSubNav } from "@/components/financial/FinancialSubNav";
 import { FinancialProposalDocument } from "@/components/financial/FinancialProposalDocument";
 import { fileToBackgroundDoc } from "@/lib/ai/backgroundDoc";
+import { proposalTotals } from "@/lib/financial/proposalPricing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ interface DraftLine {
   quantity: number;
   unit: string;
   unit_cost: number;
+  markup_pct: number;
 }
 
 interface GeneratorDraft {
@@ -97,20 +99,21 @@ export default function ProposalGeneratorPage() {
     }));
   const addDraftLine = () => setDraft(current => ({
     ...current,
-    lines: [...current.lines, { category: "other", description: "", quantity: 1, unit: "ls", unit_cost: 0 }],
+    lines: [...current.lines, { category: "other", description: "", quantity: 1, unit: "ls", unit_cost: 0, markup_pct: 0 }],
   }));
   const removeDraftLine = (index: number) => setDraft(current => ({
     ...current,
     lines: current.lines.filter((_, lineIndex) => lineIndex !== index),
   }));
-  const draftSubtotal = useMemo(
-    () => draft.lines.reduce((sum, line) => sum + (Number(line.quantity) || 0) * (Number(line.unit_cost) || 0), 0),
-    [draft.lines],
-  );
+  const draftTotals = useMemo(() => proposalTotals(draft.lines, draft), [draft.lines, draft]);
 
   async function draftWithAI() {
-    if (aiText.trim().length < 5 && !bgFile) {
-      toast.error("Dictate the proposal story, or attach a subconsultant document.");
+    if (intakeMode === "upload" && !bgFile) {
+      toast.error("Upload the signed proposal or proposal package first.");
+      return;
+    }
+    if (intakeMode === "scratch" && aiText.trim().length < 5 && !bgFile) {
+      toast.error("Dictate the proposal story, or attach background material.");
       return;
     }
     setBusy(true);
@@ -126,23 +129,35 @@ export default function ProposalGeneratorPage() {
         }
       }
       const { data, error } = await supabase.functions.invoke("draft-financial-proposal", {
-        body: { description: aiText.trim() || undefined, projectId, overheadPct: draft.overhead_pct, profitPct: draft.profit_pct, document, documentName: bgFile?.name },
+        body: {
+          description: aiText.trim() || undefined,
+          projectId,
+          overheadPct: draft.overhead_pct,
+          profitPct: draft.profit_pct,
+          document,
+          documentName: bgFile?.name,
+          mode: intakeMode === "upload" ? "signed_upload_extract" : "scratch_draft",
+        },
       });
       if (error) throw error;
       const d = (data as { draft?: Partial<GeneratorDraft> & { lines?: DraftLine[] } })?.draft;
       if (!d) throw new Error("No draft returned");
       setDraft(current => ({
         ...current,
-        title: d.title || current.title,
-        overview: d.overview ?? current.overview,
-        scope_bullets: Array.isArray(d.scope_bullets) ? d.scope_bullets : current.scope_bullets,
-        deliverables: Array.isArray(d.deliverables) ? d.deliverables : current.deliverables,
-        terms: d.terms || current.terms,
+        title: intakeMode === "scratch" ? (d.title || current.title) : current.title,
+        overview: intakeMode === "scratch" ? (d.overview ?? current.overview) : current.overview,
+        scope_bullets: intakeMode === "scratch" && Array.isArray(d.scope_bullets) ? d.scope_bullets : current.scope_bullets,
+        deliverables: intakeMode === "scratch" && Array.isArray(d.deliverables) ? d.deliverables : current.deliverables,
+        terms: intakeMode === "scratch" ? (d.terms || current.terms) : current.terms,
         overhead_pct: typeof d.overhead_pct === "number" ? d.overhead_pct : current.overhead_pct,
         profit_pct: typeof d.profit_pct === "number" ? d.profit_pct : current.profit_pct,
-        lines: Array.isArray(d.lines) ? d.lines : current.lines,
+        lines: Array.isArray(d.lines)
+          ? d.lines.map((line) => ({ ...line, markup_pct: Number(line.markup_pct) || 0 }))
+          : current.lines,
       }));
-      toast.success("Proposal drafted — review and edit, then create it.");
+      toast.success(intakeMode === "upload"
+        ? "Approved billing rows extracted. The uploaded proposal stays the document of record."
+        : "Proposal drafted — review and edit, then create it.");
     } catch (error) {
       toast.error(`Draft failed: ${(error as Error).message}`);
     } finally {
@@ -183,7 +198,7 @@ export default function ProposalGeneratorPage() {
           quantity: Number(line.quantity) || 0,
           unit: line.unit || "ls",
           unit_cost: Number(line.unit_cost) || 0,
-          markup_pct: 0,
+          markup_pct: Number(line.markup_pct) || 0,
         }));
         const { error } = await supabase.from("proposal_lines").insert(rows);
         if (error) throw error;
@@ -212,7 +227,7 @@ export default function ProposalGeneratorPage() {
     terms: draft.terms || null,
     scope_bullets: draft.scope_bullets,
     deliverables: draft.deliverables,
-    markup_pct: draft.overhead_pct + draft.profit_pct,
+      markup_pct: draft.overhead_pct + draft.profit_pct,
     overhead_pct: draft.overhead_pct,
     profit_pct: draft.profit_pct,
     source_issue_id: null,
@@ -251,7 +266,7 @@ export default function ProposalGeneratorPage() {
       quantity: Number(line.quantity) || 0,
       unit: line.unit || "ls",
       unit_cost: Number(line.unit_cost) || 0,
-      markup_pct: 0,
+      markup_pct: Number(line.markup_pct) || 0,
       created_at: new Date().toISOString(),
     }) as FinancialProposalLine),
     [draft.lines],
@@ -271,7 +286,7 @@ export default function ProposalGeneratorPage() {
         <div>
           <h1 className="text-2xl font-bold">Proposal Intake</h1>
           <p className="text-sm text-muted-foreground">
-            Choose whether to write from scratch or upload a proposal package{client ? <> for <span className="font-medium text-foreground">{client.name}</span></> : null}. Review every extracted component before it becomes invoice authority.
+            Choose one path{client ? <> for <span className="font-medium text-foreground">{client.name}</span></> : null}. Write a new proposal with AI, or upload an already executed proposal and build its Schedule of Values for invoicing. Uploaded signed proposals stay permanent; only approved money rows become invoice authority.
           </p>
         </div>
         <div className="flex gap-2">
@@ -290,7 +305,7 @@ export default function ProposalGeneratorPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-base">Step 1 · How do you want to build this proposal?</CardTitle>
-              <p className="text-sm text-muted-foreground">Choose one clear path. Either start from a dictated scope, or upload the client proposal, RFP, subconsultant quote, or pricing backup and extract the billing schedule.</p>
+              <p className="text-sm text-muted-foreground">Choose one clear path. Use AI only when writing from scratch. If a proposal is already signed or client-approved, upload it as the source record and extract only the billing schedule.</p>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
               <button
@@ -308,16 +323,16 @@ export default function ProposalGeneratorPage() {
                 className={`rounded-xl border p-4 text-left transition ${intakeMode === "upload" ? "border-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/[0.06] shadow-sm" : "bg-background hover:bg-muted/40"}`}
               >
                 <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-700 text-white"><UploadCloud className="h-4 w-4" /></span>
-                <span className="block font-semibold">Upload and extract</span>
-                <span className="mt-1 block text-sm leading-5 text-muted-foreground">Upload a proposal, RFP, or quote. Review the extracted lines, vendors, subcontractors, overhead, and profit before saving.</span>
+                <span className="block font-semibold">Upload executed proposal</span>
+                <span className="mt-1 block text-sm leading-5 text-muted-foreground">Keep the signed PDF untouched. Enter or extract only the Schedule of Values: scope, contractor, source cost, APAS markup, subtotal, and total.</span>
               </button>
             </CardContent>
           </Card>
 
           <Card className="border-[var(--apas-sapphire)]/30 bg-[var(--apas-sapphire)]/[0.03]">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-1.5 text-base"><Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" /> {intakeMode === "upload" ? "Upload and extract proposal" : "Describe the proposal"}</CardTitle>
-              <p className="text-xs text-muted-foreground">{intakeMode === "upload" ? "Attach the proposal package, then add any instructions about what to extract or ignore. Claude will extract the proposal story, scope, deliverables, terms, and invoiceable fee schedule for your review." : "Tell the story: what the client needs, your approach, the fee, subs, consultants, pass-throughs, terms, and deliverables. You can dictate with your mic."}</p>
+              <CardTitle className="flex items-center gap-1.5 text-base"><Sparkles className="h-4 w-4 text-[var(--apas-sapphire)]" /> {intakeMode === "upload" ? "Upload signed source record" : "Describe the proposal"}</CardTitle>
+              <p className="text-xs text-muted-foreground">{intakeMode === "upload" ? "Attach the client-signed or client-approved proposal. The original PDF stays permanent. We extract only the Schedule of Values: scope, contractor, fee, APAS markup if any, subtotal, and grand total. We do not rewrite the proposal content." : "Tell the story: what the client needs, your approach, the fee, subs, consultants, pass-throughs, terms, and deliverables. AI is allowed here because this path creates a new proposal from scratch."}</p>
             </CardHeader>
             <CardContent className="space-y-2">
               <VoiceDictationTextareaWithAI
@@ -325,7 +340,7 @@ export default function ProposalGeneratorPage() {
                 onValueChange={setAiText}
                 rows={5}
                 context="notes"
-                placeholder="e.g. Larkin Hospital needs a Phase I environmental assessment ahead of the east-wing expansion. We'll do the records review, site reconnaissance, and a written report with recommendations. Fee is a lump sum of $18,500. Turn the attached subconsultant lab quote into a pass-through line."
+                placeholder={intakeMode === "upload" ? "Optional extraction note, e.g. use accepted total only, split subcontractors separately, alternates not accepted, pass-through has 0% markup." : "e.g. Larkin Hospital needs a Phase I environmental assessment ahead of the east-wing expansion. We'll do the records review, site reconnaissance, and a written report with recommendations. Fee is a lump sum of $18,500. Turn the attached subconsultant lab quote into a pass-through line."}
               />
               <input
                 ref={fileRef}
@@ -341,20 +356,27 @@ export default function ProposalGeneratorPage() {
                 </div>
               ) : (
                 <button type="button" onClick={() => fileRef.current?.click()} className="flex w-full items-center justify-center gap-1.5 rounded-md border border-dashed border-muted-foreground/30 px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-[var(--apas-sapphire)]/50 hover:text-foreground">
-                  <Paperclip className="h-3.5 w-3.5" /> Attach proposal, RFP, quote, or signed package — click to extract
+                  <Paperclip className="h-3.5 w-3.5" /> {intakeMode === "upload" ? "Attach signed proposal PDF for numbers-only extraction" : "Attach background material for scratch drafting"}
                 </button>
               )}
               <div className="flex justify-end">
                 <Button onClick={draftWithAI} disabled={busy}>
                   {busy ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <Sparkles className="mr-1.5 h-4 w-4" />}
-                  {busy ? "Writing…" : intakeMode === "upload" ? "Extract proposal" : "Draft proposal"}
+                  {busy ? "Working…" : intakeMode === "upload" ? "Extract Schedule of Values" : "Draft proposal"}
                 </Button>
               </div>
             </CardContent>
           </Card>
 
           <Card>
-            <CardHeader className="pb-3"><CardTitle className="text-base">Proposal content</CardTitle></CardHeader>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{intakeMode === "upload" ? "Record label only" : "Proposal content"}</CardTitle>
+              {intakeMode === "upload" && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                  The signed upload is the legal proposal. Do not rewrite its scope or terms here. Add a title so the record is easy to find; the Schedule of Values below carries the approved billing numbers.
+                </p>
+              )}
+            </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="sm:col-span-2"><Label>Title</Label><Input value={draft.title} onChange={e => patch("title", e.target.value)} placeholder="Phase I Environmental Assessment" /></div>
@@ -362,14 +384,22 @@ export default function ProposalGeneratorPage() {
                 <div><Label>Overhead %</Label><Input type="number" min="0" step="any" value={draft.overhead_pct} onChange={e => patch("overhead_pct", Number(e.target.value) || 0)} /></div>
                 <div><Label>Profit %</Label><Input type="number" min="0" step="any" value={draft.profit_pct} onChange={e => patch("profit_pct", Number(e.target.value) || 0)} /><p className="mt-1 text-[11px] text-muted-foreground">Both calculate automatically from the cost-of-work subtotal. They are not line items.</p></div>
               </div>
-              <div><Label>Overview</Label><VoiceDictationTextareaWithAI rows={6} context="notes" value={draft.overview} onValueChange={v => patch("overview", v)} placeholder="Our understanding of the need and our approach…" /></div>
-              <div><Label>Scope of services <span className="text-xs text-muted-foreground">(one per line)</span></Label><VoiceDictationTextareaWithAI rows={4} context="notes" value={fromLines(draft.scope_bullets)} onValueChange={v => patch("scope_bullets", toLines(v))} placeholder={"Records review\nSite reconnaissance\nWritten report"} /></div>
-              <div><Label>Deliverables <span className="text-xs text-muted-foreground">(one per line)</span></Label><VoiceDictationTextareaWithAI rows={3} context="notes" value={fromLines(draft.deliverables)} onValueChange={v => patch("deliverables", toLines(v))} placeholder={"Phase I ESA report (PDF)\nExecutive summary"} /></div>
-              <div><Label>Terms &amp; assumptions</Label><VoiceDictationTextareaWithAI rows={3} context="notes" value={draft.terms} onValueChange={v => patch("terms", v)} /></div>
+              {intakeMode === "scratch" ? (
+                <>
+                  <div><Label>Overview</Label><VoiceDictationTextareaWithAI rows={6} context="notes" value={draft.overview} onValueChange={v => patch("overview", v)} placeholder="Our understanding of the need and our approach…" /></div>
+                  <div><Label>Scope of services <span className="text-xs text-muted-foreground">(one per line)</span></Label><VoiceDictationTextareaWithAI rows={4} context="notes" value={fromLines(draft.scope_bullets)} onValueChange={v => patch("scope_bullets", toLines(v))} placeholder={"Records review\nSite reconnaissance\nWritten report"} /></div>
+                  <div><Label>Deliverables <span className="text-xs text-muted-foreground">(one per line)</span></Label><VoiceDictationTextareaWithAI rows={3} context="notes" value={fromLines(draft.deliverables)} onValueChange={v => patch("deliverables", toLines(v))} placeholder={"Phase I ESA report (PDF)\nExecutive summary"} /></div>
+                  <div><Label>Terms &amp; assumptions</Label><VoiceDictationTextareaWithAI rows={3} context="notes" value={draft.terms} onValueChange={v => patch("terms", v)} /></div>
+                </>
+              ) : (
+                <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-950">
+                  Uploaded proposal content is intentionally hidden from editing here. The PDF remains the signed source record; only the Schedule of Values below is editable for billing setup.
+                </div>
+              )}
               {draft.lines.length > 0 && (
                 <div className="rounded-md border bg-muted/20 p-3 text-sm">
                   <p className="mb-1 font-medium">{draft.lines.length} fee line item{draft.lines.length === 1 ? "" : "s"} drafted</p>
-                  <p className="text-xs text-muted-foreground">Review these rows now. They become the schedule of values that invoices bill against after approval.</p>
+                  <p className="text-xs text-muted-foreground">Review these rows now. They become the Schedule of Values that invoices bill against after approval.</p>
                 </div>
               )}
             </CardContent>
@@ -380,7 +410,7 @@ export default function ProposalGeneratorPage() {
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <CardTitle className="text-base">Step 2 · Review schedule of values</CardTitle>
-                  <p className="mt-1 text-sm text-muted-foreground">One row per approved billing bucket: consulting fee, subcontractor, consultant, material, labor, equipment, pass-through, overhead-bearing cost, or other scope item.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{intakeMode === "upload" ? "Numbers-only extraction from the signed proposal. Confirm each scope, vendor, subcontractor, consultant, source cost, APAS markup, subtotal, and grand total before saving." : "One row per approved billing bucket: consulting fee, subcontractor, consultant, material, labor, equipment, pass-through, overhead-bearing cost, or other scope item."}</p>
                 </div>
                 <Button type="button" variant="outline" size="sm" onClick={addDraftLine}><Plus className="mr-1.5 h-4 w-4" />Add row</Button>
               </div>
@@ -389,13 +419,15 @@ export default function ProposalGeneratorPage() {
               <div className="overflow-x-auto rounded-lg border">
                 <table className="w-full min-w-[760px] text-sm">
                   <thead className="bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
-                    <tr><th className="p-2 text-left">Category</th><th className="p-2 text-left">Description / vendor</th><th className="p-2 text-right">Qty</th><th className="p-2 text-left">Unit</th><th className="p-2 text-right">Unit cost</th><th className="p-2 text-right">Extended</th><th /></tr>
+                    <tr><th className="p-2 text-left">Category</th><th className="p-2 text-left">Scope / contractor</th><th className="p-2 text-right">Qty</th><th className="p-2 text-left">Unit</th><th className="p-2 text-right">Source cost</th><th className="p-2 text-right">APAS markup</th><th className="p-2 text-right">Client value</th><th /></tr>
                   </thead>
                   <tbody>
                     {draft.lines.length === 0 ? (
-                      <tr><td colSpan={7} className="p-5 text-center text-sm text-muted-foreground">No fee rows yet. Draft with AI, upload a proposal, or add a row manually.</td></tr>
+                      <tr><td colSpan={8} className="p-5 text-center text-sm text-muted-foreground">{intakeMode === "upload" ? "No Schedule of Values rows yet. Upload the signed proposal, extract approved numbers, or add rows manually." : "No fee rows yet. Draft with AI, attach background material, or add a row manually."}</td></tr>
                     ) : draft.lines.map((line, index) => {
-                      const extended = (Number(line.quantity) || 0) * (Number(line.unit_cost) || 0);
+                      const source = (Number(line.quantity) || 0) * (Number(line.unit_cost) || 0);
+                      const rowMarkup = source * ((Number(line.markup_pct) || 0) / 100);
+                      const clientValue = source + rowMarkup;
                       return (
                         <tr key={index} className="border-t bg-background">
                           <td className="p-2">
@@ -403,23 +435,27 @@ export default function ProposalGeneratorPage() {
                               {CATEGORIES.map(category => <option key={category} value={category}>{category}</option>)}
                             </select>
                           </td>
-                          <td className="p-2"><Input className="h-9 min-w-64 text-xs" value={line.description} onChange={event => patchLine(index, "description", event.target.value)} placeholder="Vendor, subcontractor, consultant, or scope item" /></td>
+                          <td className="p-2"><Input className="h-9 min-w-64 text-xs" value={line.description} onChange={event => patchLine(index, "description", event.target.value)} placeholder="Scope item, contractor, subcontractor, consultant, or pass-through" /></td>
                           <td className="p-2"><Input className="h-9 w-20 text-right text-xs" type="number" step="any" value={line.quantity} onChange={event => patchLine(index, "quantity", Number(event.target.value) || 0)} /></td>
                           <td className="p-2"><Input className="h-9 w-20 text-xs" value={line.unit} onChange={event => patchLine(index, "unit", event.target.value)} /></td>
                           <td className="p-2"><Input className="h-9 w-28 text-right text-xs" type="number" step="any" value={line.unit_cost} onChange={event => patchLine(index, "unit_cost", Number(event.target.value) || 0)} /></td>
-                          <td className="p-2 text-right font-mono text-xs">{money(extended)}</td>
+                          <td className="p-2"><Input className="h-9 w-24 text-right text-xs" type="number" step="any" value={line.markup_pct} onChange={event => patchLine(index, "markup_pct", Number(event.target.value) || 0)} /></td>
+                          <td className="p-2 text-right font-mono text-xs"><div>{money(clientValue)}</div>{rowMarkup > 0 && <div className="text-[10px] text-emerald-700">profit {money(rowMarkup)}</div>}</td>
                           <td className="p-2"><Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeDraftLine(index)}><Trash2 className="h-3.5 w-3.5" /></Button></td>
                         </tr>
                       );
                     })}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t bg-muted/40 font-semibold"><td colSpan={5} className="p-2 text-right">Cost-of-work subtotal</td><td className="p-2 text-right font-mono">{money(draftSubtotal)}</td><td /></tr>
+                    <tr className="border-t bg-muted/40"><td colSpan={6} className="p-2 text-right">Source cost subtotal</td><td className="p-2 text-right font-mono">{money(draftTotals.sourceSubtotal)}</td><td /></tr>
+                    <tr className="bg-muted/40"><td colSpan={6} className="p-2 text-right">APAS row markup</td><td className="p-2 text-right font-mono text-emerald-700">{money(draftTotals.lineMarkup)}</td><td /></tr>
+                    <tr className="bg-muted/40"><td colSpan={6} className="p-2 text-right">Overhead and profit</td><td className="p-2 text-right font-mono">{money(draftTotals.overhead + draftTotals.profit)}</td><td /></tr>
+                    <tr className="border-t bg-muted/60 font-semibold"><td colSpan={6} className="p-2 text-right">Grand total</td><td className="p-2 text-right font-mono">{money(draftTotals.total)}</td><td /></tr>
                   </tfoot>
                 </table>
               </div>
               <p className="text-xs leading-5 text-muted-foreground">
-                Overhead and profit calculate from the subtotal. They are not line items. After the proposal is approved and locked, client invoices can bill only against the approved rows and remaining value.
+                Schedule of Values is the industry billing term for the approved money breakdown. Zero APAS markup means pass-through. After the proposal is approved and locked, client invoices can bill only against the approved rows and remaining value.
               </p>
             </CardContent>
           </Card>

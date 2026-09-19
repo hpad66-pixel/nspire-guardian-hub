@@ -9,16 +9,19 @@ const line = (quantity: number, unitCost: number, markup: number): FinancialProp
 });
 
 describe("proposalTotals", () => {
-  it("recomputes subtotal, overhead, profit, and proposal total like a change order", () => {
+  it("recomputes source cost, line markup, overhead, profit, and proposal total", () => {
     expect(proposalTotals([line(10, 150, 10), line(2, 500, 5)], { overhead_pct: 10, profit_pct: 5 })).toEqual({
-      subtotal: 2500,
+      sourceSubtotal: 2500,
+      lineMarkup: 200,
+      subtotal: 2700,
       overhead: 250,
       profit: 125,
-      total: 2875,
+      total: 3075,
+      apasProfit: 575,
     });
   });
 
   it("returns zeroes for an empty proposal", () => {
-    expect(proposalTotals([], { overhead_pct: 10, profit_pct: 5 })).toEqual({ subtotal: 0, overhead: 0, profit: 0, total: 0 });
+    expect(proposalTotals([], { overhead_pct: 10, profit_pct: 5 })).toEqual({ sourceSubtotal: 0, lineMarkup: 0, subtotal: 0, overhead: 0, profit: 0, total: 0, apasProfit: 0 });
   });
 });

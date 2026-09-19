@@ -34,7 +34,7 @@ export interface ApprovedProposalForBilling {
   terms?: string | null;
   overhead_pct?: number | null;
   profit_pct?: number | null;
-  proposal_lines?: Array<{ quantity: number; unit_cost: number }> | null;
+  proposal_lines?: Array<{ quantity: number; unit_cost: number; markup_pct?: number | null }> | null;
 }
 
 export interface ProposalBillingRow {

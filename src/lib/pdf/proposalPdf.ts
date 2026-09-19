@@ -155,21 +155,23 @@ export async function buildProposalPdf(
   // ── Pricing table ────────────────────────────────────────────
   const enriched = lines.map((l) => ({
     ...l,
-    ext: Number(l.quantity) * Number(l.unit_cost),
+    source: Number(l.quantity) * Number(l.unit_cost),
+    markup: Number(l.quantity) * Number(l.unit_cost) * ((Number(l.markup_pct) || 0) / 100),
   }));
 
-  sectionHeading('PRICING');
+  sectionHeading('SCHEDULE OF VALUES');
 
   // Column widths (sum === cw so nothing overflows the page).
-  const wNo = 20, wCat = 62, wQty = 32, wUnit = 30, wCost = 64, wExt = 76;
-  const wDesc = cw - (wNo + wCat + wQty + wUnit + wCost + wExt);
+  const wNo = 18, wCat = 56, wQty = 28, wUnit = 28, wCost = 62, wMarkup = 48, wExt = 72;
+  const wDesc = cw - (wNo + wCat + wQty + wUnit + wCost + wMarkup + wExt);
   const xNo = M;
   const xCat = xNo + wNo;
   const xDesc = xCat + wCat;
   const xUnit = xDesc + wDesc + wQty;          // left for Unit
   const xQtyR = xUnit - 6;                      // right edge for Qty (6pt gap before Unit)
-  const xCostR = xUnit + wUnit + wCost;        // right edge for Unit cost
-  const xExtR = xCostR + wExt;                  // right edge for Extended (= W - M)
+  const xCostR = xUnit + wUnit + wCost;        // right edge for Source cost
+  const xMarkupR = xCostR + wMarkup;           // right edge for APAS markup
+  const xExtR = xMarkupR + wExt;               // right edge for Client value (= W - M)
 
   const tableHeader = () => {
     ensure(20);
@@ -178,11 +180,12 @@ export async function buildProposalPdf(
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); setColor(INK);
     doc.text('#', xNo + 1, y + 9);
     doc.text('Category', xCat, y + 9);
-    doc.text('Description', xDesc, y + 9);
+    doc.text('Scope / contractor', xDesc, y + 9);
     doc.text('Qty', xQtyR, y + 9, { align: 'right' });
     doc.text('Unit', xUnit, y + 9);
-    doc.text('Unit cost', xCostR, y + 9, { align: 'right' });
-    doc.text('Extended', xExtR, y + 9, { align: 'right' });
+    doc.text('Source cost', xCostR, y + 9, { align: 'right' });
+    doc.text('Markup', xMarkupR, y + 9, { align: 'right' });
+    doc.text('Client value', xExtR, y + 9, { align: 'right' });
     y += 18;
   };
   tableHeader();
@@ -202,8 +205,9 @@ export async function buildProposalPdf(
     doc.text(descLines, xDesc, ty);
     doc.text(String(r.quantity), xQtyR, ty, { align: 'right' });
     doc.text(r.unit || '', xUnit, ty);
-    doc.text(usd(Number(r.unit_cost)), xCostR, ty, { align: 'right' });
-    setColor(INK); doc.setFont('helvetica', 'bold'); doc.text(usd(r.ext), xExtR, ty, { align: 'right' });
+    doc.text(usd(r.source), xCostR, ty, { align: 'right' });
+    doc.text(`${Number(r.markup_pct || 0)}%`, xMarkupR, ty, { align: 'right' });
+    setColor(INK); doc.setFont('helvetica', 'bold'); doc.text(usd(r.source + r.markup), xExtR, ty, { align: 'right' });
     doc.setFont('helvetica', 'normal');
     y += rh;
     doc.setDrawColor(236, 233, 226); doc.setLineWidth(0.4); doc.line(M, y, W - M, y);
@@ -220,7 +224,8 @@ export async function buildProposalPdf(
     setColor(INK); doc.text(value, xExtR, y + 8, { align: 'right' });
     y += 14;
   };
-  totalRow('Subtotal', usd(totals.subtotal));
+  totalRow('Source cost subtotal', usd(totals.sourceSubtotal));
+  totalRow('APAS row markup', usd(totals.lineMarkup));
   totalRow(`Overhead (${Number(proposal.overhead_pct || 0)}%)`, usd(totals.overhead));
   totalRow(`Profit (${Number(proposal.profit_pct || 0)}%)`, usd(totals.profit));
   ensure(24); y += 2;

@@ -132,7 +132,7 @@ export default function ProposalsPage() {
             <Wand2 className="h-4 w-4 mr-2" /> Write from scratch
           </Button>
           <Button onClick={() => navigate(`/projects/${projectId}/financials/proposals/new?mode=upload`)}>
-            <UploadCloud className="h-4 w-4 mr-2" /> Upload & extract
+            <UploadCloud className="h-4 w-4 mr-2" /> Upload signed proposal
           </Button>
         </div>
       </div>
@@ -161,7 +161,7 @@ export default function ProposalsPage() {
             <div>
               <CardTitle className="text-base">Proposal intake to invoice path</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
-                Build the approved client proposal first, then invoice against its line items so billing cannot drift from the signed amount.
+                Build the approved client proposal first, then invoice against its Schedule of Values so billing cannot drift from the signed amount.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -169,7 +169,7 @@ export default function ProposalsPage() {
                 <Wand2 className="mr-2 h-4 w-4" /> Write from scratch
               </Button>
               <Button onClick={() => navigate(`/projects/${projectId}/financials/proposals/new?mode=upload`)}>
-                <UploadCloud className="mr-2 h-4 w-4" /> Upload & extract
+                <UploadCloud className="mr-2 h-4 w-4" /> Upload signed proposal
               </Button>
             </div>
           </div>
@@ -179,17 +179,17 @@ export default function ProposalsPage() {
             {
               icon: FileText,
               title: "1. Capture the proposal",
-              copy: "Create a blank proposal or import a PDF, subcontractor quote, scope sheet, or client-signed package.",
+              copy: "Create from scratch with AI, or upload the executed client proposal as the permanent source record.",
             },
             {
               icon: Sparkles,
-              title: "2. Extract or enter lines",
-              copy: "Use AI draft/extraction or manually enter client, vendor, subcontractor, labor, material, and lump-sum rows.",
+              title: "2. Extract approved numbers",
+              copy: "For uploaded proposals, capture only the Schedule of Values: scope, contractor, fee, APAS markup, subtotal, and grand total. No AI rewrite.",
             },
             {
               icon: CheckCircle2,
               title: "3. Execute and approve",
-              copy: "Upload the signed proposal, mark it approved, and lock the proposal total as the billing authority.",
+              copy: "Mark the signed PDF approved, keep it as the primary record, and lock the proposal total as billing authority.",
             },
             {
               icon: Receipt,

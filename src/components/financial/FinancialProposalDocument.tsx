@@ -98,20 +98,23 @@ export const FinancialProposalDocument = forwardRef<HTMLDivElement, {
         </>
       )}
 
-      <h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>PRICING</h3>
+      <h3 style={{ color: GOLD, fontSize: 12, margin: "0 0 6px" }}>SCHEDULE OF VALUES</h3>
       <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead><tr><th style={th}>#</th><th style={th}>Description</th><th style={th}>Category</th><th style={{ ...th, textAlign: "right" }}>Qty</th><th style={th}>Unit</th><th style={{ ...th, textAlign: "right" }}>Unit cost</th><th style={{ ...th, textAlign: "right" }}>Extended</th></tr></thead>
+        <thead><tr><th style={th}>#</th><th style={th}>Scope / Contractor</th><th style={th}>Category</th><th style={{ ...th, textAlign: "right" }}>Qty</th><th style={th}>Unit</th><th style={{ ...th, textAlign: "right" }}>Source cost</th><th style={{ ...th, textAlign: "right" }}>APAS markup</th><th style={{ ...th, textAlign: "right" }}>Client value</th></tr></thead>
         <tbody>
           {lines.map((line) => {
-            const extended = Number(line.quantity) * Number(line.unit_cost);
-            return <tr key={line.id}><td style={td}>{line.line_no}</td><td style={td}>{line.description}</td><td style={{ ...td, textTransform: "capitalize" }}>{line.category}</td><td style={{ ...td, textAlign: "right" }}>{line.quantity}</td><td style={td}>{line.unit}</td><td style={{ ...td, textAlign: "right" }}>{money(Number(line.unit_cost))}</td><td style={{ ...td, textAlign: "right", fontWeight: 700 }}>{money(extended)}</td></tr>;
+            const source = Number(line.quantity) * Number(line.unit_cost);
+            const markup = source * ((Number(line.markup_pct) || 0) / 100);
+            const clientValue = source + markup;
+            return <tr key={line.id}><td style={td}>{line.line_no}</td><td style={td}>{line.description}</td><td style={{ ...td, textTransform: "capitalize" }}>{line.category}</td><td style={{ ...td, textAlign: "right" }}>{line.quantity}</td><td style={td}>{line.unit}</td><td style={{ ...td, textAlign: "right" }}>{money(source)}</td><td style={{ ...td, textAlign: "right" }}>{Number(line.markup_pct || 0)}%</td><td style={{ ...td, textAlign: "right", fontWeight: 700 }}>{money(clientValue)}</td></tr>;
           })}
-          {lines.length === 0 && <tr><td colSpan={7} style={{ ...td, textAlign: "center", color: MUTE }}>No priced line items</td></tr>}
+          {lines.length === 0 && <tr><td colSpan={8} style={{ ...td, textAlign: "center", color: MUTE }}>No priced line items</td></tr>}
         </tbody>
       </table>
 
       <div style={{ marginLeft: "auto", width: 280, marginTop: 10, fontSize: 11 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", color: MUTE }}><span>Subtotal</span><span>{money(totals.subtotal)}</span></div>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", color: MUTE }}><span>Source cost subtotal</span><span>{money(totals.sourceSubtotal)}</span></div>
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", color: MUTE }}><span>APAS row markup</span><span>{money(totals.lineMarkup)}</span></div>
         <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", color: MUTE }}><span>Overhead ({Number(proposal.overhead_pct || 0)}%)</span><span>{money(totals.overhead)}</span></div>
         <div style={{ display: "flex", justifyContent: "space-between", padding: "4px 8px", color: MUTE }}><span>Profit ({Number(proposal.profit_pct || 0)}%)</span><span>{money(totals.profit)}</span></div>
         <div style={{ display: "flex", justifyContent: "space-between", padding: "8px", background: GOLD, color: "#fff", fontWeight: 800, fontSize: 13 }}><span>PROPOSAL TOTAL</span><span>{money(totals.total)}</span></div>

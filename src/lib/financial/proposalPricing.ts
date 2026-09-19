@@ -6,10 +6,13 @@ export interface ProposalPricingRates {
 }
 
 export interface ProposalPricingTotals {
+  sourceSubtotal: number;
+  lineMarkup: number;
   subtotal: number;
   overhead: number;
   profit: number;
   total: number;
+  apasProfit: number;
 }
 
 const finiteNonNegative = (value: number | null | undefined) => {
@@ -23,14 +26,27 @@ const finiteNonNegative = (value: number | null | undefined) => {
  * amounts and are never represented as proposal line items.
  */
 export function proposalTotals(
-  lines: Pick<FinancialProposalLine, "quantity" | "unit_cost">[],
+  lines: Array<Pick<FinancialProposalLine, "quantity" | "unit_cost"> & { markup_pct?: number | null }>,
   rates: ProposalPricingRates,
 ): ProposalPricingTotals {
-  const subtotal = lines.reduce(
+  const sourceSubtotal = lines.reduce(
     (sum, line) => sum + finiteNonNegative(line.quantity) * finiteNonNegative(line.unit_cost),
     0,
   );
-  const overhead = subtotal * (finiteNonNegative(rates.overhead_pct) / 100);
-  const profit = subtotal * (finiteNonNegative(rates.profit_pct) / 100);
-  return { subtotal, overhead, profit, total: subtotal + overhead + profit };
+  const lineMarkup = lines.reduce((sum, line) => {
+    const base = finiteNonNegative(line.quantity) * finiteNonNegative(line.unit_cost);
+    return sum + base * (finiteNonNegative(line.markup_pct) / 100);
+  }, 0);
+  const subtotal = sourceSubtotal + lineMarkup;
+  const overhead = sourceSubtotal * (finiteNonNegative(rates.overhead_pct) / 100);
+  const profit = sourceSubtotal * (finiteNonNegative(rates.profit_pct) / 100);
+  return {
+    sourceSubtotal,
+    lineMarkup,
+    subtotal,
+    overhead,
+    profit,
+    total: subtotal + overhead + profit,
+    apasProfit: lineMarkup + overhead + profit,
+  };
 }

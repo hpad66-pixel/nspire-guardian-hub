@@ -336,8 +336,9 @@ export function ConsultingInvoiceBuilder({
   const invoiceDocumentLabel = invoiceDocumentLabelForCompany(consultingBrand);
   const setupSteps = [
     'Open the proposal intake page for this project.',
-    'Create or import the client-approved proposal package with every consulting, vendor, and subcontractor amount.',
-    'Review the extracted rows or enter them manually, then upload the signed proposal and mark it approved.',
+    'Choose one path: write from scratch with AI, or upload the already signed proposal as the permanent source record.',
+    'For uploaded proposals, build the Schedule of Values only: scope, contractor, source cost, APAS markup, subtotal, and grand total.',
+    'Approve the proposal so that Schedule of Values becomes the billing authority.',
     'Return here and bill a percent complete, the remaining balance, or a typed amount inside the approved balance.',
   ];
 

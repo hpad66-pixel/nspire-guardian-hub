@@ -21,6 +21,7 @@ export interface ProposalAiDraft {
     quantity: number;
     unit: string;
     unit_cost: number;
+    markup_pct?: number;
   }[];
 }
 
@@ -47,7 +48,7 @@ export function ProposalAiDraftCard({
 
   async function draft() {
     if (!text.trim() && !file) {
-      toast.error("Dictate what you want, or attach a subconsultant document.");
+      toast.error("Dictate what you want, or attach background material for a new proposal.");
       return;
     }
     setBusy(true);
@@ -105,7 +106,7 @@ export function ProposalAiDraftCard({
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Sparkles className="h-5 w-5 text-[var(--apas-sapphire)]" />
-          Draft this proposal with AI
+          Draft from scratch with AI
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -114,12 +115,12 @@ export function ProposalAiDraftCard({
           onValueChange={setText}
           rows={4}
           context="notes"
-          placeholder="Dictate or type what the proposal is for — the scope, deliverables, quantities, pricing, and any terms. Claude writes it up, addressed to this project's client."
+          placeholder="Dictate or type what the new proposal is for — scope, deliverables, quantities, pricing, and terms. Use this only when writing from scratch, not for signed proposal uploads."
         />
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={busy}>
             <Paperclip className="mr-2 h-4 w-4" />
-            {file ? "Change attachment" : "Attach subconsultant doc"}
+            {file ? "Change attachment" : "Attach background doc"}
           </Button>
           <input
             ref={fileRef}
@@ -168,6 +169,7 @@ export function ProposalAiDraftCard({
         ) : (
           <p className="text-xs text-muted-foreground">
             AI prepares a candidate first. You choose whether to replace the current draft or add its fee lines; nothing is sent automatically.
+            Do not use this card to rewrite a client-signed proposal. Use proposal upload for signed records and extract only the schedule values.
           </p>
         )}
       </CardContent>

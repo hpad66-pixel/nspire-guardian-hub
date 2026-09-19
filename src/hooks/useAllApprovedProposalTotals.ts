@@ -21,7 +21,7 @@ export function useAllApprovedProposalTotals() {
 
       const { data: proposals, error: pErr } = await supabase
         .from('proposals')
-        .select('id, project_id, status, overhead_pct, profit_pct, proposal_lines(quantity, unit_cost)')
+        .select('id, project_id, status, overhead_pct, profit_pct, proposal_lines(quantity, unit_cost, markup_pct)')
         .eq('status', 'approved');
       if (pErr) throw pErr;
 

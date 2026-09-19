@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { useProjectFinancials } from "@/hooks/useProjectFinancials";
 import { summarizeLedger, type LedgerEntry } from "@/lib/financial/ledger";
+import { useFinancialProposals } from "@/hooks/useFinancialProposals";
+import { proposalTotals } from "@/lib/financial/proposalPricing";
 
 const fmt = (n: number | null | undefined) =>
   new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n ?? 0);
@@ -33,6 +35,7 @@ interface Kpi {
 export function FinancialOverview({ projectId }: { projectId: string }) {
   const navigate = useNavigate();
   const { summary, ledger, payAppBalances, invoiceBalances } = useProjectFinancials(projectId);
+  const { data: proposals = [] } = useFinancialProposals(projectId);
   const s = summary.data;
   const [filter, setFilter] = useState<Filter>("all");
   const [showMore, setShowMore] = useState(false);
@@ -58,6 +61,20 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
     [ledger.data, filter],
   );
   const summ = useMemo(() => summarizeLedger(ledger.data ?? []), [ledger.data]);
+  const approvedProposalEconomics = useMemo(() => {
+    const approved = proposals.filter((proposal) => proposal.status === "approved");
+    return approved.reduce((acc, proposal) => {
+      const totals = proposalTotals(proposal.proposal_lines ?? [], proposal);
+      acc.count += 1;
+      acc.sourceCost += totals.sourceSubtotal;
+      acc.rowMarkup += totals.lineMarkup;
+      acc.overhead += totals.overhead;
+      acc.profit += totals.profit;
+      acc.apasProfit += totals.apasProfit;
+      acc.clientValue += totals.total;
+      return acc;
+    }, { count: 0, sourceCost: 0, rowMarkup: 0, overhead: 0, profit: 0, apasProfit: 0, clientValue: 0 });
+  }, [proposals]);
 
   // Contract-value waterfall
   const base = s?.original_contract ?? 0;
@@ -112,6 +129,32 @@ export function FinancialOverview({ projectId }: { projectId: string }) {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           {primary.map((k) => <KpiCard key={k.label} k={k} onClick={() => go(k.to)} />)}
         </div>
+
+        {approvedProposalEconomics.count > 0 && (
+          <Card className="border-emerald-200 bg-emerald-50/40">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Approved Proposal Economics</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                Schedule of Values rollup for approved client proposals. This separates what the client approved from source subcontractor or consultant costs and APAS margin.
+              </p>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {[
+                ["Client approved value", approvedProposalEconomics.clientValue, "Total ceiling for client invoices"],
+                ["Source cost", approvedProposalEconomics.sourceCost, "Contractor, subcontractor, consultant, or pass-through cost"],
+                ["APAS row markup", approvedProposalEconomics.rowMarkup, "Markup applied directly to Schedule of Values rows"],
+                ["Overhead and profit", approvedProposalEconomics.overhead + approvedProposalEconomics.profit, "Global percentages applied to source cost"],
+                ["APAS profit", approvedProposalEconomics.apasProfit, "Markup plus overhead plus profit"],
+              ].map(([label, value, helper]) => (
+                <div key={String(label)} className="rounded-lg border bg-white/80 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-800">{label}</p>
+                  <p className="mt-1 text-lg font-bold tabular-nums text-foreground">{fmt(Number(value))}</p>
+                  <p className="mt-1 text-[11px] leading-4 text-muted-foreground">{helper}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
 
         {/* Secondary detail — collapsed by default */}
         <div>

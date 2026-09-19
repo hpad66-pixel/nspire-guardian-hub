@@ -36,6 +36,9 @@ import {
 
 const CATEGORIES: FinancialProposalLine["category"][] = ["labor", "material", "equipment", "subcontract", "other"];
 const fmt = (value: number) => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2 }).format(value || 0);
+const rowSource = (line: Pick<FinancialProposalLine, "quantity" | "unit_cost">) => Number(line.quantity) * Number(line.unit_cost);
+const rowMarkup = (line: Pick<FinancialProposalLine, "quantity" | "unit_cost" | "markup_pct">) => rowSource(line) * ((Number(line.markup_pct) || 0) / 100);
+const rowClientValue = (line: Pick<FinancialProposalLine, "quantity" | "unit_cost" | "markup_pct">) => rowSource(line) + rowMarkup(line);
 
 function statusClass(status: FinancialProposal["status"]) {
   if (status === "approved") return "bg-emerald-100 text-emerald-800";
@@ -54,7 +57,9 @@ function EditableProposalLine({ line, editable, onSave, onRemove }: {
   const [draft, setDraft] = useState(line);
   const [saving, setSaving] = useState(false);
   useEffect(() => setDraft(line), [line]);
-  const extended = Number(draft.quantity) * Number(draft.unit_cost);
+  const source = rowSource(draft);
+  const markup = rowMarkup(draft);
+  const clientValue = source + markup;
   const changed = JSON.stringify(draft) !== JSON.stringify(line);
   const patch = <K extends keyof FinancialProposalLine>(key: K, value: FinancialProposalLine[K]) => setDraft(current => ({ ...current, [key]: value }));
   async function save() { setSaving(true); try { await onSave(draft); } finally { setSaving(false); } }
@@ -63,7 +68,8 @@ function EditableProposalLine({ line, editable, onSave, onRemove }: {
     <tr className="border-b last:border-0 hover:bg-muted/20">
       <td className="p-3 font-mono text-muted-foreground">{line.line_no}</td><td className="p-3 capitalize">{line.category}</td><td className="p-3">{line.description}</td>
       <td className="p-3 text-right font-mono">{line.quantity}</td><td className="p-3">{line.unit}</td><td className="p-3 text-right font-mono">{fmt(Number(line.unit_cost))}</td>
-      <td className="p-3 text-right font-mono font-semibold">{fmt(extended)}</td><td />
+      <td className="p-3 text-right font-mono">{Number(line.markup_pct || 0)}%</td>
+      <td className="p-3 text-right font-mono font-semibold">{fmt(rowClientValue(line))}</td><td />
     </tr>
   );
 
@@ -75,7 +81,8 @@ function EditableProposalLine({ line, editable, onSave, onRemove }: {
       <td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" step="any" value={draft.quantity} onChange={event => patch("quantity", Number(event.target.value))} /></td>
       <td className="p-2"><Input className="h-8 w-16 text-xs" value={draft.unit} onChange={event => patch("unit", event.target.value)} /></td>
       <td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" step="any" value={draft.unit_cost} onChange={event => patch("unit_cost", Number(event.target.value))} /></td>
-      <td className="p-2 text-right font-mono text-xs">{fmt(extended)}</td>
+      <td className="p-2"><Input className="h-8 w-20 text-right text-xs" type="number" step="any" value={draft.markup_pct} onChange={event => patch("markup_pct", Number(event.target.value))} /></td>
+      <td className="p-2 text-right font-mono text-xs"><div>{fmt(clientValue)}</div>{markup > 0 && <div className="text-[10px] text-emerald-700">profit {fmt(markup)}</div>}</td>
       <td className="p-2"><div className="flex"><Button variant="ghost" size="icon" className="h-8 w-8" disabled={!changed || saving} onClick={save}><Save className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onRemove}><Trash2 className="h-3.5 w-3.5" /></Button></div></td>
     </tr>
   );
@@ -169,12 +176,12 @@ export default function ProposalBuilderPage() {
   async function addLine() {
     if (!description.trim()) return toast.error("Description is required.");
     const nextNo = lines.length ? Math.max(...lines.map(line => line.line_no)) + 1 : 1;
-    await lineQuery.create.mutateAsync({ proposal_id: proposal.id, description: description.trim(), line_no: nextNo, category: newLine.category ?? "labor", quantity: Number(newLine.quantity) || 1, unit: newLine.unit || "ls", unit_cost: Number(newLine.unit_cost) || 0, markup_pct: 0 });
+    await lineQuery.create.mutateAsync({ proposal_id: proposal.id, description: description.trim(), line_no: nextNo, category: newLine.category ?? "labor", quantity: Number(newLine.quantity) || 1, unit: newLine.unit || "ls", unit_cost: Number(newLine.unit_cost) || 0, markup_pct: Number(newLine.markup_pct) || 0 });
     setDescription(""); setNewLine({ category: "labor", quantity: 1, unit: "ls", unit_cost: 0, markup_pct: 0 }); toast.success("Line added");
   }
 
   async function saveLine(line: FinancialProposalLine) {
-    await lineQuery.update.mutateAsync({ id: line.id, category: line.category, description: line.description, quantity: Number(line.quantity), unit: line.unit, unit_cost: Number(line.unit_cost), markup_pct: 0 });
+    await lineQuery.update.mutateAsync({ id: line.id, category: line.category, description: line.description, quantity: Number(line.quantity), unit: line.unit, unit_cost: Number(line.unit_cost), markup_pct: Number(line.markup_pct) || 0 });
     toast.success("Line updated");
   }
 
@@ -228,7 +235,7 @@ export default function ProposalBuilderPage() {
         quantity: Number(line.quantity) || 0,
         unit: line.unit || "ls",
         unit_cost: Number(line.unit_cost) || 0,
-        markup_pct: 0,
+        markup_pct: Number(line.markup_pct) || 0,
       })));
       return;
     }
@@ -243,7 +250,7 @@ export default function ProposalBuilderPage() {
         quantity: Number(line.quantity) || 0,
         unit: line.unit || "ls",
         unit_cost: Number(line.unit_cost) || 0,
-        markup_pct: 0,
+        markup_pct: Number(line.markup_pct) || 0,
       });
     }
   }
@@ -302,7 +309,7 @@ export default function ProposalBuilderPage() {
             <div>
               <CardTitle className="text-base">Step 1 · Proposal intake package</CardTitle>
               <p className="mt-1 text-sm text-muted-foreground">
-                This is the place to feed the proposal before anyone creates an invoice. Upload the client proposal, subcontractor quote, or signed approval package, then extract or enter the billing rows below.
+                This is the place to feed the signed proposal before anyone creates an invoice. The uploaded client-approved PDF stays permanent. Only the approved billing numbers below become the schedule of values for invoicing.
               </p>
             </div>
             {executed ? <Badge className="bg-emerald-600 text-white">Ready for invoicing</Badge> : <Badge variant="outline">Invoice prerequisite</Badge>}
@@ -315,19 +322,19 @@ export default function ProposalBuilderPage() {
               onChange={(pdf_path) => proposalQuery.update.mutateAsync({ id: proposal.id, pdf_path })}
               projectId={projectId!}
               folder="proposals/source"
-              label={executed ? "Approved proposal PDF" : "Source proposal package"}
+              label={executed ? "Approved proposal PDF" : "Signed source proposal"}
               preview={false}
               readOnly={!editable}
             />
             <p className="mt-3 text-xs leading-5 text-muted-foreground">
-              Draft uploads are supporting source packages. When the client signs, use <span className="font-medium text-foreground">Execute signed proposal</span> so the signed PDF becomes the approved record and the invoice builder unlocks.
+              Uploads are source records, not AI writing prompts. When the client signs, use <span className="font-medium text-foreground">Execute signed proposal</span> so the signed PDF becomes the approved record and the invoice builder unlocks.
             </p>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             {[
-              ["1", "Upload", "Attach the proposal, subcontractor quote, client authorization, or scope PDF."],
-              ["2", "Review", "Confirm client, vendor names, subcontractor amounts, scope, terms, and total."],
-              ["3", "Break out lines", "Use one row per approved billing bucket: consulting fee, subcontractor, material, labor, or other."],
+              ["1", "Upload", "Attach the final client-signed proposal or approved pricing package."],
+              ["2", "Extract numbers", "Capture only approved vendors, subcontractors, percentages, amounts, and totals."],
+              ["3", "Break out SOV", "Use one row per approved billing bucket: consulting fee, subcontractor, material, labor, or other."],
               ["4", "Approve", "Execute the signed proposal so invoices can bill against approved rows only."],
             ].map(([no, title, copy]) => (
               <div key={title} className="rounded-lg border bg-white/80 p-3">
@@ -365,9 +372,11 @@ export default function ProposalBuilderPage() {
           <div><Label>Overhead %</Label><Input type="number" min="0" step="any" value={pricingDraft.overhead_pct} disabled={!editable} onChange={event => setPricingDraft(current => ({ ...current, overhead_pct: Number(event.target.value) }))} /></div>
           <div><Label>Profit %</Label><Input type="number" min="0" step="any" value={pricingDraft.profit_pct} disabled={!editable} onChange={event => setPricingDraft(current => ({ ...current, profit_pct: Number(event.target.value) }))} /><p className="mt-1 text-[11px] text-muted-foreground">Enter 0 to waive profit.</p></div>
           <div className="space-y-1.5 rounded-md border bg-muted/20 p-3 text-sm">
-            <div className="flex justify-between text-muted-foreground"><span>Work subtotal</span><span className="font-mono">{fmt(totals.subtotal)}</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>Source cost subtotal</span><span className="font-mono">{fmt(totals.sourceSubtotal)}</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>APAS row markup</span><span className="font-mono text-emerald-700">{fmt(totals.lineMarkup)}</span></div>
             <div className="flex justify-between text-muted-foreground"><span>Overhead ({pricingDraft.overhead_pct || 0}%)</span><span className="font-mono">{fmt(totals.overhead)}</span></div>
             <div className="flex justify-between text-muted-foreground"><span>Profit ({pricingDraft.profit_pct || 0}%)</span><span className="font-mono">{fmt(totals.profit)}</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>Total APAS profit</span><span className="font-mono text-emerald-700">{fmt(totals.apasProfit)}</span></div>
             <div className="flex justify-between border-t pt-2 font-bold text-[var(--apas-sapphire)]"><span>Proposal total</span><span className="font-mono text-base">{fmt(totals.total)}</span></div>
           </div>
         </CardContent>
@@ -384,10 +393,10 @@ export default function ProposalBuilderPage() {
         />
       )}
 
-      <Card><CardHeader><CardTitle className="text-base">Approved proposal billing schedule</CardTitle><p className="text-xs text-muted-foreground">Enter each billable bucket that the client approved. For subcontractors, choose <span className="font-medium text-foreground">subcontract</span>, put the contractor name in the description, and enter the approved lump-sum amount. The invoice builder will cap billing against this approved proposal total.</p></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><th className="p-3 text-left">#</th><th className="p-3 text-left">Category</th><th className="p-3 text-left">Description</th><th className="p-3 text-right">Qty</th><th className="p-3 text-left">Unit</th><th className="p-3 text-right">Unit cost</th><th className="p-3 text-right">Extended</th><th /></tr></thead><tbody>
+      <Card><CardHeader><CardTitle className="text-base">Approved proposal Schedule of Values</CardTitle><p className="text-xs text-muted-foreground">Enter each billable bucket that the client approved. This table is the extracted commercial schedule from the signed proposal, not a rewritten proposal. For subcontractors, choose <span className="font-medium text-foreground">subcontract</span>, put the contractor name in the description, enter the source cost, and set APAS markup to 0% for pass-through. The invoice builder will cap billing against this approved proposal total.</p></CardHeader><CardContent className="p-0"><div className="overflow-x-auto"><table className="w-full text-sm"><thead><tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground"><th className="p-3 text-left">#</th><th className="p-3 text-left">Category</th><th className="p-3 text-left">Scope / contractor</th><th className="p-3 text-right">Qty</th><th className="p-3 text-left">Unit</th><th className="p-3 text-right">Source cost</th><th className="p-3 text-right">APAS markup</th><th className="p-3 text-right">Client value</th><th /></tr></thead><tbody>
         {lines.map(line => <EditableProposalLine key={line.id} line={line} editable={editable} onSave={saveLine} onRemove={() => lineQuery.remove.mutate(line.id)} />)}
-        {editable && <tr className="border-t-2 bg-muted/10"><td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td><td className="p-2"><Select value={newLine.category} onValueChange={value => setNewLine(current => ({ ...current, category: value as FinancialProposalLine["category"] }))}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td><td className="p-2"><Input className="h-8 min-w-48 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Description…" /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.quantity} onChange={event => setNewLine(current => ({ ...current, quantity: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-xs" value={newLine.unit} onChange={event => setNewLine(current => ({ ...current, unit: event.target.value }))} /></td><td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td><td className="p-2 text-right text-xs text-muted-foreground">{fmt(Number(newLine.quantity) * Number(newLine.unit_cost))}</td><td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td></tr>}
-      </tbody><tfoot><tr className="border-t bg-muted/50 font-bold"><td colSpan={6} className="p-3 text-right">Cost-of-work subtotal</td><td className="p-3 text-right font-mono text-base">{fmt(totals.subtotal)}</td><td /></tr></tfoot></table></div></CardContent></Card>
+        {editable && <tr className="border-t-2 bg-muted/10"><td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td><td className="p-2"><Select value={newLine.category} onValueChange={value => setNewLine(current => ({ ...current, category: value as FinancialProposalLine["category"] }))}><SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger><SelectContent>{CATEGORIES.map(category => <SelectItem key={category} value={category} className="capitalize">{category}</SelectItem>)}</SelectContent></Select></td><td className="p-2"><Input className="h-8 min-w-48 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Scope item, contractor, subcontractor, consultant, or pass-through" /></td><td className="p-2"><Input className="h-8 w-16 text-right text-xs" type="number" value={newLine.quantity} onChange={event => setNewLine(current => ({ ...current, quantity: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-16 text-xs" value={newLine.unit} onChange={event => setNewLine(current => ({ ...current, unit: event.target.value }))} /></td><td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td><td className="p-2"><Input className="h-8 w-20 text-right text-xs" type="number" value={newLine.markup_pct} onChange={event => setNewLine(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></td><td className="p-2 text-right text-xs text-muted-foreground">{fmt(rowClientValue({ quantity: Number(newLine.quantity) || 0, unit_cost: Number(newLine.unit_cost) || 0, markup_pct: Number(newLine.markup_pct) || 0 } as FinancialProposalLine))}</td><td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td></tr>}
+      </tbody><tfoot><tr className="border-t bg-muted/50"><td colSpan={7} className="p-3 text-right">Source cost subtotal</td><td className="p-3 text-right font-mono">{fmt(totals.sourceSubtotal)}</td><td /></tr><tr className="bg-muted/50"><td colSpan={7} className="p-3 text-right">APAS row markup</td><td className="p-3 text-right font-mono text-emerald-700">{fmt(totals.lineMarkup)}</td><td /></tr><tr className="border-t bg-muted/60 font-bold"><td colSpan={7} className="p-3 text-right">Grand total</td><td className="p-3 text-right font-mono text-base">{fmt(totals.total)}</td><td /></tr></tfoot></table></div></CardContent></Card>
 
       <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><div><CardTitle>{executed ? "Executed proposal document" : "Proposal document"}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{executed ? "The final client-signed PDF below is the primary document of record." : proposal.submitted_signed_at ? `Signed by APAS ${new Date(proposal.submitted_signed_at).toLocaleDateString()}.` : "Review the document, then sign to lock this version."}</p></div><div className="flex gap-2">{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />{executed ? "Executed & locked" : "Signed version"}</Badge>}</div></div></CardHeader><CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">

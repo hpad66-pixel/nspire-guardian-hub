@@ -4,6 +4,11 @@
 // narrative, priced line items, and terms — that pre-fills the proposal builder
 // for review. This is the proposal-side twin of draft-change-order.
 //
+// Important boundary:
+// - scratch_draft may write proposal narrative from the user's direction.
+// - signed_upload_extract treats the uploaded proposal as the permanent executed
+//   source record and extracts only commercial schedule values for billing.
+//
 // The background document is sent to Claude natively as a document/image content
 // block (no lossy client-side text extraction). The project's client is fetched
 // so the generated scope opens with the correct salutation and addressing — the
@@ -24,7 +29,7 @@ const MODEL = "claude-opus-4-8";
 
 const DRAFT_TOOL = {
   name: "draft_financial_proposal",
-  description: "Return the structured, client-ready financial-proposal draft written up from the direction and/or background document.",
+  description: "Return a structured financial proposal draft for scratch mode, or a numbers-only Schedule of Values extraction for signed-upload mode.",
   input_schema: {
     type: "object",
     properties: {
@@ -60,9 +65,10 @@ const DRAFT_TOOL = {
             description: { type: "string" },
             quantity: { type: "number" },
             unit: { type: "string", description: "ls/hr/day/ea/lf/sf/cy/ton/mo" },
-            unit_cost: { type: "number", description: "numeric dollars, no symbol" },
+            unit_cost: { type: "number", description: "numeric source cost dollars, no symbol" },
+            markup_pct: { type: "number", description: "APAS line markup percentage, 0 for pass-through or when no markup is stated." },
           },
-          required: ["category", "description", "quantity", "unit", "unit_cost"],
+          required: ["category", "description", "quantity", "unit", "unit_cost", "markup_pct"],
         },
       },
     },
@@ -84,12 +90,16 @@ serve(async (req) => {
     const key = Deno.env.get("ANTHROPIC_API_KEY");
     if (!key) return json({ error: "ANTHROPIC_API_KEY not configured" }, 500);
 
-    const { description, projectId, overheadPct, profitPct, document, documentName } = await req.json();
+    const { description, projectId, overheadPct, profitPct, document, documentName, mode } = await req.json();
+    const extractionOnly = mode === "signed_upload_extract";
 
     const hasDoc = document && typeof document.data === "string" && document.data.length > 0;
     const hasDescription = description && String(description).trim().length >= 5;
     if (!hasDoc && !hasDescription) {
       return json({ error: "Attach a background document or describe the proposal first." }, 400);
+    }
+    if (extractionOnly && !hasDoc) {
+      return json({ error: "Upload the signed proposal before extracting approved billing rows." }, 400);
     }
     if (hasDoc && !["pdf", "image", "text"].includes(document.kind)) {
       return json({ error: `Unsupported document kind: ${document.kind}` }, 400);
@@ -127,7 +137,7 @@ serve(async (req) => {
     }
 
     const docLabel = documentName ? `"${documentName}"` : "the attached document";
-    const system = `You are a senior proposal writer for APAS Consulting. You turn a consultant's dictated story into a polished, client-ready proposal — the way a principal would write it up. The input is (a) a plain-language narrative and/or (b) an attached background document (subconsultant quote, RFP, scope email, spreadsheet, sketch).
+    const scratchSystem = `You are a senior proposal writer for APAS Consulting. You turn a consultant's dictated story into a polished, client-ready proposal — the way a principal would write it up. The input is (a) a plain-language narrative and/or (b) an attached background document (subconsultant quote, RFP, scope email, spreadsheet, sketch).
 Rules:
 - WRITE IT UP BEAUTIFULLY. The 'overview' is the centerpiece: 2-4 confident, well-crafted paragraphs that show we understand the client's need and lay out our approach. Professional consulting voice, specific to this engagement, never generic boilerplate.
 - Ground scope, quantities, and pricing in the BACKGROUND DOCUMENT when one is attached — pull real line items, units, quantities, and unit costs from it. Do not invent numbers the document or direction don't support.
@@ -136,9 +146,20 @@ Rules:
 - TITLE: concise one line, no "Proposal" prefix.
 - OVERVIEW: the narrative body (understanding + approach). No salutation, no headings inside it.
 - SCOPE_BULLETS: specific services included. DELIVERABLES: the tangible outputs the client receives.
-- LINES: break the cost of work into priced items (category, description, quantity, unit, numeric unit_cost). If a subconsultant quote is attached, carry its cost as a 'subcontract' line. If only a lump sum is available, make one 'other' line, unit 'ls', quantity 1.
+- LINES: break the cost of work into priced items (category, description, quantity, unit, numeric unit_cost, markup_pct). unit_cost is the source cost. markup_pct is APAS line markup, 0 for pass-through. If a subconsultant quote is attached, carry its cost as a 'subcontract' line. If only a lump sum is available, make one 'other' line, unit 'ls', quantity 1.
 - OVERHEAD AND PROFIT: return overhead_pct and profit_pct separately. They are calculated percentages of the full cost-of-work subtotal, exactly like a change order. Never create overhead, profit, fee, or markup line items.
 - Never use em dashes. Always call the draft_financial_proposal tool.`;
+    const extractionSystem = `You are a commercial schedule extractor for APAS Consulting. The attached document is a client-signed or client-approved proposal package. It is the permanent source record.
+Rules:
+- Do NOT rewrite, improve, summarize, polish, or replace the proposal language.
+- Do NOT generate a new overview, scope narrative, deliverables, or terms.
+- Extract only the approved Schedule of Values needed for invoicing: scope of work, vendors, subcontractors, consultants, pass-throughs, categories, quantities, units, source costs, lump sums, APAS line markup percentage if stated, overhead percentage, profit percentage, subtotals, and grand total.
+- The line descriptions may name the vendor or billing bucket, but must stay short and factual. Do not invent scope language.
+- If only a lump sum is visible, return one line with unit 'ls', quantity 1, unit_cost equal to the approved lump-sum amount, and markup_pct 0 unless the source separately states markup.
+- If overhead or profit are not stated in the source, use the provided defaults.
+- Return empty strings for overview and terms, and empty arrays for scope_bullets and deliverables. The UI will not apply narrative fields in this mode.
+- Never use em dashes. Always call the draft_financial_proposal tool.`;
+    const system = extractionOnly ? extractionSystem : scratchSystem;
 
     const promptLines = [
       `Project: ${projectName || "consulting engagement"}`,
@@ -146,7 +167,11 @@ Rules:
       `Default profit %: ${profitPct ?? 5}`,
     ];
     if (clientBlock) promptLines.push(`\nClient this proposal is addressed to:\n${clientBlock}`);
-    if (hasDoc) promptLines.push(`\nA background document (${docLabel}) is attached. Extract concrete scope, quantities, and unit costs from it.`);
+    if (hasDoc) {
+      promptLines.push(extractionOnly
+        ? `\nA signed or approved proposal package (${docLabel}) is attached. Extract only approved commercial schedule values. Do not rewrite proposal content.`
+        : `\nA background document (${docLabel}) is attached. Extract concrete scope, quantities, and unit costs from it.`);
+    }
     promptLines.push(
       hasDescription
         ? `\nConsultant's direction:\n${description}`
