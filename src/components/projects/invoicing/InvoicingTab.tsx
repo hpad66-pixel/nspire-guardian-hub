@@ -73,7 +73,7 @@ export function InvoicingTab({
 
   return (
     <div className="space-y-4 pb-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold flex items-center gap-2 font-[Playfair_Display]">
             <Receipt className="h-5 w-5 text-[var(--apas-sapphire)]" />
@@ -83,7 +83,7 @@ export function InvoicingTab({
             Corporate invoices against approved proposals with a running payment tab. Branded PDF · report package · client email.
           </p>
         </div>
-        <Button onClick={() => { setEditId(null); setBuilderOpen(true); }} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
+        <Button onClick={() => { setEditId(null); setBuilderOpen(true); }} className="w-full gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90 sm:w-auto">
           <Plus className="h-4 w-4" />New invoice
         </Button>
       </div>
@@ -120,7 +120,7 @@ export function InvoicingTab({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 md:grid-cols-5">
         <Metric label="Approved proposals" value={money(approvedFee)} sub={`${proposals.filter((p) => p.status === 'approved').length} approved`} />
         <Metric label="Invoiced" value={money(invoiced)} sub={`${(invoices ?? []).filter((i) => i.status !== 'void').length} invoices`} />
         <Metric label="Cash received" value={money(cashReceived)} sub="all payments" />
@@ -134,7 +134,33 @@ export function InvoicingTab({
             <h3 className="text-sm font-semibold">Running A/R ledger</h3>
             <p className="text-xs text-muted-foreground">Every invoice and payment on this engagement — continuous accounting tab.</p>
           </div>
-          <div className="overflow-x-auto">
+          <div className="grid gap-2 p-3 md:hidden">
+            {ledger!.entries.map((e) => {
+              const meta = INVOICE_STATUS_META[e.status as keyof typeof INVOICE_STATUS_META] ?? INVOICE_STATUS_META.draft;
+              return (
+                <button
+                  key={e.invoice_id}
+                  type="button"
+                  className="rounded-lg border bg-card p-3 text-left shadow-sm active:bg-muted/40"
+                  onClick={() => setDetailId(e.invoice_id)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold">Invoice #{e.invoice_no}</p>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{e.subject || e.proposal_nos.join(', ') || 'No subject'}</p>
+                    </div>
+                    <span className={cn('inline-block shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', meta.className)}>{meta.label}</span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                    <div className="rounded-md bg-muted/40 p-2"><span className="block text-muted-foreground">Invoiced</span><span className="font-mono font-semibold">{money(e.total)}</span></div>
+                    <div className="rounded-md bg-muted/40 p-2"><span className="block text-muted-foreground">Paid</span><span className="font-mono font-semibold">{money(e.paid)}</span></div>
+                    <div className="rounded-md bg-muted/40 p-2"><span className="block text-muted-foreground">Balance</span><span className="font-mono font-semibold text-[var(--apas-sapphire)]">{money(e.balance)}</span></div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b">
@@ -206,7 +232,38 @@ export function InvoicingTab({
           <div className="px-4 py-2.5 border-b bg-muted/20">
             <h3 className="text-sm font-semibold">All invoices</h3>
           </div>
-          <div className="overflow-x-auto">
+          <div className="grid gap-2 p-3 md:hidden">
+            {(invoices ?? []).map((inv) => {
+              const meta = INVOICE_STATUS_META[inv.status] ?? INVOICE_STATUS_META.draft;
+              return (
+                <div key={inv.id} className="rounded-lg border bg-card p-3 shadow-sm">
+                  <button type="button" className="w-full text-left" onClick={() => setDetailId(inv.id)}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">Invoice #{inv.invoice_no}</p>
+                        {inv.subject && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{inv.subject}</p>}
+                      </div>
+                      <span className={cn('inline-block shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium', meta.className)}>{meta.label}</span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-md bg-muted/40 p-2"><span className="block text-muted-foreground">Issued</span><span className="font-medium">{format(new Date(inv.issue_date + 'T00:00:00'), 'MMM d')}</span></div>
+                      <div className="rounded-md bg-muted/40 p-2"><span className="block text-muted-foreground">Due</span><span className="font-medium">{inv.due_date ? format(new Date(inv.due_date + 'T00:00:00'), 'MMM d') : '—'}</span></div>
+                      <div className="rounded-md bg-muted/40 p-2"><span className="block text-muted-foreground">Total</span><span className="font-mono font-semibold">{money(Number(inv.total))}</span></div>
+                    </div>
+                  </button>
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <Button variant="outline" size="sm" className="h-9" onClick={() => setDetailId(inv.id)}><Eye className="mr-1.5 h-3.5 w-3.5" />View</Button>
+                    {inv.status === 'draft' ? (
+                      <Button size="sm" className="h-9 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90" onClick={() => { setEditId(inv.id); setBuilderOpen(true); }}><Pencil className="mr-1.5 h-3.5 w-3.5" />Edit</Button>
+                    ) : (
+                      <Button variant="outline" size="sm" className="h-9 text-destructive hover:text-destructive" onClick={() => remove.mutate(inv.id)}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted-foreground border-b">

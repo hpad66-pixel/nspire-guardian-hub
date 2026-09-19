@@ -1,10 +1,10 @@
-import { Camera, FileBadge2, FileUp, ArrowRight } from 'lucide-react';
+import { ArrowRight, Camera, FileBadge2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 /**
- * High-visibility entry point for project-level permit scan/upload.
- * Shown on project Overview so PWA users don't have to dig through Field → Permits.
+ * Compact project-level permit entry.
+ * Keep capture visible without consuming the whole phone viewport.
  */
 export function ProjectPermitScanEntry({
   onScan,
@@ -21,56 +21,53 @@ export function ProjectPermitScanEntry({
     <section
       data-testid="project-permit-scan-entry"
       className={cn(
-        'relative overflow-hidden rounded-2xl border-2 border-[#0D3B30]/35 bg-gradient-to-br from-[#0D3B30] via-[#134e3a] to-[#0f766e] p-4 text-white shadow-lg sm:p-5',
+        'rounded-xl border border-[var(--apas-sapphire)]/20 bg-card/95 p-3 shadow-sm sm:p-4',
         className,
       )}
     >
-      <div className="absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/5 blur-2xl pointer-events-none" />
-      <div className="relative flex flex-col gap-4">
-        <div className="flex items-start gap-3">
-          <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white text-[#0D3B30] shadow-md">
-            <Camera className="h-6 w-6" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]">
+            <FileBadge2 className="h-5 w-5" />
           </div>
-          <div className="min-w-0 flex-1 space-y-1">
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-white/25 bg-white/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.14em]">
-              <FileBadge2 className="h-3 w-3" />
-              Project Permits
-            </div>
-            <h3 className="font-display text-xl font-bold tracking-tight sm:text-2xl">
-              Scan or upload a permit
+          <div className="min-w-0 space-y-1">
+            <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[var(--apas-sapphire)]">
+              Project permits
+            </p>
+            <h3 className="text-base font-bold tracking-tight text-foreground">
+              Permit register and capture
             </h3>
-            <p className="text-sm text-white/85 leading-relaxed">
-              Photograph a permit from your phone or upload a PDF. OCR fills the register — annotate,
-              set Open / City / Closed, and keep closeout current.
+            <p className="max-w-3xl text-xs leading-relaxed text-muted-foreground sm:text-sm">
+              Add a permit photo or PDF when needed. The register stays inside the Permits tab so
+              closeout work stays organized without crowding the project overview.
             </p>
             {typeof openCount === 'number' && openCount > 0 && (
-              <p className="text-xs font-semibold text-amber-200">
+              <p className="text-xs font-semibold text-amber-700">
                 {openCount} permit{openCount === 1 ? '' : 's'} still open on this project
               </p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:w-auto sm:shrink-0">
           <Button
             type="button"
-            size="lg"
+            size="sm"
             onClick={onScan}
-            className="h-12 w-full justify-center bg-white text-[#0D3B30] hover:bg-emerald-50 font-bold text-base shadow-md"
+            className="h-10 justify-center bg-[var(--apas-sapphire)] text-white hover:bg-[var(--apas-sapphire)]/90"
             data-testid="project-permit-scan-cta"
           >
-            <Camera className="mr-2 h-5 w-5" />
-            Scan / Upload Permit
+            <Camera className="mr-2 h-4 w-4" />
+            Scan
           </Button>
           <Button
             type="button"
-            size="lg"
+            size="sm"
             variant="outline"
             onClick={onOpenPermits}
-            className="h-12 w-full justify-center border-white/40 bg-white/10 text-white hover:bg-white/20 hover:text-white font-semibold"
+            className="h-10 justify-center font-semibold"
             data-testid="project-permit-open-register"
           >
-            <FileUp className="mr-2 h-4 w-4" />
             Open Permits
             <ArrowRight className="ml-1.5 h-4 w-4" />
           </Button>

@@ -9,7 +9,6 @@ import {
   Columns3,
   Copy,
   FileBadge2,
-  FileUp,
   Filter,
   LayoutList,
   Loader2,
@@ -178,73 +177,56 @@ export function ProjectPermitsTab({
 
   return (
     <div className="space-y-6 pb-24 md:pb-0" data-testid="project-permits-tab">
-      {/* Always-visible scan strip — first thing on phone */}
-      <section
-        data-testid="project-permits-scan-strip"
-        className="rounded-2xl border-2 border-[var(--apas-sapphire)]/40 bg-[var(--apas-sapphire)]/[0.08] p-4 shadow-sm"
-      >
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0 space-y-1">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-[var(--apas-sapphire)]">
-              Important · Project Permits
-            </p>
-            <h3 className="text-lg font-bold text-foreground">Scan or upload a permit document</h3>
-            <p className="text-sm text-muted-foreground">
-              Use your phone camera or upload a PDF/photo. OCR fills the fields — add a notation and save
-              to this project’s register.
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="lg"
-            onClick={() => setScanOpen(true)}
-            className="h-12 shrink-0 bg-[var(--apas-sapphire)] text-white hover:bg-[var(--apas-sapphire)]/90 font-bold shadow-md"
-            data-testid="project-permits-scan-strip-cta"
-          >
-            <Camera className="mr-2 h-5 w-5" />
-            Scan / Upload Permit
-          </Button>
-        </div>
-      </section>
-
       {/* Hero readiness */}
-      <section className="relative overflow-hidden rounded-2xl border border-[#0D3B30]/20 bg-gradient-to-br from-[#0D3B30] via-[#134e3a] to-[#0f766e] p-6 text-white shadow-lg">
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/5 blur-2xl" />
-        <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div className="space-y-2 max-w-2xl">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em]">
+      <section className="rounded-2xl border border-[#0D3B30]/15 bg-card p-4 shadow-sm sm:p-5">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+          <div className="space-y-2 max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[#0D3B30]/15 bg-[#0D3B30]/5 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.14em] text-[#0D3B30]">
               <ShieldCheck className="h-3.5 w-3.5" /> Project Permits
             </div>
-            <h2 className="font-display text-3xl font-bold tracking-tight">Closeout readiness</h2>
-            <p className="text-sm text-white/80 leading-relaxed">
-              Construction permit register for this project. Scan from your phone, annotate photo tiles,
-              and advance each item Open → City wait → Closed. Property-level Compliance Permits live
-              under Property Management.
+            <h2 className="font-display text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              Closeout readiness
+            </h2>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Construction permit register for this project. Capture a document only when needed,
+              then use this register to move each item from open to city review to closed.
             </p>
           </div>
-          <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end">
-            <Button
-              type="button"
-              size="lg"
-              onClick={() => setScanOpen(true)}
-              className="h-12 bg-white text-[#0D3B30] hover:bg-emerald-50 font-bold shadow-md"
-              data-testid="project-permits-hero-scan"
-            >
-              <Camera className="h-5 w-5 mr-2" />
-              Scan / Upload Permit
-            </Button>
-            <div>
-              <div className="text-5xl font-bold tabular-nums leading-none">{readiness.percent}%</div>
-              <div className="mt-1 text-sm font-medium text-emerald-100">{readiness.label}</div>
-              <div className="mt-1 text-xs text-white/70">
+          <div className="grid gap-3 sm:grid-cols-[auto_auto] sm:items-center">
+            <div className="rounded-xl border bg-muted/30 px-4 py-3">
+              <div className="text-4xl font-bold tabular-nums leading-none text-[#0D3B30]">{readiness.percent}%</div>
+              <div className="mt-1 text-sm font-semibold text-foreground">{readiness.label}</div>
+              <div className="mt-1 text-xs text-muted-foreground">
                 {readiness.counts.closed} closed · {readiness.counts.openActive} open · {readiness.counts.pending} pending city
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-1">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setScanOpen(true)}
+                className="h-10 bg-[var(--apas-sapphire)] text-white hover:bg-[var(--apas-sapphire)]/90"
+                data-testid="project-permits-hero-scan"
+              >
+                <Camera className="h-4 w-4 mr-2" />
+                Scan
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={copyBrief}
+                className="h-10 font-semibold"
+              >
+                <Copy className="mr-2 h-4 w-4" />
+                Copy brief
+              </Button>
+            </div>
           </div>
         </div>
-        <div className="relative mt-5 h-2.5 overflow-hidden rounded-full bg-black/25">
+        <div className="mt-5 h-2.5 overflow-hidden rounded-full bg-muted">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-emerald-300 to-[var(--apas-accent,#C4A35A)] transition-all duration-700"
+            className="h-full rounded-full bg-gradient-to-r from-[#0D3B30] to-[var(--apas-accent,#C4A35A)] transition-all duration-700"
             style={{ width: `${Math.min(100, readiness.percent)}%` }}
           />
         </div>
@@ -584,19 +566,6 @@ export function ProjectPermitsTab({
           </div>
         </>
       )}
-
-      {/* Sticky phone scan CTA — always visible above bottom nav */}
-      <button
-        type="button"
-        onClick={() => setScanOpen(true)}
-        className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] inset-x-4 z-40 inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--apas-sapphire)] px-4 py-3.5 text-base font-bold text-white shadow-xl shadow-black/25 ring-2 ring-white/40 md:hidden"
-        aria-label="Scan or upload permit from phone"
-        data-testid="project-permits-sticky-scan"
-      >
-        <Camera className="h-5 w-5" />
-        Scan / Upload Permit
-        <FileUp className="h-4 w-4 opacity-90" />
-      </button>
 
       <ScanPermitDialog
         open={scanOpen}

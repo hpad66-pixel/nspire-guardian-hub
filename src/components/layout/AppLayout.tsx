@@ -295,7 +295,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             <main
               data-testid="app-main"
               className={cn(
-                'flex-1',
+                'flex-1 min-w-0 overflow-x-clip',
                 showMobileNav && MOBILE_MAIN_PADDING_CLASS,
               )}
             >

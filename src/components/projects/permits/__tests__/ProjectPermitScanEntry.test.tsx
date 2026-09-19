@@ -11,7 +11,7 @@ describe('ProjectPermitScanEntry', () => {
     );
 
     expect(screen.getByTestId('project-permit-scan-entry')).toBeInTheDocument();
-    expect(screen.getByText(/Scan or upload a permit/i)).toBeInTheDocument();
+    expect(screen.getByText(/Permit register and capture/i)).toBeInTheDocument();
     expect(screen.getByText(/5 permits still open/i)).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('project-permit-scan-cta'));

@@ -395,7 +395,7 @@ export function ConsultingInvoiceBuilder({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] w-[96vw] overflow-y-auto sm:max-w-none xl:w-[min(96vw,1320px)]">
+      <DialogContent className="max-h-[92vh] w-[96vw] overflow-y-auto sm:max-w-none xl:w-[min(98vw,1680px)]">
         <DialogHeader>
           <DialogTitle className="font-[Playfair_Display] text-xl">
             {editing ? `Edit invoice #${existing?.invoice_no ?? ''}` : 'New client invoice'}
@@ -843,13 +843,13 @@ export function ConsultingInvoiceBuilder({
           </div>
         )}
 
-        <DialogFooter>
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+        <DialogFooter className="gap-2 sm:justify-end">
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
             type="button"
             onClick={handleSave}
             disabled={!canCreate || saving}
-            className="bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90"
+            className="w-full bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? 'Save changes' : 'Create proposal-linked invoice'}
           </Button>

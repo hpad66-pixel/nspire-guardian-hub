@@ -116,7 +116,7 @@ export default function ProposalsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-[1800px] space-y-6 px-3 py-4 sm:px-6 lg:px-8">
       <FinancialSubNav />
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -127,11 +127,11 @@ export default function ProposalsPage() {
             <p className="text-muted-foreground text-sm">Draft, price, sign, deliver, revise, and secure client approval in one controlled workflow.</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => navigate(`/projects/${projectId}/financials/proposals/new?mode=scratch`)}>
+        <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2">
+          <Button variant="outline" className="w-full" onClick={() => navigate(`/projects/${projectId}/financials/proposals/new?mode=scratch`)}>
             <Wand2 className="h-4 w-4 mr-2" /> Write from scratch
           </Button>
-          <Button onClick={() => navigate(`/projects/${projectId}/financials/proposals/new?mode=upload`)}>
+          <Button className="w-full" onClick={() => navigate(`/projects/${projectId}/financials/proposals/new?mode=upload`)}>
             <UploadCloud className="h-4 w-4 mr-2" /> Upload signed proposal
           </Button>
         </div>
@@ -232,7 +232,67 @@ export default function ProposalsPage() {
           ) : filteredProposals.length === 0 ? (
             <p className="p-8 text-center text-sm text-muted-foreground">No proposals match this search or status.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="grid gap-3 p-3 md:hidden">
+              {filteredProposals.map(p => {
+                const sc = STATUS_CONFIG[p.status];
+                const Icon = sc.icon;
+                const amount = proposalTotals(p.proposal_lines ?? [], p).total;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className="rounded-lg border bg-card p-3 text-left shadow-sm active:bg-muted/40"
+                    onClick={() => navigate(`/projects/${projectId}/financials/proposals/${p.id}`)}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-mono text-xs font-semibold text-muted-foreground">{p.proposal_no}</p>
+                        <p className="mt-1 line-clamp-2 text-sm font-semibold text-foreground">{p.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{p.client_name ?? "No client assigned"}</p>
+                      </div>
+                      <span className={`inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${sc.className}`}>
+                        <Icon className="h-3 w-3" />
+                        {p.status === "approved" && p.accepted_signed_at ? "Executed" : sc.label}
+                      </span>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                      <div className="rounded-md bg-muted/40 p-2">
+                        <span className="block text-muted-foreground">Amount</span>
+                        <span className="font-mono font-semibold">{fmtMoney(amount)}</span>
+                      </div>
+                      <div className="rounded-md bg-muted/40 p-2">
+                        <span className="block text-muted-foreground">Valid until</span>
+                        <span className="font-medium">{fmtDate(p.valid_until)}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {p.status === "approved" && (
+                        <Button
+                          size="sm"
+                          className="h-9 flex-1 bg-emerald-700 text-white hover:bg-emerald-800"
+                          onClick={event => { event.stopPropagation(); navigate(`/projects/${projectId}/financials/client-invoices?new=1&proposal=${p.id}`); }}
+                        >
+                          <Receipt className="mr-1.5 h-3.5 w-3.5" /> Invoice
+                        </Button>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 flex-1"
+                        onClick={event => { event.stopPropagation(); navigate(`/projects/${projectId}/financials/proposals/${p.id}`); }}
+                      >
+                        <ExternalLink className="mr-1.5 h-3.5 w-3.5" /> Open
+                      </Button>
+                    </div>
+                  </button>
+                );
+              })}
+              <div className="rounded-lg border bg-muted/30 p-3 text-right text-sm font-semibold">
+                Total approved <span className="font-mono text-emerald-700">{fmtMoney(approvedValue)}</span>
+              </div>
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/40 text-xs text-muted-foreground uppercase tracking-wide">
@@ -302,6 +362,7 @@ export default function ProposalsPage() {
                 <tfoot><tr className="border-t bg-muted/60 font-bold"><td colSpan={3} className="p-3 text-right">Total Approved</td><td className="p-3 text-right font-mono text-emerald-600">{fmtMoney(approvedValue)}</td><td colSpan={4} /></tr></tfoot>
               </table>
             </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -218,16 +218,16 @@ export default function InvoicesPage() {
     : null;
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl space-y-6">
+    <div className="mx-auto w-full max-w-[1800px] space-y-6 px-3 py-4 sm:px-6 lg:px-8">
       <FinancialSubNav />
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Invoices</h1>
           <p className="text-muted-foreground text-sm">Your pay applications to the owner, and subcontractor invoices to you.</p>
         </div>
-        <div className="flex gap-2">
-          <Button asChild>
+        <div className="flex w-full gap-2 sm:w-auto">
+          <Button asChild className="w-full sm:w-auto">
             <Link to={`/projects/${projectId}/financials/vendor-inbox`}>
               <Inbox className="h-4 w-4 mr-2" /> Request / Upload Invoice
             </Link>

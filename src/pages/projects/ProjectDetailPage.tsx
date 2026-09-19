@@ -796,7 +796,7 @@ export default function ProjectDetailPage() {
                         return (
                           <button
                             key={tab.value}
-                            onClick={() => (isPermits ? openPermitScan() : setActiveTab(tab.value))}
+                            onClick={() => setActiveTab(tab.value)}
                             className={cn(
                               'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 text-left group relative',
                               isActive
@@ -820,7 +820,7 @@ export default function ProjectDetailPage() {
                             <span className="flex-1 truncate">{tab.label}</span>
                             {isPermits && (
                               <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/15 px-1.5 py-0.5 rounded-full shrink-0">
-                                Scan
+                                Register
                               </span>
                             )}
                             {tab.badge !== null && (
@@ -848,7 +848,6 @@ export default function ProjectDetailPage() {
                       readiness={closeout.readiness}
                       payAppId={closeout.payAppId}
                       onNavigateTab={setActiveTab}
-                      onScanPermit={permitsEnabled ? openPermitScan : undefined}
                     />
                   )}
                   {permitsEnabled && (
@@ -1130,7 +1129,7 @@ export default function ProjectDetailPage() {
               })}
             </div>
 
-            {/* ── MOBILE: active-tab pill + Permits shortcut + badge jumps (<768px) ── */}
+            {/* ── MOBILE: active-tab pill + badge jumps (<768px) ── */}
             <div className="flex md:hidden items-stretch gap-2">
               <button onClick={() => setMobileNavOpen(true)} className="flex-1 flex items-center gap-3 px-4 py-3 rounded-xl border border-border bg-card hover:bg-accent/5 transition-colors text-left min-w-0">
                 <div className={cn('h-8 w-8 rounded-lg flex items-center justify-center shrink-0', GROUP_ICON_BG[activeTabDef.group])}><activeTabDef.icon className={cn('h-4 w-4', GROUP_ICON_COLORS[activeTabDef.group])} /></div>
@@ -1143,23 +1142,6 @@ export default function ProjectDetailPage() {
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
-              {permitsEnabled && (
-                <button
-                  type="button"
-                  onClick={openPermitScan}
-                  className={cn(
-                    'h-[52px] min-w-[72px] px-2 rounded-xl border-2 flex flex-col items-center justify-center gap-0.5 flex-shrink-0 transition-all',
-                    activeTab === 'permits'
-                      ? 'border-[var(--apas-sapphire)] bg-[var(--apas-sapphire)] text-white shadow-md'
-                      : 'border-[var(--apas-sapphire)]/50 bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]',
-                  )}
-                  aria-label="Scan or upload project permit"
-                  data-testid="mobile-permits-scan-shortcut"
-                >
-                  <Camera className="h-4 w-4" />
-                  <span className="text-[9px] font-bold leading-none">Scan</span>
-                </button>
-              )}
               {badgeTabs.filter((t) => t.value !== 'permits').slice(0, 1).map(tab => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.value;
@@ -1195,11 +1177,7 @@ export default function ProjectDetailPage() {
                               <button
                                 key={tab.value}
                                 onClick={() => {
-                                  if (isPermits) {
-                                    openPermitScan();
-                                  } else {
-                                    setActiveTab(tab.value);
-                                  }
+                                  setActiveTab(tab.value);
                                   setMobileNavOpen(false);
                                 }}
                                 className={cn(
@@ -1213,10 +1191,10 @@ export default function ProjectDetailPage() {
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <p className={cn('text-sm font-medium leading-tight truncate', isActive ? 'text-primary' : isPermits ? 'text-[hsl(215,25%,95%)]' : 'text-[hsl(215,25%,85%)]')}>
-                                    {isPermits ? 'Permits · Scan' : tab.label}
+                                    {tab.label}
                                   </p>
                                   {isPermits ? (
-                                    <p className="text-[10px] text-[var(--apas-sapphire)] font-semibold mt-0.5 leading-none">Camera / upload</p>
+                                    <p className="text-[10px] text-[var(--apas-sapphire)] font-semibold mt-0.5 leading-none">Register and capture</p>
                                   ) : tab.badge !== null ? (
                                     <p className="text-[10px] text-destructive font-medium mt-0.5 leading-none">{tab.badge} open</p>
                                   ) : null}
@@ -1242,7 +1220,6 @@ export default function ProjectDetailPage() {
                     readiness={closeout.readiness}
                     payAppId={closeout.payAppId}
                     onNavigateTab={setActiveTab}
-                    onScanPermit={permitsEnabled ? openPermitScan : undefined}
                   />
                 )}
                 {permitsEnabled && (

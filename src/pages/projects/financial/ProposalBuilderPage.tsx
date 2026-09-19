@@ -19,6 +19,7 @@ import {
   UploadFinancialProposalHardcopyDialog,
 } from "@/components/financial/FinancialProposalRecordDialogs";
 import { AttachmentField } from "@/components/common/AttachmentField";
+import { ResizableWorkspace } from "@/components/layout/ResizableWorkspace";
 import { useClient } from "@/hooks/useClients";
 import { useCurrentUserRole } from "@/hooks/useUserManagement";
 import { useProjectDirectory, type DirectoryEntry } from "@/hooks/useProjectDirectory";
@@ -118,6 +119,100 @@ function EditableProposalLine({ line, editable, directoryEntries, onSave, onRemo
   );
 }
 
+function MobileProposalLineCard({ line, editable, directoryEntries, onSave, onRemove }: {
+  line: FinancialProposalLine;
+  editable: boolean;
+  directoryEntries: DirectoryEntry[];
+  onSave: (line: FinancialProposalLine) => Promise<void>;
+  onRemove: () => void;
+}) {
+  const [draft, setDraft] = useState(line);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => setDraft(line), [line]);
+  const source = rowSource(draft);
+  const markup = rowMarkup(draft);
+  const clientValue = source + markup;
+  const changed = JSON.stringify(draft) !== JSON.stringify(line);
+  const patch = <K extends keyof FinancialProposalLine>(key: K, value: FinancialProposalLine[K]) => setDraft(current => ({ ...current, [key]: value }));
+  const setLeadType = (leadType: FinancialProposalLine["lead_type"]) => setDraft(current => ({
+    ...current,
+    lead_type: leadType,
+    lead_directory_entry_id: leadType === "apas" ? null : current.lead_directory_entry_id,
+    category: leadType === "contractor" ? "subcontract" : leadType === "consultant" ? "other" : current.category,
+  }));
+  async function save() { setSaving(true); try { await onSave(draft); } finally { setSaving(false); } }
+
+  const leadName = line.lead_type === "apas"
+    ? "APAS internal"
+    : (directoryEntries.find((entry) => entry.id === line.lead_directory_entry_id)
+        ? directoryLabel(directoryEntries.find((entry) => entry.id === line.lead_directory_entry_id)!)
+        : "Missing project directory entry");
+
+  if (!editable) {
+    return (
+      <div className="rounded-lg border bg-card p-3 shadow-sm">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-mono text-xs text-muted-foreground">Line {line.line_no}</p>
+            <p className="mt-1 text-sm font-semibold leading-snug">{line.description}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{line.lead_type === "apas" ? "APAS" : line.lead_type} · {leadName}</p>
+          </div>
+          <div className="text-right">
+            <p className="font-mono text-sm font-semibold">{fmt(rowClientValue(line))}</p>
+            <p className="text-[11px] text-muted-foreground">Markup {Number(line.markup_pct || 0)}%</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border bg-card p-3 shadow-sm">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <span className="font-mono text-xs font-semibold text-muted-foreground">Line {line.line_no}</span>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" disabled={!changed || saving} onClick={save} aria-label="Save proposal line"><Save className="h-3.5 w-3.5" /></Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onRemove} aria-label="Remove proposal line"><Trash2 className="h-3.5 w-3.5" /></Button>
+        </div>
+      </div>
+      <div className="grid gap-3">
+        <div><Label>Description</Label><Input className="mt-1 h-10 text-sm" value={draft.description} onChange={event => patch("description", event.target.value)} /></div>
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <Label>Lead</Label>
+            <select className="mt-1 h-10 w-full rounded-md border bg-background px-2 text-sm" value={draft.lead_type} onChange={event => setLeadType(event.target.value as FinancialProposalLine["lead_type"])}>
+              <option value="apas">APAS</option>
+              <option value="contractor">Contractor</option>
+              <option value="consultant">Consultant</option>
+            </select>
+          </div>
+          <div>
+            <Label>Markup</Label>
+            <Input className="mt-1 h-10 text-right text-sm" type="number" step="any" value={draft.markup_pct} onChange={event => patch("markup_pct", Number(event.target.value))} />
+          </div>
+        </div>
+        {draft.lead_type !== "apas" && (
+          <div>
+            <Label>Project team</Label>
+            <select className="mt-1 h-10 w-full rounded-md border bg-background px-2 text-sm" value={draft.lead_directory_entry_id ?? ""} onChange={event => patch("lead_directory_entry_id", event.target.value || null)}>
+              <option value="">Choose from project directory</option>
+              {directoryEntries.map((entry) => <option key={entry.id} value={entry.id}>{directoryLabel(entry)}</option>)}
+            </select>
+          </div>
+        )}
+        <div className="grid grid-cols-[1fr_auto] items-end gap-3">
+          <div><Label>Approved amount</Label><Input className="mt-1 h-10 text-right text-sm" type="number" step="any" value={draft.unit_cost} onChange={event => patch("unit_cost", Number(event.target.value))} /></div>
+          <div className="rounded-md bg-muted/40 px-3 py-2 text-right">
+            <p className="text-[11px] text-muted-foreground">Client value</p>
+            <p className="font-mono text-sm font-semibold">{fmt(clientValue)}</p>
+            {markup > 0 && <p className="text-[10px] text-emerald-700">profit {fmt(markup)}</p>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProposalBuilderPage() {
   const { projectId, proposalId } = useParams<{ projectId: string; proposalId: string }>();
   const navigate = useNavigate();
@@ -196,7 +291,7 @@ export default function ProposalBuilderPage() {
   ));
 
   if (proposalQuery.isLoading) return <div className="p-6 text-muted-foreground">Loading proposal…</div>;
-  if (!proposal) return <div className="container mx-auto max-w-6xl p-6"><FinancialSubNav /><p className="text-muted-foreground">Proposal not found.</p></div>;
+  if (!proposal) return <div className="mx-auto w-full max-w-[1800px] px-3 py-4 sm:px-6 lg:px-8"><FinancialSubNav /><p className="text-muted-foreground">Proposal not found.</p></div>;
 
   function startEditDetails() { setDraft({ ...proposal }); setEditingDetails(true); }
   async function saveDetails() {
@@ -347,7 +442,7 @@ export default function ProposalBuilderPage() {
   };
 
   return (
-    <div className="container mx-auto max-w-5xl space-y-6 p-6">
+    <div className="mx-auto w-full max-w-[1800px] space-y-6 px-3 py-4 sm:px-6 lg:px-8">
       <FinancialSubNav />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-2">
@@ -421,6 +516,15 @@ export default function ProposalBuilderPage() {
 
       <FinancialProposalWorkflow proposal={proposal} />
 
+      <ResizableWorkspace
+        className="items-start gap-6"
+        defaultPrimarySize={56}
+        defaultSecondarySize={44}
+        minPrimarySize={36}
+        minSecondarySize={32}
+        storageId="proposal-builder-workspace"
+      >
+      <div className="space-y-6">
       {editingDetails && (
         <Card><CardHeader><div className="flex items-center justify-between"><CardTitle>Edit proposal details</CardTitle><div className="flex gap-2"><Button variant="outline" onClick={() => setEditingDetails(false)}>Cancel</Button><Button onClick={saveDetails} disabled={proposalQuery.update.isPending}><Save className="mr-1.5 h-4 w-4" />Save</Button></div></div></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
           <div><Label>Proposal #</Label><Input value={draft.proposal_no || ""} onChange={event => setDraft(current => ({ ...current, proposal_no: event.target.value }))} /></div><div><Label>Title</Label><Input value={draft.title || ""} onChange={event => setDraft(current => ({ ...current, title: event.target.value }))} /></div>
@@ -473,7 +577,69 @@ export default function ProposalBuilderPage() {
           </p>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="grid gap-3 p-3 md:hidden">
+            {lines.map(line => (
+              <MobileProposalLineCard
+                key={line.id}
+                line={line}
+                editable={editable}
+                directoryEntries={directoryEntries}
+                onSave={saveLine}
+                onRemove={() => lineQuery.remove.mutate(line.id)}
+              />
+            ))}
+            {editable && (
+              <div className="rounded-lg border border-dashed bg-muted/20 p-3">
+                <p className="mb-3 text-sm font-semibold">Add approved value line</p>
+                <div className="grid gap-3">
+                  <div><Label>Description</Label><Input className="mt-1 h-10" value={description} onChange={event => setDescription(event.target.value)} placeholder="Approved line item description" /></div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label>Lead</Label>
+                      <select
+                        className="mt-1 h-10 w-full rounded-md border bg-background px-2 text-sm"
+                        value={newLine.lead_type ?? "apas"}
+                        onChange={event => setNewLine(current => ({
+                          ...current,
+                          lead_type: event.target.value as FinancialProposalLine["lead_type"],
+                          lead_directory_entry_id: event.target.value === "apas" ? null : current.lead_directory_entry_id ?? null,
+                          category: event.target.value === "contractor" ? "subcontract" : current.category ?? "other",
+                        }))}
+                      >
+                        <option value="apas">APAS</option>
+                        <option value="contractor">Contractor</option>
+                        <option value="consultant">Consultant</option>
+                      </select>
+                    </div>
+                    <div><Label>Markup</Label><Input className="mt-1 h-10 text-right" type="number" value={newLine.markup_pct} onChange={event => setNewLine(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></div>
+                  </div>
+                  {(newLine.lead_type ?? "apas") !== "apas" && (
+                    <div>
+                      <Label>Project team</Label>
+                      <select
+                        className="mt-1 h-10 w-full rounded-md border bg-background px-2 text-sm"
+                        value={newLine.lead_directory_entry_id ?? ""}
+                        onChange={event => setNewLine(current => ({ ...current, lead_directory_entry_id: event.target.value || null }))}
+                      >
+                        <option value="">Choose from project directory</option>
+                        {directoryEntries.map((entry) => <option key={entry.id} value={entry.id}>{directoryLabel(entry)}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-[1fr_auto] items-end gap-3">
+                    <div><Label>Approved amount</Label><Input className="mt-1 h-10 text-right" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></div>
+                    <Button className="h-10" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="mr-1.5 h-4 w-4" />Add</Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+              <div className="flex justify-between text-muted-foreground"><span>Source cost subtotal</span><span className="font-mono">{fmt(totals.sourceSubtotal)}</span></div>
+              <div className="mt-1 flex justify-between text-muted-foreground"><span>APAS row markup</span><span className="font-mono text-emerald-700">{fmt(totals.lineMarkup)}</span></div>
+              <div className="mt-2 flex justify-between border-t pt-2 font-bold text-[var(--apas-sapphire)]"><span>Grand total</span><span className="font-mono">{fmt(totals.total)}</span></div>
+            </div>
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[860px] text-sm">
               <thead>
                 <tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
@@ -560,6 +726,8 @@ export default function ProposalBuilderPage() {
         </CardContent>
       </Card>
 
+      </div>
+      <div className="space-y-6">
       <Card><CardHeader><div className="flex flex-wrap items-center justify-between gap-2"><div><CardTitle>{executed ? "Executed proposal document" : "Proposal document"}</CardTitle><p className="mt-1 text-xs text-muted-foreground">{executed ? "The final client-signed PDF below is the primary document of record." : proposal.submitted_signed_at ? `Signed by APAS ${new Date(proposal.submitted_signed_at).toLocaleDateString()}.` : "Review the document, then sign to lock this version."}</p></div><div className="flex gap-2">{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />{executed ? "Executed & locked" : "Signed version"}</Badge>}</div></div></CardHeader><CardContent className="space-y-3">
         <div className="flex flex-wrap gap-2">
           {editable && <Button variant="outline" onClick={startEditDetails}><Pencil className="mr-1.5 h-4 w-4" />Edit proposal</Button>}
@@ -575,6 +743,8 @@ export default function ProposalBuilderPage() {
       </CardContent></Card>
 
       <Card><CardContent className="flex items-center justify-between p-4"><div><p className="font-medium">Record controls</p><p className="text-sm text-muted-foreground">Signed proposals remain locked. Amend creates an auditable editable version.</p></div><Button variant="ghost" className="text-destructive hover:text-destructive" onClick={removeProposal} disabled={proposalQuery.remove.isPending}><Trash2 className="mr-1.5 h-4 w-4" />Delete proposal</Button></CardContent></Card>
+      </div>
+      </ResizableWorkspace>
 
       <FinancialProposalSignDialog open={signOpen} onOpenChange={setSignOpen} proposal={proposal} lines={lines} projectName={projectName} client={client} onSigned={refresh} />
       <SendFinancialProposalDialog open={sendOpen} onOpenChange={setSendOpen} proposal={proposal} lines={lines} projectName={projectName} client={client} onSent={refresh} />

@@ -15,7 +15,7 @@ export default function ClientInvoicesPage() {
   const { data: project, isLoading } = useProject(projectId ?? null);
 
   return (
-    <div className="container mx-auto p-6 max-w-6xl space-y-4">
+    <div className="mx-auto w-full max-w-[1800px] space-y-4 px-3 py-4 sm:px-6 lg:px-8">
       <FinancialSubNav />
       {isLoading || !projectId ? (
         <div className="space-y-3">
