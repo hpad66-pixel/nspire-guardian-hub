@@ -257,7 +257,7 @@ export default function AuthPage() {
       </div>
 
       {/* ── RIGHT: Sign-in form ── */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12 bg-[#f8f6ef] border-l border-[#d8d4c7]">
+      <div className="flex-1 flex items-center justify-center bg-[#f8f6ef] p-4 sm:p-6 md:p-12 border-l border-[#d8d4c7]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -265,7 +265,7 @@ export default function AuthPage() {
           className="w-full max-w-md"
         >
           {/* Mobile wordmark */}
-          <div className="lg:hidden flex flex-col items-center mb-10">
+          <div className="lg:hidden flex flex-col items-center mb-8 sm:mb-10">
             <div className="mb-3 grid h-12 w-12 place-items-center border border-[#c89443]/45 bg-[#c89443]/10 text-[11px] font-black tracking-[0.14em] text-[#8a6427]">
               POS
             </div>
@@ -275,7 +275,7 @@ export default function AuthPage() {
           </div>
 
           {/* Card */}
-          <div className="bg-card border border-[#d8d4c7] p-8 shadow-sm">
+          <div className="bg-card border border-[#d8d4c7] p-5 shadow-sm sm:p-8">
             <div className="mb-7">
               <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-[#8a6427]">Secure sign in</p>
               <h1 className="font-display text-4xl font-medium tracking-normal text-foreground mb-2">
@@ -292,7 +292,7 @@ export default function AuthPage() {
               </p>
             </div>
 
-            <div className="mb-6 rounded-2xl border border-[#d8d4c7] bg-[#f8f6ef] p-2">
+            <div className="mb-6 rounded-2xl border border-[#d8d4c7] bg-[#f8f6ef] p-1.5 sm:p-2">
               <p className="px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                 What are you opening?
               </p>
@@ -308,7 +308,7 @@ export default function AuthPage() {
                       onClick={() => setAccessMode(mode)}
                       aria-label={`Choose ${option.title} access`}
                       className={cn(
-                        'flex min-h-[74px] items-start gap-3 rounded-xl border p-3 text-left transition-all',
+                        'flex min-h-[74px] items-start gap-2.5 rounded-xl border p-2.5 text-left transition-all sm:gap-3 sm:p-3',
                         active
                           ? 'border-[#c89443] bg-white shadow-sm'
                           : 'border-transparent bg-transparent hover:border-[#d8d4c7] hover:bg-white/60',
@@ -333,7 +333,7 @@ export default function AuthPage() {
                         <span className="mt-1 block text-xs leading-snug text-muted-foreground">{option.description}</span>
                       </span>
                       {active && (
-                        <span className="mt-1 rounded-full bg-[#0b3a30] px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white">
+                        <span className="mt-1 hidden rounded-full bg-[#0b3a30] px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white sm:inline-flex">
                           Selected
                         </span>
                       )}
