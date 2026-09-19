@@ -23,6 +23,10 @@ vi.mock("@/hooks/useProjectFinancials", () => ({
   }),
 }));
 
+vi.mock("@/hooks/useFinancialProposals", () => ({
+  useFinancialProposals: () => ({ data: [] }),
+}));
+
 import { FinancialOverview } from "../FinancialOverview";
 
 describe("FinancialOverview dashboard", () => {
