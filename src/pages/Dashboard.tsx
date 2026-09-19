@@ -12,7 +12,7 @@ import {
   Settings2, Eye, EyeOff, RotateCcw, Plus,
   MessageCircle, ClipboardList, BarChart3, Sunrise, HardHat, Lightbulb,
   FileText, Inbox, Phone, LayoutDashboard, Sparkles, Compass,
-  Shield, Gauge, Contact, Files, Link2,
+  Shield, Gauge, Contact, Files, Link2, Smartphone, Camera, ReceiptText,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -272,6 +272,126 @@ function ZoneSection({
   );
 }
 
+function MobileDailyCommand({
+  activeProjects,
+  openIssues,
+  unreadMessages,
+  hasClientPortal,
+  onNavigate,
+}: {
+  activeProjects: number;
+  openIssues: number;
+  unreadMessages: number;
+  hasClientPortal: boolean;
+  onNavigate: (path: string) => void;
+}) {
+  const actions = [
+    {
+      label: 'My Day',
+      detail: 'Your tasks first',
+      icon: Sunrise,
+      tone: 'bg-[var(--apas-emerald)]/12 text-[var(--apas-emerald)]',
+      path: '/my-day',
+      count: null,
+    },
+    {
+      label: 'Projects',
+      detail: 'Open the job',
+      icon: FolderKanban,
+      tone: 'bg-[var(--apas-sapphire)]/12 text-[var(--kind-consulting)]',
+      path: '/projects',
+      count: activeProjects,
+    },
+    {
+      label: 'Proposals & invoices',
+      detail: 'Choose a project first',
+      icon: ReceiptText,
+      tone: 'bg-[var(--apas-amber)]/16 text-[var(--apas-amber)]',
+      path: '/projects',
+      count: null,
+    },
+    {
+      label: 'Field proof',
+      detail: 'Photos, walks, reports',
+      icon: Camera,
+      tone: 'bg-[var(--apas-rose)]/10 text-[var(--apas-rose)]',
+      path: '/site-accountability',
+      count: null,
+    },
+    {
+      label: 'Messages',
+      detail: 'Team updates',
+      icon: MessageCircle,
+      tone: 'bg-[var(--apas-sapphire)]/12 text-[var(--apas-sapphire)]',
+      path: '/messages',
+      count: unreadMessages,
+    },
+    {
+      label: 'Client portals',
+      detail: 'Owner-facing access',
+      icon: ShieldCheck,
+      tone: 'bg-primary/10 text-primary',
+      path: hasClientPortal ? '/portals' : '/projects',
+      count: null,
+    },
+  ];
+
+  return (
+    <section className="lg:hidden rounded-[1.4rem] border border-border/70 bg-card p-4 shadow-sm">
+      <div className="mb-4 flex items-start gap-3">
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-foreground">
+          <Smartphone className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">Mobile command</p>
+          <h2 className="font-display text-xl font-bold tracking-tight">What do you need to do?</h2>
+          <p className="mt-1 text-sm leading-snug text-muted-foreground">
+            Big touch targets for the work your team uses every day.
+          </p>
+        </div>
+      </div>
+
+      {openIssues > 0 && (
+        <button
+          type="button"
+          onClick={() => onNavigate('/issues')}
+          className="mb-3 flex w-full items-center justify-between gap-3 rounded-2xl border border-[var(--apas-rose)]/25 bg-[var(--apas-rose)]/5 p-3 text-left"
+        >
+          <span className="min-w-0">
+            <span className="block text-sm font-bold text-[var(--apas-rose)]">Fix open issues first</span>
+            <span className="block text-xs text-muted-foreground">{openIssues} active issue{openIssues === 1 ? '' : 's'} need attention.</span>
+          </span>
+          <ArrowRight className="h-4 w-4 shrink-0 text-[var(--apas-rose)]" />
+        </button>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        {actions.map((action) => (
+          <button
+            key={action.label}
+            type="button"
+            onClick={() => onNavigate(action.path)}
+            className="min-h-[112px] rounded-2xl border border-border/65 bg-muted/30 p-3 text-left active:scale-[0.98]"
+          >
+            <span className={cn('mb-3 grid h-10 w-10 place-items-center rounded-xl', action.tone)}>
+              <action.icon className="h-5 w-5" />
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="text-sm font-bold leading-tight">{action.label}</span>
+              {typeof action.count === 'number' && action.count > 0 && (
+                <span className="rounded-full bg-primary/10 px-1.5 text-[10px] font-black tabular-nums text-primary">
+                  {action.count > 99 ? '99+' : action.count}
+                </span>
+              )}
+            </span>
+            <span className="mt-1 block text-xs leading-snug text-muted-foreground">{action.detail}</span>
+          </button>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 // ─── Main Dashboard ─────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -306,6 +426,7 @@ export default function Dashboard() {
   const activeProjects = activeProjectsList.length;
   const openWOs = useMemo(() => workOrders.filter(w => !['completed', 'verified', 'closed', 'rejected'].includes(w.status)).length, [workOrders]);
   const totalAlerts = counts.critical + counts.warnings;
+  const hasClientPortal = isModuleEnabled('clientPortalEnabled');
 
   const today = format(new Date(), 'EEEE, MMMM d');
   const workspaceName = branding?.company_name ?? 'Your Workspace';
@@ -565,6 +686,14 @@ export default function Dashboard() {
       </section>
 
       <div className="space-y-8 p-4 sm:p-6 max-w-7xl mx-auto">
+        <MobileDailyCommand
+          activeProjects={activeProjects}
+          openIssues={openIssues}
+          unreadMessages={unreadMessages}
+          hasClientPortal={hasClientPortal}
+          onNavigate={navigate}
+        />
+
         {/* Pulse metrics */}
         {isVisible('kpi-strip') && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

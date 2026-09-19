@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { AUTH0_ENABLED } from '@/lib/auth/auth0';
-import { Loader2, Landmark, Siren, FileCheck2, Headphones, FileSearch, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Loader2, Landmark, Siren, FileCheck2, Headphones, FileSearch, ShieldCheck, ArrowRight, HardHat, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -26,14 +27,56 @@ const signalRows = [
   ['Client portal', 'Secure', 'Owner view updated'],
 ];
 
+type AccessMode = 'team' | 'client' | 'partner';
+
+const ACCESS_MODES: Record<AccessMode, {
+  title: string;
+  eyebrow: string;
+  description: string;
+  destination: string;
+  icon: typeof Users;
+}> = {
+  client: {
+    title: 'Client / Owner',
+    eyebrow: 'Private project portal',
+    description: 'Approvals, reports, updates, pay apps, documents, and walkthrough proof.',
+    destination: '/owner-portal',
+    icon: ShieldCheck,
+  },
+  team: {
+    title: 'APAS Team',
+    eyebrow: 'Internal workspace',
+    description: 'Projects, proposals, invoices, field work, messages, and admin controls.',
+    destination: '/dashboard',
+    icon: Users,
+  },
+  partner: {
+    title: 'Contractor / Partner',
+    eyebrow: 'Vendor workspace',
+    description: 'Commitments, invoices, RFIs, submittals, punch lists, and required documents.',
+    destination: '/sub-portal',
+    icon: HardHat,
+  },
+};
+
+function modeFromParams(portal: string | null, next: string | null): AccessMode {
+  if (portal === 'client' || next?.startsWith('/owner-portal')) return 'client';
+  if (portal === 'partner' || portal === 'subcontractor' || next?.startsWith('/sub-portal')) return 'partner';
+  return 'team';
+}
+
 export default function AuthPage() {
   const { user, loading, signIn, signInWithAuth0 } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedPath = searchParams.get('next');
   const safeNext = requestedPath?.startsWith('/') && !requestedPath.startsWith('//') ? requestedPath : null;
-  const isClientPortal = searchParams.get('portal') === 'client' || safeNext?.startsWith('/owner-portal') === true;
-  const destination = safeNext ?? (isClientPortal ? '/owner-portal' : '/dashboard');
+  const [accessMode, setAccessMode] = useState<AccessMode>(() => modeFromParams(searchParams.get('portal'), safeNext));
+  const selectedAccess = ACCESS_MODES[accessMode];
+  const isClientPortal = accessMode === 'client';
+  const isPartnerPortal = accessMode === 'partner';
+  const safeNextMode = safeNext ? modeFromParams(null, safeNext) : null;
+  const destination = safeNext && safeNextMode === accessMode ? safeNext : selectedAccess.destination;
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [auth0Pending, setAuth0Pending]   = useState<'login' | 'signup' | null>(null);
   const [showPasswordForm, setShowPasswordForm] = useState(!AUTH0_ENABLED);
@@ -55,7 +98,7 @@ export default function AuthPage() {
 
   const handleAuth0 = async (mode: 'login' | 'signup') => {
     setAuth0Pending(mode);
-    const { error } = await signInWithAuth0({ mode, next: safeNext ?? undefined });
+    const { error } = await signInWithAuth0({ mode, next: destination });
     // On success the browser is already navigating to Auth0; only a failure
     // returns here, so the pending state is cleared exactly when it should be.
     if (error) {
@@ -236,15 +279,68 @@ export default function AuthPage() {
             <div className="mb-7">
               <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-[#8a6427]">Secure sign in</p>
               <h1 className="font-display text-4xl font-medium tracking-normal text-foreground mb-2">
-                {isClientPortal ? 'Secure client access' : 'Welcome back'}
+                {isClientPortal ? 'Secure client access' : isPartnerPortal ? 'Secure partner access' : 'Welcome back'}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {isClientPortal
                   ? 'Sign in with the account connected to your private project portal'
+                  : isPartnerPortal
+                    ? 'Sign in with the account connected to your contractor or consultant workspace'
                   : AUTH0_ENABLED
                     ? 'Use your secure workspace identity to continue'
                     : 'Sign in to access your Proj OS workspace'}
               </p>
+            </div>
+
+            <div className="mb-6 rounded-2xl border border-[#d8d4c7] bg-[#f8f6ef] p-2">
+              <p className="px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                What are you opening?
+              </p>
+              <div className="grid gap-2">
+                {(Object.keys(ACCESS_MODES) as AccessMode[]).map((mode) => {
+                  const option = ACCESS_MODES[mode];
+                  const Icon = option.icon;
+                  const active = accessMode === mode;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setAccessMode(mode)}
+                      aria-label={`Choose ${option.title} access`}
+                      className={cn(
+                        'flex min-h-[74px] items-start gap-3 rounded-xl border p-3 text-left transition-all',
+                        active
+                          ? 'border-[#c89443] bg-white shadow-sm'
+                          : 'border-transparent bg-transparent hover:border-[#d8d4c7] hover:bg-white/60',
+                      )}
+                      aria-pressed={active}
+                    >
+                      <span
+                        className={cn(
+                          'grid h-10 w-10 shrink-0 place-items-center rounded-xl border',
+                          active
+                            ? 'border-[#c89443]/35 bg-[#c89443]/12 text-[#8a6427]'
+                            : 'border-border bg-background text-muted-foreground',
+                        )}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[11px] font-black uppercase tracking-[0.13em] text-muted-foreground">
+                          {option.eyebrow}
+                        </span>
+                        <span className="mt-0.5 block text-sm font-bold text-foreground">{option.title}</span>
+                        <span className="mt-1 block text-xs leading-snug text-muted-foreground">{option.description}</span>
+                      </span>
+                      {active && (
+                        <span className="mt-1 rounded-full bg-[#0b3a30] px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white">
+                          Selected
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
 
             {/* APAS ID (Auth0 Universal Login) — the front door across products */}
@@ -258,7 +354,7 @@ export default function AuthPage() {
                     : ('Continue securely')}
                 </button>
 
-                {!isClientPortal && (
+                {accessMode === 'team' && (
                   <button
                     type="button" onClick={() => handleAuth0('signup')} disabled={auth0Pending !== null}
                     className="w-full h-12 rounded-xl text-sm font-semibold text-foreground bg-background border border-input transition-colors hover:bg-muted disabled:opacity-60 flex items-center justify-center gap-2">
@@ -310,12 +406,12 @@ export default function AuthPage() {
                 </div>
                 <button type="submit" disabled={isSubmitting}
                   className="w-full h-12 rounded-xl text-sm font-semibold text-primary-foreground bg-primary transition-opacity hover:opacity-90 disabled:opacity-60 flex items-center justify-center gap-2 mt-2">
-                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : ('Sign in to Proj OS')}
+                  {isSubmitting ? (<><Loader2 className="h-4 w-4 animate-spin" /> Signing in...</>) : (`Sign in as ${selectedAccess.title}`)}
                 </button>
             </form>
             )}
 
-            {!isClientPortal && <p className="text-xs text-center mt-5 text-muted-foreground">
+            {accessMode === 'team' && <p className="text-xs text-center mt-5 text-muted-foreground">
               {AUTH0_ENABLED
                 ? 'Invited to an existing workspace? Open the private invitation your administrator sent you.'
                 : 'New accounts are created by a workspace administrator and activated from a private invitation.'}
@@ -323,6 +419,11 @@ export default function AuthPage() {
             {isClientPortal && (
               <p className="text-xs text-center mt-5 text-muted-foreground">
                 First visit? Open the private invitation your project team sent you. No separate registration is required.
+              </p>
+            )}
+            {isPartnerPortal && (
+              <p className="text-xs text-center mt-5 text-muted-foreground">
+                First visit? Use the contractor or consultant invitation tied to your project team role.
               </p>
             )}
           </div>

@@ -287,6 +287,10 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
   const showTraining = isModuleEnabled('trainingHubEnabled');
   const showCockpit = isModuleEnabled('cockpitEnabled');
   const showClientPortals = isModuleEnabled('clientPortalEnabled');
+  const isProjects =
+    isModuleEnabled('constructionEnabled') ||
+    isModuleEnabled('consultingEnabled') ||
+    isModuleEnabled('projectsEnabled');
   const canViewDailyReports = isModuleEnabled('reportsEnabled') && (canView('reports') || isAdminOrOwner);
   const { data: hasEnabledWaterIntel = false } = useWaterIntelAvailability(showPropertyOps);
   const showWaterIntelligence = showPropertyOps && (isAdminOrOwner || hasEnabledWaterIntel);
@@ -368,6 +372,15 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
               title="Client Portals"
               subtitle="External access"
               onClick={() => go('/portals')}
+            />
+          )}
+          {isProjects && (
+            <DrawerTile
+              icon={<CircleDollarSign className={iconClass} />}
+              iconBg={commIconBg}
+              title="Money Desk"
+              subtitle="Proposals, invoices & billing"
+              onClick={() => go('/projects')}
             />
           )}
           {hasSiteAccountability && (

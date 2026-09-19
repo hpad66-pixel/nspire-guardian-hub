@@ -36,6 +36,10 @@ test.describe('Mobile responsive + downloadable PWA', () => {
   test('auth page stays within the phone viewport (no body horizontal scroll)', async ({ page }) => {
     await page.goto('/auth');
     await page.waitForLoadState('domcontentloaded');
+    await expect(page.getByText(/What are you opening/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /Choose Client \/ Owner access/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Choose APAS Team access/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Choose Contractor \/ Partner access/i })).toBeVisible();
     const overflow = await page.evaluate(() => {
       const doc = document.documentElement;
       return {
