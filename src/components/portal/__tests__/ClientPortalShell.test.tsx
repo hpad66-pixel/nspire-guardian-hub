@@ -3,6 +3,10 @@ import { render, screen, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ClientPortalShell } from "../ClientPortalShell";
 
+const mockPortalState = vi.hoisted(() => ({
+  portalKind: "owner" as "main" | "owner",
+}));
+
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: { email: "owner@example.com", user_metadata: { full_name: "Pat Owner" } },
@@ -14,7 +18,7 @@ vi.mock("@/hooks/usePortals", () => ({
   useClientPortalContext: () => ({
     data: { client_name: "Glorieta HOA", portal_name: "Glorieta", project_name: "Sewer" },
   }),
-  useMyPortalKind: () => ({ data: "owner" }),
+  useMyPortalKind: () => ({ data: mockPortalState.portalKind }),
   useOwnerPortalData: () => ({
     isLoading: false,
     data: {
@@ -23,16 +27,18 @@ vi.mock("@/hooks/usePortals", () => ({
         { id: "c2", project_id: "p2", title: "PC-02", project_name: "Stucco repairs" },
       ],
       projects: [
-        { id: "p1", name: "Sewer close-out", client_id: "r4" },
-        { id: "p2", name: "Stucco repairs", client_id: "r4" },
-        { id: "p3", name: "Stormdrain Maintenence", client_id: "r4" },
+        { id: "p1", name: "Sewer close-out", client_id: "r4", client_name: "R4 Capital" },
+        { id: "p2", name: "Stucco repairs", client_id: "r4", client_name: "R4 Capital" },
+        { id: "p3", name: "Stormdrain Maintenence", client_id: "r4", client_name: "R4 Capital" },
         {
           id: "p4",
           name: "Glorieta Gardens — Site Accountability",
           client_id: "r4",
+          client_name: "R4 Capital",
           status: "active",
           program_meta: { feature_key: "site_accountability", owner_navigation_priority: true },
         },
+        { id: "p5", name: "Larkin MRI", client_id: "larkin", client_name: "Larkin Consulting" },
       ],
       pendingOcos: [],
       pendingPayApps: [],
@@ -56,6 +62,7 @@ function renderAt(path: string) {
 describe("ClientPortalShell project tabs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockPortalState.portalKind = "owner";
   });
 
   it("renders a tab for each of the client's projects", () => {
@@ -86,5 +93,14 @@ describe("ClientPortalShell project tabs", () => {
       "href",
       "/owner-portal/projects/p4/accountability",
     );
+  });
+
+  it("groups the APAS owner preview by client instead of hiding other clients", () => {
+    mockPortalState.portalKind = "main";
+    renderAt("/owner-portal/projects/p1");
+    expect(screen.getByTestId("owner-portal-client-group-r4")).toHaveTextContent("R4 Capital");
+    expect(screen.getByTestId("owner-portal-client-group-larkin")).toHaveTextContent("Larkin Consulting");
+    expect(screen.getByTestId("owner-portal-project-tab-p1")).toHaveTextContent("Sewer close-out");
+    expect(screen.getByTestId("owner-portal-project-tab-p5")).toHaveTextContent("Larkin MRI");
   });
 });

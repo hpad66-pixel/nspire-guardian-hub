@@ -215,6 +215,23 @@
   text-transform: uppercase;
   opacity: 0.72;
 }
+.client-portal-project-group {
+  display: grid;
+  gap: 7px;
+}
+.client-portal-project-group + .client-portal-project-group {
+  margin-top: 13px;
+  padding-top: 13px;
+  border-top: 1px solid #e9e1cf;
+}
+.client-portal-project-group > p {
+  margin: 0 4px;
+  color: #8a7646;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
 .client-portfolio { margin: 8px 0 28px; }
 .client-portfolio-grid {
   display: grid;

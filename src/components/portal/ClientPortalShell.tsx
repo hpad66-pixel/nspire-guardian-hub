@@ -82,6 +82,27 @@ type PortalNavEntry = {
   hash?: boolean;
 };
 
+type PortalProjectTab = {
+  id: string;
+  name: string;
+  client_id?: string | null;
+  client_name?: string | null;
+  status?: string | null;
+};
+
+function groupProjectsByClient<T extends PortalProjectTab>(projects: T[]) {
+  const groups = new globalThis.Map<string, { key: string; label: string; projects: T[] }>();
+  for (const project of projects) {
+    const key = project.client_id ?? "unassigned";
+    const label = project.client_name
+      || (project.client_id ? `Client ${project.client_id.slice(0, 6)}` : "Unassigned client");
+    const group = groups.get(key) ?? { key, label, projects: [] };
+    group.projects.push(project);
+    groups.set(key, group);
+  }
+  return [...groups.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
 function PortalNavigationLinks({
   items,
   decisions,
@@ -151,10 +172,11 @@ export function ClientPortalShell() {
   const rememberedClientId = readRememberedOwnerPortalClient();
   const projects = useMemo(() => {
     if (portfolioClientId) return allProjects.filter(project => project.client_id === portfolioClientId);
-    if (portalKind === "owner") return allProjects;
+    if (portalKind === "owner" || portalKind === "main") return allProjects;
     const anchor = requestedProjectId ?? allProjects[0]?.id ?? null;
     return filterOwnerProjectsForClient(allProjects, anchor, portfolioClientId ?? rememberedClientId);
   }, [allProjects, portalKind, portfolioClientId, rememberedClientId, requestedProjectId]);
+  const projectGroups = useMemo(() => groupProjectsByClient(projects), [projects]);
   // Never silently fall back to projects[0] when a specific project was requested —
   // that made every client/preview see the same first contract.
   const matchedProject = projects.find((project) => project.id === requestedProjectId) ?? null;
@@ -307,22 +329,27 @@ export function ClientPortalShell() {
             <div className="client-portal-mobile-menu__projects" data-testid="owner-portal-mobile-projects">
               <p className="client-portal-rail__eyebrow">{companyName} portfolio</p>
               <div className="client-portal-project-tabs" role="tablist" aria-label="Mobile projects">
-                {projects.map((project, index) => {
-                  const selected = project.id === activeProjectId;
-                  return (
-                    <Link
-                      key={project.id}
-                      role="tab"
-                      aria-selected={selected}
-                      to={ownerPortalProjectSwitchPath(location.pathname, project.id) + location.hash}
-                      className={`client-portal-project-tab${selected ? " is-active" : ""}`}
-                    >
-                      <span className="client-portal-project-tab__number">{String(index + 1).padStart(2, "0")}</span>
-                      <span className="client-portal-project-tab__copy"><strong>{project.name}</strong>{project.status && <small>{project.status.replace(/_/g, " ")}</small>}</span>
-                      <ChevronRight aria-hidden />
-                    </Link>
-                  );
-                })}
+                {projectGroups.map((group) => (
+                  <div className="client-portal-project-group" key={group.key} data-testid={`owner-portal-client-group-${group.key}`}>
+                    <p>{group.label}</p>
+                    {group.projects.map((project, index) => {
+                      const selected = project.id === activeProjectId;
+                      return (
+                        <Link
+                          key={project.id}
+                          role="tab"
+                          aria-selected={selected}
+                          to={ownerPortalProjectSwitchPath(location.pathname, project.id) + location.hash}
+                          className={`client-portal-project-tab${selected ? " is-active" : ""}`}
+                        >
+                          <span className="client-portal-project-tab__number">{String(index + 1).padStart(2, "0")}</span>
+                          <span className="client-portal-project-tab__copy"><strong>{project.name}</strong>{project.status && <small>{project.status.replace(/_/g, " ")}</small>}</span>
+                          <ChevronRight aria-hidden />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             </div>
             <nav className="client-portal-mobile-menu__nav" aria-label="Mobile client portal">
@@ -345,23 +372,28 @@ export function ClientPortalShell() {
             </div>
             {projects.length > 1 ? (
               <div className="client-portal-project-tabs" data-testid="owner-portal-project-tabs" role="tablist" aria-label="Projects">
-                {projects.map((project, index) => {
-                  const selected = project.id === activeProjectId;
-                  return (
-                    <Link
-                      key={project.id}
-                      role="tab"
-                      aria-selected={selected}
-                      data-testid={`owner-portal-project-tab-${project.id}`}
-                      to={ownerPortalProjectSwitchPath(location.pathname, project.id) + location.hash}
-                      className={`client-portal-project-tab${selected ? " is-active" : ""}`}
-                    >
-                      <span className="client-portal-project-tab__number">{String(index + 1).padStart(2, "0")}</span>
-                      <span className="client-portal-project-tab__copy"><strong>{project.name}</strong>{project.status && <small>{project.status.replace(/_/g, " ")}</small>}</span>
-                      <ChevronRight aria-hidden />
-                    </Link>
-                  );
-                })}
+                {projectGroups.map((group) => (
+                  <div className="client-portal-project-group" key={group.key} data-testid={`owner-portal-client-group-${group.key}`}>
+                    <p>{group.label}</p>
+                    {group.projects.map((project, index) => {
+                      const selected = project.id === activeProjectId;
+                      return (
+                        <Link
+                          key={project.id}
+                          role="tab"
+                          aria-selected={selected}
+                          data-testid={`owner-portal-project-tab-${project.id}`}
+                          to={ownerPortalProjectSwitchPath(location.pathname, project.id) + location.hash}
+                          className={`client-portal-project-tab${selected ? " is-active" : ""}`}
+                        >
+                          <span className="client-portal-project-tab__number">{String(index + 1).padStart(2, "0")}</span>
+                          <span className="client-portal-project-tab__copy"><strong>{project.name}</strong>{project.status && <small>{project.status.replace(/_/g, " ")}</small>}</span>
+                          <ChevronRight aria-hidden />
+                        </Link>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
             ) : <strong className="client-portal-sidebar__single" data-testid="owner-portal-single-project">{projectName}</strong>}
           </div>
