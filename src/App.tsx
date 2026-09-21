@@ -201,6 +201,7 @@ const ContractorOnboardingPage = lazy(() => import('./pages/contractors/Contract
 const ContractorSettingsPage = lazy(() => import('./pages/contractors/ContractorSettingsPage'));
 const RespondPunchListPage = lazy(() => import('./pages/respond/RespondPunchListPage'));
 const ClientPortalPage = lazy(() => import('./pages/client/ClientPortalPage'));
+const ClientPortalMockPage = lazy(() => import('./pages/client/ClientPortalMockPage'));
 const CaptureUploadPage = lazy(() => import('./pages/CaptureUploadPage'));
 const BidSubmitPage = lazy(() => import('./pages/BidSubmitPage'));
 const SubPunchListsPage = lazy(() => import('./pages/portal/sub/SubPunchListsPage'));
@@ -311,6 +312,7 @@ const App = () => (
                      <Route path="/contractor/onboard/:token" element={<ContractorOnboardingPage />} />
                      <Route path="/respond/punch/:token" element={<RespondPunchListPage />} />
                      <Route path="/client/:token" element={<ClientPortalPage />} />
+                     <Route path="/client-portal-mock" element={<ClientPortalMockPage />} />
                      <Route path="/capture/:token" element={<CaptureUploadPage />} />
                      <Route path="/bid/:token" element={<BidSubmitPage />} />
                      <Route path="/water/:token" element={<WaterMagicLinkPage />} />
