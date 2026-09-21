@@ -15,6 +15,7 @@ type ClientPortalProjectContextValue = {
   contracts: OwnerPortalContract[];
   projects: OwnerPortalProjectTab[];
   selectedProjectId: string | null;
+  siteAccountabilityProjectId?: string | null;
   selectedContract: OwnerPortalContract | null;
   isLoading: boolean;
   setSelectedProjectId: (projectId: string) => void;

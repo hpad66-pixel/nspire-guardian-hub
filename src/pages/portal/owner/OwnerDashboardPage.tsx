@@ -112,6 +112,7 @@ function PortfolioStrip() {
 }
 
 function SiteAccountabilitySpotlight({ projectId, projectName }: { projectId: string; projectName: string }) {
+  const href = useOwnerPortalHref();
   const { data, isLoading } = useFieldAccountability(projectId);
   const items = data?.items ?? [];
   const open = items.filter((item) => !['verified', 'rejected', 'deferred'].includes(item.status)).length;
@@ -133,7 +134,7 @@ function SiteAccountabilitySpotlight({ projectId, projectName }: { projectId: st
             <PortalEvidenceMetric label="Open" value={open} loading={isLoading} icon={Clock3} />
             <PortalEvidenceMetric label="Your review" value={ownerReview} loading={isLoading} icon={ClipboardCheck} />
           </div>
-          <Link to={ownerPortalPath(projectId, '/accountability')} className="inline-flex h-11 items-center justify-center rounded-xl bg-amber-300 px-5 text-sm font-bold text-amber-950 transition hover:bg-amber-200">
+          <Link to={href('/accountability')} className="inline-flex h-11 items-center justify-center rounded-xl bg-amber-300 px-5 text-sm font-bold text-amber-950 transition hover:bg-amber-200">
             Review site evidence <ArrowRight className="ml-2 h-4 w-4" />
           </Link>
         </div>

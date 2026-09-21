@@ -41,13 +41,12 @@ import "@/pages/portal/client-portal.css";
 function portalNav(
   projectId: string | null,
   enabled: Set<string> = new Set(["overview", "updates", "schedule", "documents", "contract", "reports", "permits", "site-map", "operations", "accountability"]),
-  siteAccountabilityProjectId: string | null = null,
+  hasSiteAccountability = false,
 ) {
-  const accountabilityProjectId = siteAccountabilityProjectId ?? projectId;
   const primary = [
     { to: ownerPortalPath(projectId), label: "Overview", icon: Home, exact: true, key: "overview" },
     { to: ownerPortalPath(projectId, "", "#decisions"), label: "Decisions", icon: ClipboardCheck, hash: true, key: "overview" },
-    { to: ownerPortalPath(accountabilityProjectId, "/accountability"), label: "Site accountability", icon: ScanEye, key: "accountability", force: Boolean(siteAccountabilityProjectId) },
+    { to: ownerPortalPath(projectId, "/accountability"), label: "Site accountability", icon: ScanEye, key: "accountability", force: hasSiteAccountability },
     { to: ownerPortalPath(projectId, "/updates"), label: "Updates", icon: BellRing, key: "updates" },
     { to: ownerPortalPath(projectId, "/schedule"), label: "Schedule", icon: CalendarDays, key: "schedule" },
   ].filter((item) => item.force || enabled.has(item.key));
@@ -210,7 +209,7 @@ export function ClientPortalShell() {
   const { primary: primaryNavigation, secondary: secondaryNavigation } = portalNav(
     activeProjectId,
     enabledPortalModules,
-    siteAccountabilityProjectId,
+    Boolean(siteAccountabilityProjectId),
   );
   const meetingsClientId = portfolioClientId ?? selectedProject?.client_id;
   const portfolioNavigation: PortalNavEntry[] = meetingsClientId ? [{
@@ -261,6 +260,7 @@ export function ClientPortalShell() {
       contracts,
       projects,
       selectedProjectId: activeProjectId,
+      siteAccountabilityProjectId,
       selectedContract,
       isLoading: ownerLoading,
       setSelectedProjectId,

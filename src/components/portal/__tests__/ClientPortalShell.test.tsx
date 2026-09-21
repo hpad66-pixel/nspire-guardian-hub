@@ -86,12 +86,12 @@ describe("ClientPortalShell project tabs", () => {
     expect(screen.getByText("DOCS")).toBeInTheDocument();
   });
 
-  it("keeps Site Accountability visible and routes it to the dedicated property-wide record", () => {
+  it("keeps Site Accountability visible without moving the selected project", () => {
     renderAt("/owner-portal/projects/p1");
     const projectNavigation = screen.getByRole("navigation", { name: "Selected project" });
     expect(within(projectNavigation).getByRole("link", { name: "Site accountability" })).toHaveAttribute(
       "href",
-      "/owner-portal/projects/p4/accountability",
+      "/owner-portal/projects/p1/accountability",
     );
   });
 

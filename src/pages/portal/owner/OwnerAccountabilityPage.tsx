@@ -20,15 +20,16 @@ const CLOSED = new Set(['verified', 'rejected']);
 
 export default function OwnerAccountabilityPage() {
   const href = useOwnerPortalHref();
-  const { selectedProjectId: projectId, projects } = useClientPortalProject();
-  const { data, isLoading, error, updatePhotoCaption } = useFieldAccountability(projectId);
+  const { selectedProjectId: projectId, siteAccountabilityProjectId, projects } = useClientPortalProject();
+  const evidenceProjectId = siteAccountabilityProjectId ?? projectId;
+  const { data, isLoading, error, updatePhotoCaption } = useFieldAccountability(evidenceProjectId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [captureOpen, setCaptureOpen] = useState(false);
   const [showAllPhotos, setShowAllPhotos] = useState(false);
   const items = useMemo(() => data?.items ?? [], [data?.items]);
   const submittedPhotos = data?.untriagedPhotos ?? [];
   const selected = items.find((item) => item.id === selectedId) ?? null;
-  const projectName = projects.find((project) => project.id === projectId)?.name || 'your project';
+  const projectName = projects.find((project) => project.id === evidenceProjectId)?.name || 'your project';
   const walkthroughPath = href('/accountability');
   const walkthroughUrl = useMemo(() => {
     if (typeof window === 'undefined') return walkthroughPath;
@@ -41,7 +42,7 @@ export default function OwnerAccountabilityPage() {
   }))).sort((a, b) => new Date(b.photo.photo.taken_at || b.photo.photo.created_at).getTime()
     - new Date(a.photo.photo.taken_at || a.photo.photo.created_at).getTime()), [items]);
 
-  useEffect(() => setShowAllPhotos(false), [projectId]);
+  useEffect(() => setShowAllPhotos(false), [evidenceProjectId]);
 
   const view = useMemo(() => {
     const verified = items.filter((item) => item.status === 'verified');
@@ -56,7 +57,7 @@ export default function OwnerAccountabilityPage() {
     };
   }, [items]);
 
-  if (!projectId) return null;
+  if (!projectId || !evidenceProjectId) return null;
 
   return (
     <div className="mx-auto max-w-7xl space-y-5 px-3 pb-24 pt-4 sm:space-y-7 sm:px-6 sm:py-9" data-testid="owner-accountability-page">
@@ -131,7 +132,7 @@ export default function OwnerAccountabilityPage() {
             <OwnerMetric icon={Repeat2} label="Repeat" value={view.repeats} tone="violet" />
           </section>
 
-          <OwnerPhotoScopeReport key={projectId} projectId={projectId} projectName={projectName} photos={data?.allPhotos ?? []} items={items} audience="owner" />
+          <OwnerPhotoScopeReport key={evidenceProjectId} projectId={evidenceProjectId} projectName={projectName} photos={data?.allPhotos ?? []} items={items} audience="owner" />
 
           {allPhotos.length > 0 && (
             <section className="space-y-4" data-testid="owner-site-photo-library">
@@ -170,7 +171,7 @@ export default function OwnerAccountabilityPage() {
       )}
 
       <FieldAccountabilityDetail item={selected} open={Boolean(selected)} onOpenChange={(open) => { if (!open) setSelectedId(null); }} portalMode="owner" />
-      <FieldWalkCaptureDialog open={captureOpen} onOpenChange={setCaptureOpen} projectId={projectId} audience="owner" />
+      <FieldWalkCaptureDialog open={captureOpen} onOpenChange={setCaptureOpen} projectId={evidenceProjectId} audience="owner" />
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-emerald-200 bg-white/95 p-3 shadow-[0_-12px_35px_rgba(15,92,79,.16)] backdrop-blur sm:hidden">
         <Button className="h-12 w-full rounded-xl bg-[#0d6b57] text-base hover:bg-[#095746]" onClick={() => setCaptureOpen(true)}>
           <Camera className="mr-2 h-5 w-5" /> Start owner walk
