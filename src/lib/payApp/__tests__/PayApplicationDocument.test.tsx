@@ -128,7 +128,8 @@ describe("PayApplicationDocument", () => {
     expect(getAllByText(/FINAL INVOICE/i).length).toBeGreaterThanOrEqual(1);
     expect(getAllByText(/paid to date/i).length).toBeGreaterThanOrEqual(1);
     expect(getByText(/Unbilled \/ unbuilt contract balance/i)).toBeTruthy();
-    expect(getAllByText(/will not be billed/i).length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText(/warranty retainage/i).length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText(/tracked separately/i).length).toBeGreaterThanOrEqual(1);
     expect(getByText(/Certified amount for this application \(FINAL\)/i)).toBeTruthy();
     expect(getAllByText(/\$32,137\.99/).length).toBeGreaterThanOrEqual(1);
   });

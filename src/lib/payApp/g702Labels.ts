@@ -100,7 +100,7 @@ const FINAL_LINE_OVERRIDES: Partial<Record<G702LineKey, Pick<G702LineCopy, "labe
   },
   balance_to_finish: {
     label: "Unbilled / unbuilt contract balance (not billed)",
-    sub: "Line 3 − Line 4 (contract − completed). Retainage is already in Lines 5–6 — this leftover will not be billed; the FINAL invoice closes the project.",
+    sub: "Line 3 − Line 4 (contract − completed). This is the unbilled / unbuilt balance only; remaining warranty retainage is already in Lines 5–6 and is tracked separately for future release subject to applicable warranty conditions.",
   },
 };
 

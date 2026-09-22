@@ -16,8 +16,8 @@ describe("g702Labels", () => {
     expect(rows[7].label).toMatch(/FINAL/i);
     expect(rows[8].label).toMatch(/Unbilled|unbuilt/i);
     expect(rows[8].sub).toMatch(/Line 3.*Line 4/i);
-    expect(rows[8].sub).toMatch(/will not be billed/i);
-    expect(rows[8].sub).toMatch(/FINAL invoice closes the project/i);
+    expect(rows[8].sub).toMatch(/warranty retainage/i);
+    expect(rows[8].sub).toMatch(/tracked separately/i);
     expect(rows[6].sub).toMatch(/paid/i);
   });
 

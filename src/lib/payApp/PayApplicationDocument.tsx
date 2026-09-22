@@ -453,7 +453,9 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
               <div style={{ fontSize: 10.5, fontStyle: "italic", color: MUTE, marginTop: 2, marginBottom: 8, lineHeight: 1.35 }}>
                 Application is made for payment, as shown below, in connection with the Contract. Continuation Sheet is attached.
                 {isFinal
-                  ? " This is the FINAL invoice — any unbilled quantities or credits remaining on the Schedule of Values will not be billed, and the project will be closed upon payment."
+                  ? showPaymentReconciliation
+                    ? " This final paid reconciliation documents completed work, $0 unbilled / unbuilt balance, and $0 outstanding for this application; remaining warranty retainage is tracked separately for future release subject to applicable warranty conditions."
+                    : " This is the FINAL invoice — any unbilled quantities or credits remaining on the Schedule of Values will not be billed."
                   : ""}
               </div>
 
