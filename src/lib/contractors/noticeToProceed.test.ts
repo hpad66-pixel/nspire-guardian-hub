@@ -18,5 +18,7 @@ describe('Notice to Proceed release checks and letter',()=>{
     expect(html).toContain('A &amp; B'); expect(html).toContain('&lt;img');
     expect(html).not.toContain('<img'); expect(html).not.toContain('private@example.com');
     expect(html).toContain('$12,000.50'); expect(html).not.toContain('—');
+    expect(html).toContain('Hardeep Anand, PE');
+    expect(html).toContain('Authorized Representative');
   });
 });
