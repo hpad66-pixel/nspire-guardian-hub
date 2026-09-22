@@ -50,14 +50,15 @@ SELECT DISTINCT ON (li.id)
   li.tenant_id, li.project_id, li.prime_contract_id,
   li.item_no, li.kind, li.change_order_id, li.cost_code_id, li.budget_code,
   li.description, li.unit, li.scheduled_qty, li.unit_price, li.scheduled_value,
-  li.billing_treatment, li.sort_order,
+  li.sort_order,
   COALESCE(p.qty_to_date, 0)    AS qty_to_date,
   COALESCE(p.value_to_date, 0)  AS value_to_date,
   COALESCE(p.pct_complete, 0)   AS pct_complete,
   COALESCE(p.retainage, 0)      AS retainage,
   li.scheduled_qty   - COALESCE(p.qty_to_date, 0)   AS qty_remaining,
   li.scheduled_value - COALESCE(p.value_to_date, 0) AS value_remaining,
-  pa.pay_app_no AS latest_pay_app_no
+  pa.pay_app_no AS latest_pay_app_no,
+  li.billing_treatment
 FROM public.sov_line_items li
 LEFT JOIN public.pay_app_line_progress p ON p.sov_line_item_id = li.id
 LEFT JOIN public.prime_contract_pay_apps pa ON pa.id = p.pay_app_id
