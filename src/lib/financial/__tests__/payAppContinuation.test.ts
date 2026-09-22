@@ -8,6 +8,7 @@ import {
   seedContinuationRows,
   computeG702,
   computePaymentPosition,
+  grossRetainageForG703,
   shouldUseG702Snapshot,
   alignLineRetainageToCover,
   computeG703GrandTotals,
@@ -369,6 +370,30 @@ describe("computePaymentPosition", () => {
     const p = computePaymentPosition(zero, 0);
     expect(p.pctComplete).toBe(0);
     expect(Object.values(p).every((v) => v === 0)).toBe(true);
+  });
+});
+
+describe("grossRetainageForG703", () => {
+  it("returns null without a summary", () => {
+    expect(grossRetainageForG703(null)).toBeNull();
+    expect(grossRetainageForG703(undefined)).toBeNull();
+  });
+
+  it("prefers the explicit gross retainage field", () => {
+    expect(grossRetainageForG703({ gross_retainage_at_5_pct: 45168.471 })).toBe(45168.47);
+  });
+
+  it("reconstructs gross retainage from remaining plus released when needed", () => {
+    expect(grossRetainageForG703({
+      retainage_remaining_held: 22584.23,
+      retainage_released_this_app: 22584.24,
+      retainage_total: 22584.23,
+    })).toBe(45168.47);
+  });
+
+  it("falls back to retainage_total for ordinary pay apps", () => {
+    expect(grossRetainageForG703({ retainage_total: 34008.16 })).toBe(34008.16);
+    expect(grossRetainageForG703({ retainage_total: Number.NaN })).toBeNull();
   });
 });
 
