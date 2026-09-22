@@ -81,6 +81,22 @@ describe("useFinancialProposals", () => {
     ).rejects.toBeTruthy();
   });
 
+  it("create translates duplicate proposal numbers into a useful error", async () => {
+    const workspaceBuilder = makeBuilder({ data: { id: "ws-1" }, error: null });
+    const insertBuilder = makeBuilder({ data: null, error: { message: "duplicate key violates unique constraint" } as any });
+    __mock.from.mockImplementation(((table: string) =>
+      table === "workspaces" ? workspaceBuilder : insertBuilder) as any);
+
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+    await expect(
+      result.current.create.mutateAsync({
+        project_id: "p1",
+        title: "x",
+        proposal_no: "PROP-003",
+      } as any),
+    ).rejects.toThrow("PROP-003 already exists on this project.");
+  });
+
   it("update patches by id and stamps updated_at", async () => {
     const builder = makeBuilder({ data: null, error: null });
     __mock.from.mockReturnValue(builder);
@@ -101,6 +117,14 @@ describe("useFinancialProposals", () => {
     await expect(
       result.current.update.mutateAsync({ id: "pr1", status: "approved" } as any),
     ).rejects.toBeTruthy();
+  });
+
+  it("update translates duplicate proposal numbers into a useful error", async () => {
+    __mock.from.mockReturnValue(makeBuilder({ data: null, error: { message: "duplicate key violates unique constraint" } as any }));
+    const { result } = renderHookWithClient(() => useFinancialProposals("p1"));
+    await expect(
+      result.current.update.mutateAsync({ id: "pr1", proposal_no: "PROP-009" } as any),
+    ).rejects.toThrow("PROP-009 already exists on this project.");
   });
 
   it("remove deletes a proposal by id", async () => {

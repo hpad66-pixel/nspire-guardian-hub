@@ -19,6 +19,7 @@ import { Paperclip, Upload, ExternalLink, Trash2, FileText, Loader2 } from "luci
 export interface AttachmentFieldProps {
   url: string | null | undefined;
   onChange: (url: string | null) => void | Promise<void>;
+  onFileSelected?: (file: File) => void | Promise<void>;
   projectId: string;
   /** Sub-folder under the project, e.g. "change-orders", "pay-apps". */
   folder: string;
@@ -33,6 +34,7 @@ export interface AttachmentFieldProps {
 export function AttachmentField({
   url,
   onChange,
+  onFileSelected,
   projectId,
   folder,
   bucket = "daily-report-files",
@@ -58,6 +60,7 @@ export function AttachmentField({
       if (error) throw error;
       const publicUrl = supabase.storage.from(bucket).getPublicUrl(path).data.publicUrl;
       await onChange(publicUrl);
+      await onFileSelected?.(file);
       toast.success("File attached");
     } catch (e) {
       toast.error(`Upload failed: ${(e as Error).message}`);

@@ -20,6 +20,7 @@ import {
 } from "@/components/financial/FinancialProposalRecordDialogs";
 import { AttachmentField } from "@/components/common/AttachmentField";
 import { ResizableWorkspace } from "@/components/layout/ResizableWorkspace";
+import type { ExtractedProposalValueLine } from "@/lib/financial/proposalValueExtraction";
 import { useClient } from "@/hooks/useClients";
 import { useCurrentUserRole } from "@/hooks/useUserManagement";
 import { useProjectDirectory, type DirectoryEntry } from "@/hooks/useProjectDirectory";
@@ -43,7 +44,7 @@ const rowMarkup = (line: Pick<FinancialProposalLine, "quantity" | "unit_cost" | 
 const rowClientValue = (line: Pick<FinancialProposalLine, "quantity" | "unit_cost" | "markup_pct">) => rowSource(line) + rowMarkup(line);
 
 function statusClass(status: FinancialProposal["status"]) {
-  if (status === "approved") return "bg-emerald-100 text-emerald-800";
+  if (status === "approved") return "bg-[var(--apas-sapphire)]/15 text-[var(--apas-sapphire)]";
   if (status === "sent") return "bg-blue-100 text-blue-800";
   if (status === "rejected") return "bg-red-100 text-red-800";
   if (status === "expired") return "bg-amber-100 text-amber-800";
@@ -93,9 +94,9 @@ function EditableProposalLine({ line, editable, directoryEntries, onSave, onRemo
   return (
     <tr className="border-b last:border-0 bg-muted/5">
       <td className="p-2 font-mono text-xs text-muted-foreground">{line.line_no}</td>
-      <td className="p-2"><Input className="h-8 min-w-48 text-xs" value={draft.description} onChange={event => patch("description", event.target.value)} /></td>
+      <td className="p-2"><Input className="h-8 w-full min-w-0 text-xs" value={draft.description} onChange={event => patch("description", event.target.value)} /></td>
       <td className="p-2">
-        <select className="h-8 rounded-md border bg-background px-2 text-xs" value={draft.lead_type} onChange={event => setLeadType(event.target.value as FinancialProposalLine["lead_type"])}>
+        <select className="h-8 w-full rounded-md border bg-background px-2 text-xs" value={draft.lead_type} onChange={event => setLeadType(event.target.value as FinancialProposalLine["lead_type"])}>
           <option value="apas">APAS</option>
           <option value="contractor">Contractor</option>
           <option value="consultant">Consultant</option>
@@ -105,15 +106,15 @@ function EditableProposalLine({ line, editable, directoryEntries, onSave, onRemo
         {draft.lead_type === "apas" ? (
           <span className="inline-flex h-8 items-center rounded-md border bg-muted/40 px-2 text-xs font-medium">APAS internal</span>
         ) : (
-          <select className="h-8 min-w-52 rounded-md border bg-background px-2 text-xs" value={draft.lead_directory_entry_id ?? ""} onChange={event => patch("lead_directory_entry_id", event.target.value || null)}>
+          <select className="h-8 w-full min-w-0 rounded-md border bg-background px-2 text-xs" value={draft.lead_directory_entry_id ?? ""} onChange={event => patch("lead_directory_entry_id", event.target.value || null)}>
             <option value="">Choose from project directory</option>
             {directoryEntries.map((entry) => <option key={entry.id} value={entry.id}>{directoryLabel(entry)}</option>)}
           </select>
         )}
       </td>
-      <td className="p-2"><Input className="h-8 w-24 text-right text-xs" type="number" step="any" value={draft.unit_cost} onChange={event => patch("unit_cost", Number(event.target.value))} /></td>
-      <td className="p-2"><Input className="h-8 w-20 text-right text-xs" type="number" step="any" value={draft.markup_pct} onChange={event => patch("markup_pct", Number(event.target.value))} /></td>
-      <td className="p-2 text-right font-mono text-xs"><div>{fmt(clientValue)}</div>{markup > 0 && <div className="text-[10px] text-emerald-700">profit {fmt(markup)}</div>}</td>
+      <td className="p-2"><Input className="h-8 w-full min-w-0 text-right text-xs" type="number" step="any" value={draft.unit_cost} onChange={event => patch("unit_cost", Number(event.target.value))} /></td>
+      <td className="p-2"><Input className="h-8 w-full min-w-0 text-right text-xs" type="number" step="any" value={draft.markup_pct} onChange={event => patch("markup_pct", Number(event.target.value))} /></td>
+      <td className="p-2 text-right font-mono text-xs"><div>{fmt(clientValue)}</div>{markup > 0 && <div className="text-[10px] text-[var(--apas-sapphire)]">profit {fmt(markup)}</div>}</td>
       <td className="p-2"><div className="flex"><Button variant="ghost" size="icon" className="h-8 w-8" disabled={!changed || saving} onClick={save}><Save className="h-3.5 w-3.5" /></Button><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onRemove}><Trash2 className="h-3.5 w-3.5" /></Button></div></td>
     </tr>
   );
@@ -205,7 +206,7 @@ function MobileProposalLineCard({ line, editable, directoryEntries, onSave, onRe
           <div className="rounded-md bg-muted/40 px-3 py-2 text-right">
             <p className="text-[11px] text-muted-foreground">Client value</p>
             <p className="font-mono text-sm font-semibold">{fmt(clientValue)}</p>
-            {markup > 0 && <p className="text-[10px] text-emerald-700">profit {fmt(markup)}</p>}
+            {markup > 0 && <p className="text-[10px] text-[var(--apas-sapphire)]">profit {fmt(markup)}</p>}
           </div>
         </div>
       </div>
@@ -296,9 +297,12 @@ export default function ProposalBuilderPage() {
   function startEditDetails() { setDraft({ ...proposal }); setEditingDetails(true); }
   async function saveDetails() {
     if (!draft.title?.trim() || !draft.proposal_no?.trim()) return toast.error("Proposal number and title are required.");
+    const nextNo = draft.proposal_no.trim();
+    const duplicate = proposalQuery.data?.find(item => item.id !== proposal.id && item.proposal_no.trim().toLowerCase() === nextNo.toLowerCase());
+    if (duplicate) return toast.error(`${nextNo} already exists on this project. Proposal numbers can be edited, but each displayed number must stay unique.`);
     try {
       await proposalQuery.update.mutateAsync({
-        id: proposal.id, proposal_no: draft.proposal_no, title: draft.title, client_name: draft.client_name || null,
+        id: proposal.id, proposal_no: nextNo, title: draft.title, client_name: draft.client_name || null,
         client_email: draft.client_email || null, valid_until: draft.valid_until || null,
         notes: draft.notes || null, terms: draft.terms || null,
         scope_bullets: draft.scope_bullets ?? [], deliverables: draft.deliverables ?? [],
@@ -328,6 +332,33 @@ export default function ProposalBuilderPage() {
     setDescription("");
     setNewLine({ category: "other", lead_type: "apas", lead_directory_entry_id: null, quantity: 1, unit: "ls", unit_cost: 0, markup_pct: 0 });
     toast.success("Line added");
+  }
+
+  async function applyExtractedValueRows(rows: ExtractedProposalValueLine[], mode: "replace" | "append") {
+    if (!proposal) return;
+    const cleaned = rows
+      .map((row, index) => ({
+        line_no: mode === "append" ? lines.length + index + 1 : index + 1,
+        category: "other" as const,
+        description: row.description.trim() || `Approved proposal value ${index + 1}`,
+        quantity: 1,
+        unit: "ls",
+        unit_cost: Number(row.unit_cost) || 0,
+        markup_pct: Number(row.markup_pct) || 0,
+        lead_type: "apas" as const,
+        lead_directory_entry_id: null,
+      }))
+      .filter((row) => row.unit_cost > 0);
+    if (!cleaned.length) return toast.error("No usable dollar rows were found in the upload.");
+
+    if (mode === "replace") {
+      await lineQuery.replaceAll.mutateAsync(cleaned);
+      return;
+    }
+
+    for (const row of cleaned) {
+      await lineQuery.create.mutateAsync({ ...row, proposal_id: proposal.id });
+    }
   }
 
   async function saveLine(line: FinancialProposalLine) {
@@ -430,7 +461,11 @@ export default function ProposalBuilderPage() {
   }
 
   async function removeProposal() {
-    const message = editable ? `Delete draft ${proposal.proposal_no}? This cannot be undone.` : `${proposal.proposal_no} is part of the proposal record. Delete it permanently?`;
+    if (!editable) {
+      toast.error("Only draft proposals can be deleted. Use Amend for client-facing or approved proposal records.");
+      return;
+    }
+    const message = `Delete draft ${proposal.proposal_no}? This cannot be undone.`;
     if (!window.confirm(message)) return;
     await proposalQuery.remove.mutateAsync(proposal.id);
     navigate(`/projects/${projectId}/financials/proposals`);
@@ -447,24 +482,27 @@ export default function ProposalBuilderPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-2">
           <Link to={`/projects/${projectId}/financials/proposals`} className="mt-1"><ChevronLeft className="h-5 w-5 text-muted-foreground" /></Link>
-          <div><div className="flex flex-wrap items-center gap-2"><FileText className="h-6 w-6 text-[var(--apas-sapphire)]" /><h1 className="text-2xl font-bold"><span className="mr-2 font-mono text-muted-foreground">{proposal.proposal_no}</span>{proposal.title}</h1><Badge className={statusClass(proposal.status)}>{proposal.status === "approved" ? "Approved" : proposal.status}</Badge>{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />Locked</Badge>}{executed && <Badge className="bg-emerald-600 text-white"><CheckCircle2 className="mr-1 h-3 w-3" />Executed</Badge>}</div><p className="mt-1 text-sm text-muted-foreground">{proposal.client_name || "No client assigned"} · {fmt(totals.total)}</p></div>
+          <div><div className="flex flex-wrap items-center gap-2"><FileText className="h-6 w-6 text-[var(--apas-sapphire)]" /><h1 className="text-2xl font-bold"><span className="mr-2 font-mono text-muted-foreground">{proposal.proposal_no}</span>{proposal.title}</h1><Badge className={statusClass(proposal.status)}>{proposal.status === "approved" ? "Approved" : proposal.status}</Badge>{proposal.locked && <Badge variant="outline"><Lock className="mr-1 h-3 w-3" />Locked</Badge>}{executed && <Badge className="bg-[var(--apas-amber)] text-[var(--apas-deep)]"><CheckCircle2 className="mr-1 h-3 w-3" />Executed</Badge>}</div><p className="mt-1 text-sm text-muted-foreground">{proposal.client_name || "No client assigned"} · {fmt(totals.total)}</p></div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {canRenumber && proposal.locked && <Button variant="outline" size="sm" onClick={() => setRenumberOpen(true)}><Hash className="mr-1.5 h-4 w-4" />Renumber</Button>}
+          {canRenumber && <Button variant="outline" size="sm" onClick={() => setRenumberOpen(true)}><Hash className="mr-1.5 h-4 w-4" />Edit number</Button>}
           {proposal.locked && <Button variant="outline" size="sm" onClick={() => setAmendOpen(true)}><RotateCcw className="mr-1.5 h-4 w-4" />Amend</Button>}
-          <Button size="sm" onClick={() => setHardcopyOpen(true)}><FileCheck className="mr-1.5 h-4 w-4" />{executed ? "Replace executed PDF" : "Execute signed proposal"}</Button>
+          <Button size="sm" onClick={() => setHardcopyOpen(true)}><FileCheck className="mr-1.5 h-4 w-4" />{executed ? "Replace executed PDF" : "Upload / execute signed proposal"}</Button>
           {executed && proposal.pdf_path
             ? <Button asChild variant="outline" size="sm"><a href={proposal.pdf_path} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1.5 h-4 w-4" />Open executed PDF</a></Button>
             : <Button variant="outline" size="sm" onClick={downloadPdf} disabled={pdfBusy}><Download className="mr-1.5 h-4 w-4" />{pdfBusy ? "Preparing…" : "Download PDF"}</Button>}
-          {executed && <Button asChild size="sm" className="bg-emerald-700 hover:bg-emerald-800"><Link to={`/projects/${projectId}/financials/client-invoices?new=1&proposal=${proposal.id}`}><Receipt className="mr-1.5 h-4 w-4" />Create client invoice</Link></Button>}
+          {executed && <Button asChild size="sm" className="bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90"><Link to={`/projects/${projectId}/financials/client-invoices?new=1&proposal=${proposal.id}`}><Receipt className="mr-1.5 h-4 w-4" />Create client invoice</Link></Button>}
         </div>
+      </div>
+      <div className="rounded-md border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        Stable record ID <span className="font-mono text-foreground">{proposal.id.slice(0, 8)}</span>. Proposal numbers can be edited with audit history; relationships, invoices, PDFs, and value lines stay attached to this record.
       </div>
 
       {proposal.status === "rejected" && proposal.client_comments && <div className="rounded-md border-l-2 border-red-500 bg-red-50 px-4 py-3"><p className="text-xs font-semibold text-red-700">Client requested a revision</p><p className="mt-1 text-sm">{proposal.client_comments}</p></div>}
 
       {proposal.signed_hardcopy_path && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-3">
-          <div className="flex items-center gap-2 text-sm"><FileCheck className="h-4 w-4 text-emerald-700" /><span className="font-medium">Executed client-signed proposal on file</span>{proposal.signed_hardcopy_at && <span className="text-xs text-muted-foreground">· uploaded {new Date(proposal.signed_hardcopy_at).toLocaleDateString()}</span>}</div>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--apas-amber)]/35 bg-[var(--apas-amber)]/10 p-3">
+          <div className="flex items-center gap-2 text-sm"><FileCheck className="h-4 w-4 text-[var(--apas-amber)]" /><span className="font-medium">Executed client-signed proposal on file</span>{proposal.signed_hardcopy_at && <span className="text-xs text-muted-foreground">· uploaded {new Date(proposal.signed_hardcopy_at).toLocaleDateString()}</span>}</div>
           <Button asChild variant="outline" size="sm"><a href={proposal.pdf_path || proposal.signed_hardcopy_path} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1.5 h-4 w-4" />Open primary PDF</a></Button>
           {proposal.signed_hardcopy_note && <p className="w-full text-xs text-muted-foreground">{proposal.signed_hardcopy_note}</p>}
         </div>
@@ -479,7 +517,7 @@ export default function ProposalBuilderPage() {
                 This is the place to record a client-approved proposal before anyone creates an invoice. The signed PDF stays untouched. The value rows below are typed by your team and become the billing authority for client invoices and contractor or consultant bills.
               </p>
             </div>
-            {executed ? <Badge className="bg-emerald-600 text-white">Ready for invoicing</Badge> : <Badge variant="outline">Invoice prerequisite</Badge>}
+            {executed ? <Badge className="bg-[var(--apas-amber)] text-[var(--apas-deep)]">Ready for invoicing</Badge> : <Badge variant="outline">Invoice prerequisite</Badge>}
           </div>
         </CardHeader>
         <CardContent className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
@@ -549,10 +587,10 @@ export default function ProposalBuilderPage() {
           <div><Label>Profit %</Label><Input type="number" min="0" step="any" value={pricingDraft.profit_pct} disabled={!editable} onChange={event => setPricingDraft(current => ({ ...current, profit_pct: Number(event.target.value) }))} /><p className="mt-1 text-[11px] text-muted-foreground">Enter 0 to waive profit.</p></div>
           <div className="space-y-1.5 rounded-md border bg-muted/20 p-3 text-sm">
             <div className="flex justify-between text-muted-foreground"><span>Source cost subtotal</span><span className="font-mono">{fmt(totals.sourceSubtotal)}</span></div>
-            <div className="flex justify-between text-muted-foreground"><span>APAS row markup</span><span className="font-mono text-emerald-700">{fmt(totals.lineMarkup)}</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>APAS row markup</span><span className="font-mono text-[var(--apas-sapphire)]">{fmt(totals.lineMarkup)}</span></div>
             <div className="flex justify-between text-muted-foreground"><span>Overhead ({pricingDraft.overhead_pct || 0}%)</span><span className="font-mono">{fmt(totals.overhead)}</span></div>
             <div className="flex justify-between text-muted-foreground"><span>Profit ({pricingDraft.profit_pct || 0}%)</span><span className="font-mono">{fmt(totals.profit)}</span></div>
-            <div className="flex justify-between text-muted-foreground"><span>Total APAS profit</span><span className="font-mono text-emerald-700">{fmt(totals.apasProfit)}</span></div>
+            <div className="flex justify-between text-muted-foreground"><span>Total APAS profit</span><span className="font-mono text-[var(--apas-sapphire)]">{fmt(totals.apasProfit)}</span></div>
             <div className="flex justify-between border-t pt-2 font-bold text-[var(--apas-sapphire)]"><span>Proposal total</span><span className="font-mono text-base">{fmt(totals.total)}</span></div>
           </div>
         </CardContent>
@@ -635,12 +673,22 @@ export default function ProposalBuilderPage() {
             )}
             <div className="rounded-lg border bg-muted/40 p-3 text-sm">
               <div className="flex justify-between text-muted-foreground"><span>Source cost subtotal</span><span className="font-mono">{fmt(totals.sourceSubtotal)}</span></div>
-              <div className="mt-1 flex justify-between text-muted-foreground"><span>APAS row markup</span><span className="font-mono text-emerald-700">{fmt(totals.lineMarkup)}</span></div>
+              <div className="mt-1 flex justify-between text-muted-foreground"><span>APAS row markup</span><span className="font-mono text-[var(--apas-sapphire)]">{fmt(totals.lineMarkup)}</span></div>
               <div className="mt-2 flex justify-between border-t pt-2 font-bold text-[var(--apas-sapphire)]"><span>Grand total</span><span className="font-mono">{fmt(totals.total)}</span></div>
             </div>
           </div>
-          <div className="hidden overflow-x-auto md:block">
-            <table className="w-full min-w-[860px] text-sm">
+          <div className="hidden min-w-0 md:block">
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[44px]" />
+                <col className="w-[30%]" />
+                <col className="w-[13%]" />
+                <col className="w-[21%]" />
+                <col className="w-[13%]" />
+                <col className="w-[10%]" />
+                <col className="w-[13%]" />
+                <col className="w-[72px]" />
+              </colgroup>
               <thead>
                 <tr className="border-b bg-muted/40 text-xs uppercase tracking-wide text-muted-foreground">
                   <th className="p-3 text-left">#</th>
@@ -668,11 +716,11 @@ export default function ProposalBuilderPage() {
                   <tr className="border-t-2 bg-muted/10">
                     <td className="p-2 text-xs text-muted-foreground">{lines.length + 1}</td>
                     <td className="p-2">
-                      <Input className="h-8 min-w-52 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Approved line item description" />
+                      <Input className="h-8 w-full min-w-0 text-xs" value={description} onChange={event => setDescription(event.target.value)} placeholder="Approved line item description" />
                     </td>
                     <td className="p-2">
                       <select
-                        className="h-8 rounded-md border bg-background px-2 text-xs"
+                          className="h-8 w-full rounded-md border bg-background px-2 text-xs"
                         value={newLine.lead_type ?? "apas"}
                         onChange={event => setNewLine(current => ({
                           ...current,
@@ -691,7 +739,7 @@ export default function ProposalBuilderPage() {
                         <span className="inline-flex h-8 items-center rounded-md border bg-muted/40 px-2 text-xs font-medium">APAS internal</span>
                       ) : (
                         <select
-                          className="h-8 min-w-52 rounded-md border bg-background px-2 text-xs"
+                          className="h-8 w-full min-w-0 rounded-md border bg-background px-2 text-xs"
                           value={newLine.lead_directory_entry_id ?? ""}
                           onChange={event => setNewLine(current => ({ ...current, lead_directory_entry_id: event.target.value || null }))}
                         >
@@ -700,8 +748,8 @@ export default function ProposalBuilderPage() {
                         </select>
                       )}
                     </td>
-                    <td className="p-2"><Input className="h-8 w-28 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td>
-                    <td className="p-2"><Input className="h-8 w-20 text-right text-xs" type="number" value={newLine.markup_pct} onChange={event => setNewLine(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></td>
+                    <td className="p-2"><Input className="h-8 w-full min-w-0 text-right text-xs" type="number" value={newLine.unit_cost} onChange={event => setNewLine(current => ({ ...current, unit_cost: Number(event.target.value) }))} /></td>
+                    <td className="p-2"><Input className="h-8 w-full min-w-0 text-right text-xs" type="number" value={newLine.markup_pct} onChange={event => setNewLine(current => ({ ...current, markup_pct: Number(event.target.value) }))} /></td>
                     <td className="p-2 text-right text-xs text-muted-foreground">{fmt(rowClientValue({ quantity: 1, unit_cost: Number(newLine.unit_cost) || 0, markup_pct: Number(newLine.markup_pct) || 0 } as FinancialProposalLine))}</td>
                     <td className="p-2"><Button size="icon" className="h-8 w-8" onClick={addLine} disabled={lineQuery.create.isPending}><Plus className="h-4 w-4" /></Button></td>
                   </tr>
@@ -709,7 +757,7 @@ export default function ProposalBuilderPage() {
               </tbody>
               <tfoot>
                 <tr className="border-t bg-muted/50"><td colSpan={6} className="p-3 text-right">Source cost subtotal</td><td className="p-3 text-right font-mono">{fmt(totals.sourceSubtotal)}</td><td /></tr>
-                <tr className="bg-muted/50"><td colSpan={6} className="p-3 text-right">APAS row markup</td><td className="p-3 text-right font-mono text-emerald-700">{fmt(totals.lineMarkup)}</td><td /></tr>
+                <tr className="bg-muted/50"><td colSpan={6} className="p-3 text-right">APAS row markup</td><td className="p-3 text-right font-mono text-[var(--apas-sapphire)]">{fmt(totals.lineMarkup)}</td><td /></tr>
                 <tr className="border-t bg-muted/60 font-bold"><td colSpan={6} className="p-3 text-right">Grand total</td><td className="p-3 text-right font-mono text-base">{fmt(totals.total)}</td><td /></tr>
               </tfoot>
             </table>
@@ -737,12 +785,12 @@ export default function ProposalBuilderPage() {
             ? <Button asChild variant="outline"><a href={proposal.pdf_path} target="_blank" rel="noopener noreferrer"><FileDown className="mr-1.5 h-4 w-4" />Open executed PDF</a></Button>
             : <Button variant="outline" onClick={downloadPdf} disabled={pdfBusy}><Download className="mr-1.5 h-4 w-4" />{pdfBusy ? "Preparing…" : "Download PDF"}</Button>}
         </div>
-        {executed && proposal.pdf_path
-          ? <iframe src={proposal.pdf_path} title={`${proposal.proposal_no} executed proposal`} className="h-[760px] w-full rounded-md border bg-white" />
+        {proposal.pdf_path
+          ? <iframe src={proposal.pdf_path} title={`${proposal.proposal_no} ${executed ? "executed" : "uploaded"} proposal`} className="h-[760px] w-full rounded-md border bg-white" />
           : <div className="max-h-[760px] overflow-auto rounded-md border bg-muted/30 p-3"><FinancialProposalDocument ref={previewRef} proposal={proposal} lines={lines} projectName={projectName} client={client} /></div>}
       </CardContent></Card>
 
-      <Card><CardContent className="flex items-center justify-between p-4"><div><p className="font-medium">Record controls</p><p className="text-sm text-muted-foreground">Signed proposals remain locked. Amend creates an auditable editable version.</p></div><Button variant="ghost" className="text-destructive hover:text-destructive" onClick={removeProposal} disabled={proposalQuery.remove.isPending}><Trash2 className="mr-1.5 h-4 w-4" />Delete proposal</Button></CardContent></Card>
+      <Card><CardContent className="flex flex-wrap items-center justify-between gap-3 p-4"><div><p className="font-medium">Record controls</p><p className="text-sm text-muted-foreground">Signed proposals remain locked. Amend creates an auditable editable version; Edit number changes only the displayed proposal number.</p></div>{editable ? <Button variant="ghost" className="text-destructive hover:text-destructive" onClick={removeProposal} disabled={proposalQuery.remove.isPending}><Trash2 className="mr-1.5 h-4 w-4" />Delete draft</Button> : <Badge variant="outline">Preserved record</Badge>}</CardContent></Card>
       </div>
       </ResizableWorkspace>
 
@@ -750,7 +798,7 @@ export default function ProposalBuilderPage() {
       <SendFinancialProposalDialog open={sendOpen} onOpenChange={setSendOpen} proposal={proposal} lines={lines} projectName={projectName} client={client} onSent={refresh} />
       <AmendFinancialProposalDialog open={amendOpen} onOpenChange={setAmendOpen} proposal={proposal} reopen={proposalQuery.reopen} onDone={refresh} />
       <RenumberFinancialProposalDialog open={renumberOpen} onOpenChange={setRenumberOpen} proposal={proposal} action={proposalQuery.renumber} onDone={refresh} />
-      <UploadFinancialProposalHardcopyDialog open={hardcopyOpen} onOpenChange={setHardcopyOpen} proposal={proposal} projectId={projectId!} action={proposalQuery.uploadHardcopy} onDone={refresh} />
+      <UploadFinancialProposalHardcopyDialog open={hardcopyOpen} onOpenChange={setHardcopyOpen} proposal={proposal} projectId={projectId!} action={proposalQuery.uploadHardcopy} onExtractedRows={applyExtractedValueRows} onDone={refresh} />
     </div>
   );
 }

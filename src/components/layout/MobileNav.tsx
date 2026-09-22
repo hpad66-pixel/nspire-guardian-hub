@@ -66,7 +66,7 @@ function getActiveSection(pathname: string): ActiveSection {
 
 // Module accent colors
 const MODULE_COLORS: Record<string, string> = {
-  daily: '#69C2A2',       // verified emerald
+  daily: '#D5AA52',       // APAS decision gold
   compliance: '#71A8CF',  // infrastructure blue
   projects: '#D5AA52',    // decision gold
 };
@@ -86,7 +86,7 @@ function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: Pri
   const pillColor = isActive && accentColor ? accentColor : '#D5AA52';
   const textColor = isActive
     ? accentColor ?? '#D5AA52'
-    : '#8C9B95';
+    : '#756F64';
 
   return (
     <button
@@ -111,7 +111,7 @@ function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: Pri
           {icon}
         </span>
         {badge && (
-          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#E36B64] ring-[1.5px] ring-[#08271F]" />
+          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#E36B64] ring-[1.5px] ring-[#FBF8F1]" />
         )}
       </div>
       {/* Label */}
@@ -147,8 +147,8 @@ function SecondaryBarItem({
       className={cn(
         'whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-150',
         isActive
-          ? 'bg-white/10'
-          : 'bg-transparent text-[hsl(215,20%,55%)] hover:bg-white/5'
+          ? 'bg-[var(--apas-amber)]/15'
+          : 'bg-transparent text-[#756F64] hover:bg-[var(--apas-amber)]/10'
       )}
       style={isActive ? { color: accentColor } : undefined}
     >
@@ -197,7 +197,7 @@ function SecondaryBar({ activeSection, hasSiteAccountability }: { activeSection:
 
   return (
     <div
-      className="fixed left-0 right-0 z-50 flex h-10 items-center gap-1 overflow-x-auto border-t border-white/10 bg-[#041914] px-3 no-scrollbar"
+      className="fixed left-0 right-0 z-50 flex h-10 items-center gap-1 overflow-x-auto border-t border-[var(--kind-construction-border)] bg-[#FBF8F1] px-3 no-scrollbar shadow-[0_-10px_24px_rgba(26,23,20,0.06)]"
       style={{
         bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))',
         borderLeft: `3px solid ${borderColor}`,
@@ -236,7 +236,7 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-start gap-2.5 rounded-xl border border-white/[0.06] bg-white/[0.04] p-3.5 text-left transition-colors duration-150 active:bg-white/10"
+      className="flex flex-col items-start gap-2.5 rounded-xl border border-[var(--kind-construction-border)] bg-white/70 p-3.5 text-left shadow-sm transition-colors duration-150 active:bg-[var(--apas-amber)]/10"
     >
       <div className={cn('relative flex h-9 w-9 items-center justify-center rounded-lg', iconBg)}>
         {icon}
@@ -247,10 +247,10 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
         )}
       </div>
       <div className="min-w-0">
-        <p className="text-[15px] font-semibold text-[hsl(215,25%,92%)]" style={{ letterSpacing: 0 }}>
+        <p className="text-[15px] font-semibold text-[#08271F]" style={{ letterSpacing: 0 }}>
           {title}
         </p>
-        <p className="text-[12px] font-medium leading-snug text-[hsl(215,16%,55%)] mt-0.5">{subtitle}</p>
+        <p className="mt-0.5 text-[12px] font-medium leading-snug text-[#756F64]">{subtitle}</p>
       </div>
     </button>
   );
@@ -260,7 +260,7 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
 
 function DrawerSectionLabel({ label }: { label: string }) {
   return (
-    <p className="col-span-2 mb-0.5 mt-3 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[hsl(215,16%,50%)]">
+    <p className="col-span-2 mb-0.5 mt-3 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#756F64]">
       {label}
     </p>
   );
@@ -304,35 +304,35 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
     navigate(path);
   };
 
-  const portfolioIconBg = 'bg-[hsl(215,20%,20%)]';
+  const portfolioIconBg = 'bg-[var(--apas-sapphire)]/15';
   const commIconBg = 'bg-[#D5AA52]/15';
   const orgIconBg = 'bg-[hsl(262,83%,58%)]/15';
-  const toolsIconBg = 'bg-[hsl(215,20%,20%)]';
-  const greenIconBg = 'bg-[hsl(142,76%,36%)]/15';
+  const toolsIconBg = 'bg-[var(--apas-sapphire)]/15';
+  const goldIconBg = 'bg-[#D5AA52]/15';
   const operationsRedBg = 'bg-[hsl(0,84%,60%)]/15';
   const operationsAmberBg = 'bg-[hsl(30,100%,50%)]/15';
   const adminIconBg = 'bg-[hsl(215,70%,45%)]/20';
 
-  const iconClass = 'h-5 w-5 text-[hsl(215,25%,75%)]';
+  const iconClass = 'h-5 w-5 text-[#0D3B30]';
 
   const showToolsSection = isModuleEnabled('qrScanningEnabled') || canView('settings');
 
   return (
     <Drawer open={open} onOpenChange={(v) => !v && onClose()}>
       <DrawerContent
-        className="h-[72vh] border-t border-white/10 bg-[#08271F] text-[#F4EFE2] outline-none"
+        className="h-[72vh] border-t border-[var(--kind-construction-border)] bg-[#FBF8F1] text-[#08271F] outline-none"
       >
         {/* Drag handle */}
-        <div className="mx-auto mt-3 mb-4 h-1 w-9 rounded-full bg-white/20" />
+        <div className="mx-auto mt-3 mb-4 h-1 w-9 rounded-full bg-[#D5AA52]/45" />
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 pb-3">
-          <span className="text-[17px] font-semibold text-[hsl(215,25%,92%)]" style={{ letterSpacing: 0 }}>
+          <span className="text-[17px] font-semibold text-[#08271F]" style={{ letterSpacing: 0 }}>
             More
           </span>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-white/5 text-[hsl(215,20%,55%)] transition-colors hover:text-white"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFE9DC] text-[#756F64] transition-colors hover:text-[#08271F]"
           >
             <X className="h-4 w-4" />
           </button>
@@ -351,7 +351,7 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
           />
           <DrawerTile
             icon={<Sun className={iconClass} />}
-            iconBg={greenIconBg}
+            iconBg={goldIconBg}
             title="My Day"
             subtitle="Your work queue"
             onClick={() => go('/my-day')}
@@ -386,7 +386,7 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
           {hasSiteAccountability && (
             <DrawerTile
               icon={<ScanEye className={iconClass} />}
-              iconBg={greenIconBg}
+              iconBg={goldIconBg}
               title="Owner Walk"
               subtitle="Site photos, questions & proof"
               onClick={() => go(siteAccountabilityPath)}
@@ -426,7 +426,7 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
               {hasSiteAccountability && (
                 <DrawerTile
                   icon={<ScanEye className={iconClass} />}
-                  iconBg={greenIconBg}
+                  iconBg={goldIconBg}
                   title="Site Accountability"
                   subtitle="Owner walks, photos & closeout proof"
                   onClick={() => go(siteAccountabilityPath)}
@@ -435,7 +435,7 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
               {canViewDailyReports && (
                 <DrawerTile
                   icon={<ClipboardList className={iconClass} />}
-                  iconBg={greenIconBg}
+                  iconBg={goldIconBg}
                   title="Daily Reports"
                   subtitle="View field reports"
                   onClick={() => go('/daily-reports')}
@@ -458,7 +458,7 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
               {showWaterIntelligence && (
                 <DrawerTile
                   icon={<Droplets className={iconClass} />}
-                  iconBg={greenIconBg}
+                  iconBg={goldIconBg}
                   title="Water Intelligence"
                   subtitle="Utility ledger & owner brief"
                   onClick={() => go('/water-intel')}
@@ -540,7 +540,7 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
           {isModuleEnabled('contractorReadinessEnabled') && canManageContractors && (
             <DrawerTile
               icon={<UserRoundCheck className={iconClass} />}
-              iconBg={greenIconBg}
+              iconBg={goldIconBg}
               title="Contractor Readiness"
               subtitle="Screening, documents & work gates"
               onClick={() => go('/contractor-readiness')}
@@ -609,7 +609,7 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
               {isModuleEnabled('qrScanningEnabled') && (
                 <DrawerTile
                   icon={<QrCode className={iconClass} />}
-                  iconBg={greenIconBg}
+                  iconBg={goldIconBg}
                   title="QR Scanner"
                   subtitle="Scan assets"
                   onClick={() => go('/qr-scanner')}
@@ -669,11 +669,11 @@ export function MobileNav() {
 
       {/* Primary bar — 4rem tap row + home-indicator safe area */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch border-t border-white/10 bg-[#041914]/95 backdrop-blur-xl"
+        className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch border-t border-[var(--kind-construction-border)] bg-[#FBF8F1]/95 backdrop-blur-xl shadow-[0_-10px_24px_rgba(26,23,20,0.08)]"
         style={{
           minHeight: '4rem',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          backgroundColor: 'hsl(222 47% 8% / 0.92)',
+          backgroundColor: 'rgba(251, 248, 241, 0.95)',
         }}
         data-testid="mobile-bottom-nav"
       >

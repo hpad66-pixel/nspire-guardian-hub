@@ -94,7 +94,10 @@ export function useFinancialProposals(projectId: string | null) {
         .insert({ ...row, tenant_id })
         .select()
         .single();
-      if (error) throw error;
+      if (error) {
+        if (/duplicate key|unique/i.test(error.message)) throw new Error(`${row.proposal_no.trim()} already exists on this project.`);
+        throw error;
+      }
       return data as unknown as FinancialProposal;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
@@ -106,7 +109,12 @@ export function useFinancialProposals(projectId: string | null) {
         .from('proposals')
         .update({ ...row, updated_at: new Date().toISOString() })
         .eq('id', id);
-      if (error) throw error;
+      if (error) {
+        if (/duplicate key|unique/i.test(error.message) && typeof row.proposal_no === 'string') {
+          throw new Error(`${row.proposal_no.trim()} already exists on this project.`);
+        }
+        throw error;
+      }
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: key }),
   });

@@ -2,13 +2,15 @@ import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, Send, Plus, Loader2, Mail, Pencil, Paperclip, Upload, X } from 'lucide-react';
+import { Download, Send, Plus, Loader2, Mail, Pencil, Paperclip, Upload, X, RotateCcw, XCircle } from 'lucide-react';
 import {
+  invoiceLifecycleActions,
   useInvoiceDetail,
   useConsultingInvoices,
   useConsultingArLedger,
   useProposalBillingMaps,
   type ConsultingInvoice,
+  type InvoiceLifecycleAction,
 } from '@/hooks/useConsultingInvoices';
 import { downloadConsultingInvoicePdf, generateConsultingInvoicePdf } from '@/lib/pdf/consultingInvoice';
 import { useCoSettings } from '@/hooks/useCoSettings';
@@ -68,7 +70,7 @@ export function InvoiceDetailDialog({
   billingBrand = APAS_COMPANY_BRANDS.apas_consulting,
 }: Props) {
   const { data, isLoading, addPayment } = useInvoiceDetail(invoiceId);
-  const { setStatus } = useConsultingInvoices(projectId);
+  const { setStatus, returnToDraft } = useConsultingInvoices(projectId);
   const { data: ledger } = useConsultingArLedger(projectId);
   const { billedByProposal, paidByProposal } = useProposalBillingMaps(projectId, open && !!invoiceId);
   const { data: coSettings } = useCoSettings();
@@ -94,6 +96,7 @@ export function InvoiceDetailDialog({
   const paid = payments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
   const balance = (Number(inv?.total) || 0) - paid;
   const meta = inv ? INVOICE_STATUS_META[inv.status] : null;
+  const lifecycleActions = inv ? invoiceLifecycleActions(inv, paid) : new Set<InvoiceLifecycleAction>();
 
   const branding = {
     companyName: consultingBrand.key === 'apas_consulting' ? coSettings?.company_name ?? consultingBrand.legalName : consultingBrand.legalName,
@@ -518,7 +521,7 @@ export function InvoiceDetailDialog({
               </div>
 
               <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-                {inv.status === 'draft' && (
+                {lifecycleActions.has('edit') && (
                   <Button size="sm" variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5">
                     <Pencil className="h-4 w-4" />Edit invoice
                   </Button>
@@ -528,18 +531,33 @@ export function InvoiceDetailDialog({
                   {packaging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
                   Preview & email package
                 </Button>
-                {inv.status === 'draft' && (
+                {lifecycleActions.has('mark_sent') && (
                   <Button size="sm" onClick={markSent} disabled={setStatus.isPending} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
                     {setStatus.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}Mark as sent
                   </Button>
                 )}
-                {inv.status !== 'void' && (
-                  <Button size="sm" variant="ghost" className="text-muted-foreground ml-auto" onClick={() => setStatus.mutate({ id: inv.id, status: 'void' })}>Void</Button>
+                {lifecycleActions.has('return_to_draft') && (
+                  <Button size="sm" variant="outline" className="gap-1.5" onClick={() => returnToDraft.mutate(inv.id)} disabled={returnToDraft.isPending}>
+                    <RotateCcw className="h-4 w-4" />Return to draft
+                  </Button>
+                )}
+                {lifecycleActions.has('void') && (
+                  <Button size="sm" variant="ghost" className="ml-auto gap-1.5 text-muted-foreground" onClick={() => setStatus.mutate({ id: inv.id, status: 'void' })}>
+                    <XCircle className="h-4 w-4" />Void unpaid invoice
+                  </Button>
                 )}
               </div>
-              {inv.status === 'draft' && (
+              {inv.status === 'draft' ? (
                 <p className="text-xs text-muted-foreground">
                   Edit any line, bill-to, terms, or notes while draft. PDF includes client sign-off and the running account tab.
+                </p>
+              ) : paid > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  This invoice has payment history, so Proj OS keeps it locked for audit. Use adjustments or corrected receipts instead of deleting the record.
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No payment is recorded. Return to draft for corrections, or void the issued invoice and keep the audit record.
                 </p>
               )}
             </div>

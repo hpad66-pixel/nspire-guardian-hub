@@ -12,6 +12,7 @@ import {
 export { buildBillableLines } from '@/lib/consulting/billing';
 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'void';
+export type InvoiceLifecycleAction = 'edit' | 'mark_sent' | 'return_to_draft' | 'void' | 'delete' | 'record_payment';
 
 export interface ConsultingInvoice {
   id: string;
@@ -102,6 +103,60 @@ const lines = () => supabase.from('consulting_invoice_lines' as never) as any;
 const payments = () => supabase.from('consulting_invoice_payments' as never) as any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const scopes = () => supabase.from('project_scopes' as never) as any;
+
+function lifecycleError(message: string) {
+  return new Error(message);
+}
+
+export function invoiceLifecycleActions(invoice: Pick<ConsultingInvoice, 'status'>, paidToDate = 0): Set<InvoiceLifecycleAction> {
+  const paid = Number(paidToDate) || 0;
+  const actions = new Set<InvoiceLifecycleAction>();
+
+  if (invoice.status === 'draft') {
+    actions.add('edit');
+    actions.add('mark_sent');
+    actions.add('delete');
+    return actions;
+  }
+
+  if (invoice.status === 'sent') {
+    actions.add('record_payment');
+    if (paid <= 0.005) {
+      actions.add('return_to_draft');
+      actions.add('void');
+    }
+    return actions;
+  }
+
+  if (invoice.status === 'void') {
+    if (paid <= 0.005) {
+      actions.add('return_to_draft');
+      actions.add('delete');
+    }
+    return actions;
+  }
+
+  return actions;
+}
+
+async function getInvoicePaidTotal(id: string) {
+  const { data, error } = await payments().select('amount').eq('invoice_id', id);
+  if (error) throw error;
+  return (data ?? []).reduce((sum: number, row: { amount?: number | string | null }) => sum + (Number(row.amount) || 0), 0);
+}
+
+function explainBlockedInvoiceDelete(status: InvoiceStatus, paid = 0) {
+  if (paid > 0.005) {
+    return 'This invoice has a payment reference, so it must stay in the audit trail. Correct the receipt or issue an adjustment instead.';
+  }
+  if (status === 'sent') {
+    return 'This invoice has been issued. Return it to draft first, then delete it if it was created in error.';
+  }
+  if (status === 'paid') {
+    return 'Paid invoices cannot be deleted. Preserve the record and use a correction or adjustment.';
+  }
+  return 'Only draft invoices, or unpaid void invoices created in error, can be deleted.';
+}
 
 function assertProposalLinkedInvoiceLines(inputLines: NewInvoiceLine[]) {
   if (inputLines.length === 0) {
@@ -258,6 +313,13 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
   // the next invoice bills only the new delta.
   const setStatus = useMutation({
     mutationFn: async ({ id, status }: { id: string; status: InvoiceStatus }) => {
+      const inv = (list.data ?? []).find((i) => i.id === id);
+      if (inv && status === 'void') {
+        const paid = await getInvoicePaidTotal(id);
+        if (!invoiceLifecycleActions(inv, paid).has('void')) {
+          throw lifecycleError('Only unpaid issued invoices can be voided. Paid invoices stay locked for audit; record a correction or adjustment instead.');
+        }
+      }
       if (status === 'sent') {
         const { data: ls } = await lines().select('scope_id, pct_this').eq('invoice_id', id);
         for (const l of (ls ?? [])) {
@@ -274,16 +336,45 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
     onError: (e: Error) => toast.error(`Couldn't update invoice: ${e.message}`),
   });
 
+  const returnToDraft = useMutation({
+    mutationFn: async (id: string) => {
+      let inv = (list.data ?? []).find((i) => i.id === id);
+      if (!inv) {
+        const { data, error: fetchError } = await invoices().select('*').eq('id', id).single();
+        if (fetchError) throw fetchError;
+        inv = data as ConsultingInvoice;
+      }
+      const paid = await getInvoicePaidTotal(id);
+      if (!invoiceLifecycleActions(inv, paid).has('return_to_draft')) {
+        if (inv.status === 'draft') return;
+        throw lifecycleError(
+          paid > 0.005
+            ? 'This invoice has a payment reference, so it cannot return to draft. Preserve the record and use a correction or adjustment.'
+            : 'Only sent or void unpaid invoices can return to draft.',
+        );
+      }
+      const { error } = await invoices().update({ status: 'draft', updated_at: new Date().toISOString() }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, id) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['consulting-invoice-detail', id] });
+      toast.success('Invoice returned to draft');
+    },
+    onError: (e: Error) => toast.error(`Couldn't return invoice to draft: ${e.message}`),
+  });
+
   const remove = useMutation({
     mutationFn: async (id: string) => {
       let inv = (list.data ?? []).find((i) => i.id === id);
       if (!inv) {
-        const { data, error: fetchError } = await invoices().select('id, status').eq('id', id).single();
+        const { data, error: fetchError } = await invoices().select('*').eq('id', id).single();
         if (fetchError) throw fetchError;
         inv = data as ConsultingInvoice;
       }
-      if (inv.status !== 'draft') {
-        throw new Error('Only draft invoices can be deleted. Sent, paid, and void invoices stay in the audit trail.');
+      const paid = await getInvoicePaidTotal(id);
+      if (!invoiceLifecycleActions(inv, paid).has('delete')) {
+        throw lifecycleError(explainBlockedInvoiceDelete(inv.status, paid));
       }
       const { error } = await invoices().delete().eq('id', id);
       if (error) throw error;
@@ -292,7 +383,7 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
     onError: (e: Error) => toast.error(`Couldn't delete invoice: ${e.message}`),
   });
 
-  return { ...list, create, update, setStatus, remove };
+  return { ...list, create, update, setStatus, returnToDraft, remove };
 }
 
 export function useInvoiceDetail(invoiceId: string | null | undefined) {

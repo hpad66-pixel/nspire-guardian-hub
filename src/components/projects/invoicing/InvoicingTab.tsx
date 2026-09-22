@@ -4,9 +4,9 @@ import { Card } from '@/components/ui/card';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Plus, Receipt, MoreHorizontal, Trash2, Eye, Pencil } from 'lucide-react';
+import { Plus, Receipt, MoreHorizontal, Trash2, Eye, Pencil, RotateCcw, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
-import { useConsultingInvoices, useConsultingArLedger } from '@/hooks/useConsultingInvoices';
+import { invoiceLifecycleActions, useConsultingInvoices, useConsultingArLedger, type ConsultingInvoice } from '@/hooks/useConsultingInvoices';
 import { useProject } from '@/hooks/useProjects';
 import { useProjectScopes, summarizeScopes } from '@/hooks/useProjectScopes';
 import { useFinancialProposals } from '@/hooks/useFinancialProposals';
@@ -40,7 +40,7 @@ export function InvoicingTab({
   clientSeed?: InvoiceClientSeed | null;
   autoCreateProposalId?: string | null;
 }) {
-  const { data: invoices, isLoading, remove } = useConsultingInvoices(projectId);
+  const { data: invoices, isLoading, remove, returnToDraft, setStatus } = useConsultingInvoices(projectId);
   const { data: project } = useProject(projectId);
   const { data: ledger } = useConsultingArLedger(projectId);
   const { data: scopes } = useProjectScopes(projectId);
@@ -70,6 +70,17 @@ export function InvoicingTab({
   const cashReceived = ledger?.totalPaid ?? 0;
   const openAr = ledger?.openAr ?? 0;
   const unbilledApproved = Math.max(0, approvedFee - invoiced);
+  const paidByInvoice = useMemo(() => {
+    const map: Record<string, number> = {};
+    for (const entry of ledger?.entries ?? []) {
+      map[entry.invoice_id] = Number(entry.paid) || 0;
+    }
+    return map;
+  }, [ledger?.entries]);
+
+  function actionsFor(inv: ConsultingInvoice) {
+    return invoiceLifecycleActions(inv, paidByInvoice[inv.id] ?? 0);
+  }
 
   return (
     <div className="space-y-4 pb-6">
@@ -235,6 +246,7 @@ export function InvoicingTab({
           <div className="grid gap-2 p-3 md:hidden">
             {(invoices ?? []).map((inv) => {
               const meta = INVOICE_STATUS_META[inv.status] ?? INVOICE_STATUS_META.draft;
+              const actions = actionsFor(inv);
               return (
                 <div key={inv.id} className="rounded-lg border bg-card p-3 shadow-sm">
                   <button type="button" className="w-full text-left" onClick={() => setDetailId(inv.id)}>
@@ -253,12 +265,21 @@ export function InvoicingTab({
                   </button>
                   <div className="mt-3 grid grid-cols-2 gap-2">
                     <Button variant="outline" size="sm" className="h-9" onClick={() => setDetailId(inv.id)}><Eye className="mr-1.5 h-3.5 w-3.5" />View</Button>
-                    {inv.status === 'draft' ? (
+                    {actions.has('edit') ? (
                       <Button size="sm" className="h-9 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90" onClick={() => { setEditId(inv.id); setBuilderOpen(true); }}><Pencil className="mr-1.5 h-3.5 w-3.5" />Edit</Button>
-                    ) : (
+                    ) : actions.has('return_to_draft') ? (
+                      <Button variant="outline" size="sm" className="h-9" onClick={() => returnToDraft.mutate(inv.id)}><RotateCcw className="mr-1.5 h-3.5 w-3.5" />Draft</Button>
+                    ) : actions.has('delete') ? (
                       <Button variant="outline" size="sm" className="h-9 text-destructive hover:text-destructive" onClick={() => remove.mutate(inv.id)}><Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete</Button>
+                    ) : (
+                      <Button variant="outline" size="sm" className="h-9 text-muted-foreground" onClick={() => setDetailId(inv.id)}><Receipt className="mr-1.5 h-3.5 w-3.5" />Audit</Button>
                     )}
                   </div>
+                  {actions.has('delete') && (
+                    <Button variant="ghost" size="sm" className="mt-2 h-9 w-full text-destructive hover:text-destructive" onClick={() => remove.mutate(inv.id)}>
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" />Delete eligible invoice
+                    </Button>
+                  )}
                 </div>
               );
             })}
@@ -278,6 +299,7 @@ export function InvoicingTab({
               <tbody>
                 {(invoices ?? []).map((inv) => {
                   const meta = INVOICE_STATUS_META[inv.status] ?? INVOICE_STATUS_META.draft;
+                  const actions = actionsFor(inv);
                   return (
                     <tr key={inv.id} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => setDetailId(inv.id)}>
                       <td className="px-4 py-3">
@@ -294,11 +316,22 @@ export function InvoicingTab({
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => setDetailId(inv.id)}><Eye className="h-4 w-4 mr-2" />View</DropdownMenuItem>
                             {inv.status === 'draft' && (
+                              <>
                               <DropdownMenuItem onClick={() => { setEditId(inv.id); setBuilderOpen(true); }}>
                                 <Pencil className="h-4 w-4 mr-2" />Edit
                               </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => remove.mutate(inv.id)}><Trash2 className="h-4 w-4 mr-2" />Delete draft</DropdownMenuItem>
+                              </>
                             )}
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => remove.mutate(inv.id)}><Trash2 className="h-4 w-4 mr-2" />Delete</DropdownMenuItem>
+                            {actions.has('return_to_draft') && (
+                              <DropdownMenuItem onClick={() => returnToDraft.mutate(inv.id)}><RotateCcw className="h-4 w-4 mr-2" />Return to draft</DropdownMenuItem>
+                            )}
+                            {actions.has('void') && (
+                              <DropdownMenuItem onClick={() => setStatus.mutate({ id: inv.id, status: 'void' })}><XCircle className="h-4 w-4 mr-2" />Void invoice</DropdownMenuItem>
+                            )}
+                            {inv.status === 'void' && actions.has('delete') && (
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => remove.mutate(inv.id)}><Trash2 className="h-4 w-4 mr-2" />Delete void draft</DropdownMenuItem>
+                            )}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </td>

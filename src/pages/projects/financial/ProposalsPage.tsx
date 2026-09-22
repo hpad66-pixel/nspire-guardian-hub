@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { FileText, ExternalLink, CheckCircle2, Clock, Send, XCircle, Sparkles, Trash2, Search, Paperclip, Receipt, UploadCloud, Wand2 } from "lucide-react";
+import { FileText, ExternalLink, CheckCircle2, Clock, Send, XCircle, Sparkles, Trash2, Search, Paperclip, Receipt, UploadCloud, Wand2, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { proposalTotals } from "@/lib/financial/proposalPricing";
 
@@ -29,7 +29,7 @@ function fmtMoney(value: number) {
 const STATUS_CONFIG: Record<FinancialProposal["status"], { label: string; className: string; icon: React.ElementType }> = {
   draft:    { label: "Draft",    className: "bg-gray-100 text-gray-700",    icon: FileText },
   sent:     { label: "Sent",     className: "bg-blue-100 text-blue-800",    icon: Send },
-  approved: { label: "Approved", className: "bg-green-100 text-green-800",  icon: CheckCircle2 },
+  approved: { label: "Approved", className: "bg-[var(--apas-sapphire)]/15 text-[var(--apas-sapphire)]",  icon: CheckCircle2 },
   rejected: { label: "Rejected", className: "bg-red-100 text-red-800",      icon: XCircle },
   expired:  { label: "Expired",  className: "bg-amber-100 text-amber-800",  icon: Clock },
 };
@@ -75,10 +75,16 @@ export default function ProposalsPage() {
       toast.error("Proposal number and title are required");
       return;
     }
+    const proposedNo = form.proposal_no.trim();
+    const duplicate = proposals.find(proposal => proposal.proposal_no.trim().toLowerCase() === proposedNo.toLowerCase());
+    if (duplicate) {
+      toast.error(`${proposedNo} already exists on this project. Open the existing record or choose a unique proposal number.`);
+      return;
+    }
     const created = await create.mutateAsync({
       project_id: projectId!,
       title: form.title!,
-      proposal_no: form.proposal_no!,
+      proposal_no: proposedNo,
       client_name: form.client_name ?? null,
       client_email: form.client_email ?? null,
       valid_until: form.valid_until ?? null,
@@ -96,16 +102,12 @@ export default function ProposalsPage() {
     window.location.href = `/projects/${projectId}/financials/proposals/${created.id}`;
   }
 
-  const nextNo = `PROP-${String(proposals.reduce((max, proposal) => {
-    const match = proposal.proposal_no.match(/(\d+)(?!.*\d)/);
-    return Math.max(max, match ? Number(match[1]) : 0);
-  }, 0) + 1).padStart(3, "0")}`;
-
   async function handleDelete(proposal: FinancialProposal) {
-    const locked = proposal.locked || proposal.status !== "draft";
-    const message = locked
-      ? `${proposal.proposal_no} is signed/sent. Delete it permanently from the record?`
-      : `Delete draft ${proposal.proposal_no}? This cannot be undone.`;
+    if (proposal.locked || proposal.status !== "draft") {
+      toast.error("Only draft proposals can be deleted. Use the builder to amend, edit the number, or preserve the signed record.");
+      return;
+    }
+    const message = `Delete draft ${proposal.proposal_no}? This cannot be undone.`;
     if (!window.confirm(message)) return;
     try {
       await remove.mutateAsync(proposal.id);
@@ -142,7 +144,7 @@ export default function ProposalsPage() {
         {[
           { label: "Total Proposals", value: proposals.length, sub: `${draftCount} draft`, color: "text-foreground" },
           { label: "Awaiting Client",  value: sentCount, sub: "sent for decision", color: "text-blue-600" },
-          { label: "Approved", value: fmtMoney(approvedValue), sub: `${approvedCount} accepted`, color: "text-emerald-600" },
+          { label: "Approved", value: fmtMoney(approvedValue), sub: `${approvedCount} accepted`, color: "text-[var(--apas-sapphire)]" },
           { label: "Active Pipeline", value: fmtMoney(pipelineValue), sub: "draft + sent", color: "text-[var(--apas-sapphire)]" },
         ].map(k => (
           <Card key={k.label}>
@@ -270,7 +272,7 @@ export default function ProposalsPage() {
                       {p.status === "approved" && (
                         <Button
                           size="sm"
-                          className="h-9 flex-1 bg-emerald-700 text-white hover:bg-emerald-800"
+                          className="h-9 flex-1 bg-[var(--apas-sapphire)] text-white hover:bg-[var(--apas-sapphire)]/90"
                           onClick={event => { event.stopPropagation(); navigate(`/projects/${projectId}/financials/client-invoices?new=1&proposal=${p.id}`); }}
                         >
                           <Receipt className="mr-1.5 h-3.5 w-3.5" /> Invoice
@@ -289,7 +291,7 @@ export default function ProposalsPage() {
                 );
               })}
               <div className="rounded-lg border bg-muted/30 p-3 text-right text-sm font-semibold">
-                Total approved <span className="font-mono text-emerald-700">{fmtMoney(approvedValue)}</span>
+                Total approved <span className="font-mono text-[var(--apas-sapphire)]">{fmtMoney(approvedValue)}</span>
               </div>
             </div>
             <div className="hidden overflow-x-auto md:block">
@@ -330,7 +332,7 @@ export default function ProposalsPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-7 w-7 p-0 text-emerald-700"
+                                className="h-7 w-7 p-0 text-[var(--apas-sapphire)]"
                                 title="Create client invoice"
                                 onClick={event => { event.stopPropagation(); navigate(`/projects/${projectId}/financials/client-invoices?new=1&proposal=${p.id}`); }}
                               >
@@ -343,23 +345,27 @@ export default function ProposalsPage() {
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </Button>
                             </Link>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
-                              title="Delete proposal"
-                              disabled={remove.isPending}
-                              onClick={event => { event.stopPropagation(); handleDelete(p); }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            {p.status === "draft" && !p.locked ? (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                                title="Delete draft proposal"
+                                disabled={remove.isPending}
+                                onClick={event => { event.stopPropagation(); handleDelete(p); }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : (
+                              <span title="Preserved proposal record"><Lock className="h-3.5 w-3.5 text-muted-foreground" /></span>
+                            )}
                           </div>
                         </td>
                       </tr>
                     );
                   })}
                 </tbody>
-                <tfoot><tr className="border-t bg-muted/60 font-bold"><td colSpan={3} className="p-3 text-right">Total Approved</td><td className="p-3 text-right font-mono text-emerald-600">{fmtMoney(approvedValue)}</td><td colSpan={4} /></tr></tfoot>
+                <tfoot><tr className="border-t bg-muted/60 font-bold"><td colSpan={3} className="p-3 text-right">Total Approved</td><td className="p-3 text-right font-mono text-[var(--apas-sapphire)]">{fmtMoney(approvedValue)}</td><td colSpan={4} /></tr></tfoot>
               </table>
             </div>
             </>
