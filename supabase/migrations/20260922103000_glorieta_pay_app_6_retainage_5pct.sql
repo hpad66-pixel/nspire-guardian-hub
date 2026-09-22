@@ -30,7 +30,8 @@ BEGIN
   FOR UPDATE;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Pay App % was not found', v_pay_app_id;
+    RAISE NOTICE 'Pay App % was not found in this database; skipping production data correction', v_pay_app_id;
+    RETURN;
   END IF;
 
   SELECT *
@@ -41,7 +42,8 @@ BEGIN
   FOR UPDATE;
 
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Pay App % is not tied to Sewer Extension project %', v_pay_app_id, v_project_id;
+    RAISE NOTICE 'Pay App % is not tied to Sewer Extension project % in this database; skipping production data correction', v_pay_app_id, v_project_id;
+    RETURN;
   END IF;
 
   IF v_pay_app.status NOT IN ('draft', 'submitted') THEN
