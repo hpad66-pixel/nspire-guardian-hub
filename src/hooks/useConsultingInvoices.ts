@@ -109,6 +109,10 @@ function lifecycleError(message: string) {
   return new Error(message);
 }
 
+function isNoRowsError(error: unknown) {
+  return typeof error === 'object' && error !== null && 'code' in error && (error as { code?: string }).code === 'PGRST116';
+}
+
 export function invoiceLifecycleActions(invoice: Pick<ConsultingInvoice, 'status'>, paidToDate = 0): Set<InvoiceLifecycleAction> {
   const paid = Number(paidToDate) || 0;
   const actions = new Set<InvoiceLifecycleAction>();
@@ -385,7 +389,10 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
       let inv = (list.data ?? []).find((i) => i.id === id);
       if (!inv) {
         const { data, error: fetchError } = await invoices().select('*').eq('id', id).single();
-        if (fetchError) throw fetchError;
+        if (fetchError) {
+          if (isNoRowsError(fetchError)) return { alreadyDeleted: true };
+          throw fetchError;
+        }
         inv = data as ConsultingInvoice;
       }
       const paid = await getInvoicePaidTotal(id);
@@ -400,11 +407,12 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
       }
       const { error } = await invoices().delete().eq('id', id);
       if (error) throw error;
+      return { alreadyDeleted: false };
     },
-    onSuccess: (_d, id) => {
+    onSuccess: (result, id) => {
       invalidate();
       qc.removeQueries({ queryKey: ['consulting-invoice-detail', id] });
-      toast.success('Invoice deleted');
+      toast.success(result?.alreadyDeleted ? 'Invoice already deleted. Ledger refreshed.' : 'Invoice deleted');
     },
     onError: (e: Error) => toast.error(`Couldn't delete invoice: ${e.message}`),
   });
