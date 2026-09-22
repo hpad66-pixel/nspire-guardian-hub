@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { AppSidebar } from './AppSidebar';
@@ -29,12 +29,59 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRoles } from '@/hooks/useUserManagement';
 import { useMyProfile } from '@/hooks/useMyProfile';
 import { useMyPortalKind } from '@/hooks/usePortals';
+import { useProject } from '@/hooks/useProjects';
+import { useClient } from '@/hooks/useClients';
 import type { Database } from '@/integrations/supabase/types';
 import { ProjectClosureBoundary } from '@/components/projects/ProjectClosureBoundary';
 import { internalAppRedirectForPortalKind } from '@/lib/portal/portalRedirect';
 
 interface AppLayoutProps {
   children: ReactNode;
+}
+
+const UUID_SEGMENT = '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}';
+
+function ProjectRouteContextPill({ pathname }: { pathname: string }) {
+  const projectId = useMemo(() => {
+    const match =
+      pathname.match(new RegExp(`^/projects/(${UUID_SEGMENT})(?:/|$)`)) ??
+      pathname.match(new RegExp(`^/owner-portal/projects/(${UUID_SEGMENT})(?:/|$)`));
+    return match?.[1] ?? null;
+  }, [pathname]);
+  const clientId = useMemo(() => {
+    const match = pathname.match(new RegExp(`^/organizations/(${UUID_SEGMENT})(?:/|$)`));
+    return match?.[1] ?? undefined;
+  }, [pathname]);
+  const { data: project } = useProject(projectId);
+  const { data: client } = useClient(!projectId ? clientId : undefined);
+
+  const projectName = projectId ? project?.name : null;
+  const clientName = projectId ? project?.client?.name : client?.name;
+  const label = projectName || clientName;
+  const contextType = projectName ? 'Project' : clientName ? 'Client' : null;
+
+  if (!label || !contextType) return null;
+
+  return (
+    <div className="flex min-w-0 flex-1 justify-end px-1 sm:px-3">
+      <div
+        className="min-w-0 max-w-[46vw] rounded-lg border border-[var(--apas-amber)]/35 bg-[#FBF8F1]/95 px-3 py-1.5 text-right shadow-sm sm:max-w-[360px]"
+        aria-label={`Current ${contextType.toLowerCase()}: ${label}`}
+      >
+        <p className="text-[10px] font-semibold uppercase leading-none tracking-[0.12em] text-[#8B7E6A]">
+          Current {contextType}
+        </p>
+        <p className="mt-1 truncate font-[Playfair_Display] text-sm font-semibold leading-tight text-[#08271F] sm:text-base">
+          {label}
+        </p>
+        {projectName && clientName && (
+          <p className="mt-0.5 hidden truncate text-[11px] leading-none text-muted-foreground min-[430px]:block">
+            {clientName}
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
@@ -214,7 +261,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                 </kbd>
               </Button>
 
-              <div className="flex-1" />
+              <ProjectRouteContextPill pathname={location.pathname} />
 
               <div className="flex items-center gap-2">
                 <Button

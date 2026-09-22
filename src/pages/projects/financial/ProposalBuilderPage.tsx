@@ -349,7 +349,10 @@ export default function ProposalBuilderPage() {
         lead_directory_entry_id: null,
       }))
       .filter((row) => row.unit_cost > 0);
-    if (!cleaned.length) return toast.error("No usable dollar rows were found in the upload.");
+    if (!cleaned.length) {
+      toast.error("No usable dollar rows were found in the upload.");
+      return;
+    }
 
     if (mode === "replace") {
       await lineQuery.replaceAll.mutateAsync(cleaned);
@@ -363,7 +366,8 @@ export default function ProposalBuilderPage() {
 
   async function saveLine(line: FinancialProposalLine) {
     if (line.lead_type !== "apas" && !line.lead_directory_entry_id) {
-      return toast.error("Choose the contractor or consultant from the project directory.");
+      toast.error("Choose the contractor or consultant from the project directory.");
+      return;
     }
     await lineQuery.update.mutateAsync({
       id: line.id,

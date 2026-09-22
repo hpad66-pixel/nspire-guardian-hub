@@ -7,6 +7,8 @@ import {
   TABLE_ROWS,
 } from './fixtures/prodStub';
 
+const SECOND_PROJECT_ID = '55555555-5555-4555-8555-555555555555';
+
 test.use({
   viewport: { width: 390, height: 844 },
   isMobile: true,
@@ -16,23 +18,44 @@ test.use({
 });
 
 function seedConsultingFinancialRows() {
-  TABLE_ROWS.projects = [{
-    id: SEED.projectId,
-    name: 'R4 Consulting Lifecycle Repair',
-    status: 'active',
-    description: 'Seeded mobile lifecycle smoke project.',
-    budget: 0,
-    spent: 0,
-    property_id: null,
-    client_id: null,
-    parent_project_id: null,
-    project_type: 'consulting',
-    program_meta: {},
-    start_date: '2026-01-01',
-    target_end_date: '2026-12-31',
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z',
-  }];
+  TABLE_ROWS.projects = [
+    {
+      id: SEED.projectId,
+      name: 'R4 Consulting Lifecycle Repair',
+      status: 'active',
+      description: 'Seeded mobile lifecycle smoke project.',
+      budget: 0,
+      spent: 0,
+      property_id: null,
+      client_id: null,
+      client: { name: 'R4 Capital', client_type: 'business_client' },
+      parent_project_id: null,
+      project_type: 'consulting',
+      program_meta: {},
+      start_date: '2026-01-01',
+      target_end_date: '2026-12-31',
+      created_at: '2026-01-01T00:00:00Z',
+      updated_at: '2026-01-01T00:00:00Z',
+    },
+    {
+      id: SECOND_PROJECT_ID,
+      name: 'Second Project Identity Check',
+      status: 'active',
+      description: 'Seeded project used to catch stale header labels.',
+      budget: 0,
+      spent: 0,
+      property_id: null,
+      client_id: null,
+      client: { name: 'Second Client', client_type: 'business_client' },
+      parent_project_id: null,
+      project_type: 'consulting',
+      program_meta: {},
+      start_date: '2026-02-01',
+      target_end_date: '2026-12-31',
+      created_at: '2026-02-01T00:00:00Z',
+      updated_at: '2026-02-01T00:00:00Z',
+    },
+  ];
   TABLE_ROWS.proposals = [{
     id: 'prop-0001-0000-4000-8000-000000000001',
     tenant_id: 't1',
@@ -219,6 +242,7 @@ test('mobile financial lifecycle renders with ivory shell and usable invoice/pro
   await page.goto('/dashboard');
   await expect(page.getByTestId('mobile-bottom-nav')).toBeVisible({ timeout: 15000 });
   await expect(page.locator('body')).not.toContainText(CRASH_TEXT);
+  await expect(page.getByLabel(/Current project:/i)).toHaveCount(0);
   await expect(page.getByTestId('mobile-bottom-nav')).toHaveCSS('background-color', 'rgba(251, 248, 241, 0.95)');
   await page.getByRole('button', { name: /more/i }).click();
   await expect(page.getByRole('dialog').getByText('More')).toBeVisible();
@@ -226,18 +250,21 @@ test('mobile financial lifecycle renders with ivory shell and usable invoice/pro
   await expectNoDocumentOverflow(page);
 
   await page.goto(`/projects/${SEED.projectId}/financials/proposals`);
+  await expect(page.getByLabel('Current project: R4 Consulting Lifecycle Repair')).toBeVisible({ timeout: 15000 });
   await expect(page.getByRole('heading', { name: /client proposals/i })).toBeVisible({ timeout: 15000 });
   await expect(page.getByText('APAS-R4-001').first()).toBeVisible();
   await expect(page.getByRole('button', { name: /invoice/i }).first()).toBeVisible();
   await expectNoDocumentOverflow(page);
 
   await page.goto(`/projects/${SEED.projectId}/financials/proposals/prop-0001-0000-4000-8000-000000000001`);
+  await expect(page.getByLabel('Current project: R4 Consulting Lifecycle Repair')).toBeVisible({ timeout: 15000 });
   await expect(page.getByText(/Stable record ID/i)).toBeVisible({ timeout: 15000 });
   await expect(page.getByRole('button', { name: /edit number/i })).toBeVisible();
   await expect(page.getByText(/Preserved record/i)).toBeVisible();
   await expectNoDocumentOverflow(page);
 
   await page.goto(`/projects/${SEED.projectId}/financials/client-invoices`);
+  await expect(page.getByLabel('Current project: R4 Consulting Lifecycle Repair')).toBeVisible({ timeout: 15000 });
   await expect(page.getByText(/All invoices/i)).toBeVisible({ timeout: 15000 });
   await expect(page.getByText('Invoice #3').first()).toBeVisible();
   await expect(page.getByRole('button', { name: /^Draft$/i }).first()).toBeVisible();
@@ -246,5 +273,11 @@ test('mobile financial lifecycle renders with ivory shell and usable invoice/pro
   await expect(page.getByRole('dialog').getByRole('button', { name: /Return to draft/i })).toBeVisible();
   await expect(page.getByRole('dialog').getByRole('button', { name: /Void unpaid invoice/i })).toBeVisible();
   await expectNoDocumentOverflow(page);
+
+  await page.goto(`/projects/${SECOND_PROJECT_ID}/financials/proposals`);
+  await expect(page.getByLabel('Current project: Second Project Identity Check')).toBeVisible({ timeout: 15000 });
+  await expect(page.getByLabel('Current project: R4 Consulting Lifecycle Repair')).toHaveCount(0);
+  await expectNoDocumentOverflow(page);
+
   expect(lazyErrors).toEqual([]);
 });
