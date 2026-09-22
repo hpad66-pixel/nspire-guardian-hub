@@ -208,6 +208,37 @@ export function coSettingsForCompanyBrand(brand: ApasCompanyBrand, seed: Record<
   };
 }
 
+export function coSettingsForPayAppCompanyBrand(brand: ApasCompanyBrand, seed: Record<string, unknown> = {}) {
+  const settings = coSettingsForCompanyBrand(brand, seed);
+  return {
+    ...settings,
+    footer:
+      brand.key === 'apas_consulting'
+        ? 'APAS Consulting LLC - Progress pay application - ProjOS'
+        : settings.footer,
+  };
+}
+
+export function payAppEmailOpeningForCompany(brand: ApasCompanyBrand) {
+  if (brand.key === 'apas_consulting') {
+    return 'Attached is the progress pay application package for your review. It combines the G702/G703 pay application with the selected backup so your team has one clean project billing record.';
+  }
+  return brand.emailOpening;
+}
+
+export function companyBrandForContractorName(contractorName?: string | null): ApasCompanyBrand | null {
+  const name = (contractorName ?? '').toLowerCase();
+  if (name.includes('apas build')) return APAS_COMPANY_BRANDS.apas_build;
+  if (name.includes('apas consulting')) return APAS_COMPANY_BRANDS.apas_consulting;
+  return null;
+}
+
+export function payAppCompanyBrandForContract(
+  contract?: { contractor_name?: string | null } | null,
+): ApasCompanyBrand {
+  return companyBrandForContractorName(contract?.contractor_name) ?? APAS_COMPANY_BRANDS.apas_build;
+}
+
 export function invoicePackageSubject(brand: ApasCompanyBrand, documentNo: string | number, projectName: string) {
   return `${brand.documentLabel} #${documentNo} - ${projectName}`;
 }

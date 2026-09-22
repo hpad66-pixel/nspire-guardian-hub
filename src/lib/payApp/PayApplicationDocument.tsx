@@ -574,10 +574,22 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
             {/* RIGHT — contractor certification + notary + A/E certificate */}
             <div style={{ flex: 1, fontSize: 11, lineHeight: 1.4 }}>
               <div style={{ color: INK }}>
-                The undersigned certifies that to the best of the Contractor&apos;s knowledge, information and belief, the
-                Work covered by this Application for Payment has been completed in accordance with the Contract Documents,
-                that all amounts have been paid by the Contractor for Work which previous Certificates for payment were
-                issued and payments received from the Owner/Client, and that current payment shown herein is now due.
+                {showPaymentReconciliation ? (
+                  <>
+                    The undersigned certifies that to the best of the Contractor&apos;s knowledge, information and belief, the
+                    Work covered by this Application for Payment has been completed in accordance with the Contract Documents,
+                    that all amounts have been paid by the Contractor for Work which previous Certificates for payment were
+                    issued and payments received from the Owner/Client, and that the amount certified herein has been recorded
+                    as received for this final paid copy.
+                  </>
+                ) : (
+                  <>
+                    The undersigned certifies that to the best of the Contractor&apos;s knowledge, information and belief, the
+                    Work covered by this Application for Payment has been completed in accordance with the Contract Documents,
+                    that all amounts have been paid by the Contractor for Work which previous Certificates for payment were
+                    issued and payments received from the Owner/Client, and that current payment shown herein is now due.
+                  </>
+                )}
               </div>
               <div style={{ marginTop: 10, fontWeight: 700 }}>CONTRACTOR: {spec.contractor.name}</div>
               <div style={{ display: "flex", gap: 12, alignItems: "flex-end", marginTop: 14 }}>
@@ -615,7 +627,7 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                 </div>
                 {showPaymentReconciliation && (
                   <div style={{ marginTop: 6, fontSize: 9.5, color: MUTE, lineHeight: 1.35 }}>
-                    This final copy shows the certified amount above and records the matching receipt separately. It is not an additional open request for payment.
+                    Receipt recorded: the certified amount above has been received and the balance for this application is $0.
                   </div>
                 )}
                 <div style={{ marginTop: 6, fontStyle: "italic", fontSize: 8.5, color: MUTE }}>

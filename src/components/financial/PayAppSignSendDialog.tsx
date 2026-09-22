@@ -22,7 +22,7 @@ import { usePayAppAttachments, type PayAppAttachment } from "@/hooks/usePayAppAt
 import { useCoSettings } from "@/hooks/useCoSettings";
 import { useSendEmail } from "@/hooks/useSendEmail";
 import { supabase } from "@/integrations/supabase/client";
-import { APAS_COMPANY_BRANDS, coSettingsForCompanyBrand } from "@/lib/financial/apasCompanyBranding";
+import { coSettingsForPayAppCompanyBrand, payAppCompanyBrandForContract, payAppEmailOpeningForCompany } from "@/lib/financial/apasCompanyBranding";
 import { PayApplicationDocument } from "@/lib/payApp/PayApplicationDocument";
 import { buildPayAppSpec } from "@/lib/payApp/buildSpec";
 import { payAppPdfBlob, blobToBase64 } from "@/lib/payApp/payAppPdf";
@@ -62,15 +62,15 @@ export function PayAppSignSendDialog({
   const [busy, setBusy] = useState(false);
 
   const today = new Date().toISOString().slice(0, 10);
-  const buildBrand = APAS_COMPANY_BRANDS.apas_build;
-  const buildSettings = coSettingsForCompanyBrand(buildBrand, coSettings ?? {});
+  const payAppBrand = payAppCompanyBrandForContract(contract);
+  const payAppSettings = coSettingsForPayAppCompanyBrand(payAppBrand, coSettings ?? {});
 
   // Off-screen DRAFT document, stamped with the just-typed signature.
   const spec = useMemo(
-    () => (pa ? buildPayAppSpec(pa, contract, buildSettings, g702, lines, {
+    () => (pa ? buildPayAppSpec(pa, contract, payAppSettings, g702, lines, {
       signatureUrl, signedName, signedDate: today, draft: true,
     }) : null),
-    [pa, contract, buildSettings, g702, lines, signatureUrl, signedName, today],
+    [pa, contract, payAppSettings, g702, lines, signatureUrl, signedName, today],
   );
 
   async function signAndSend() {
@@ -117,22 +117,22 @@ export function PayAppSignSendDialog({
       toast.loading("Sending to the client…", { id: t });
       await sendEmail.mutateAsync({
         recipients,
-        fromName: buildBrand.senderName,
-        fromEmail: buildBrand.senderEmail,
+        fromName: payAppBrand.senderName,
+        fromEmail: payAppBrand.senderEmail,
         subject: `DRAFT for review - Pay Application #${pa.pay_app_no} - ${contract.title}`,
         bodyHtml: `
           <div style="font-family:Arial,sans-serif;color:#17191d;max-width:620px">
-          <div style="border-left:6px solid ${buildBrand.accent};padding:6px 0 10px 16px;margin-bottom:18px">
-            <div style="font-size:11px;font-weight:900;letter-spacing:1.8px;text-transform:uppercase;color:${buildBrand.accent}">${buildBrand.wordmark}</div>
-            <div style="font-size:22px;font-weight:900;color:${buildBrand.primary};margin-top:4px">Pay Application #${pa.pay_app_no}</div>
-            <div style="font-size:13px;color:${buildBrand.muted}">Sent by ${buildBrand.senderName} · ${buildBrand.legalName}</div>
+          <div style="border-left:6px solid ${payAppBrand.accent};padding:6px 0 10px 16px;margin-bottom:18px">
+            <div style="font-size:11px;font-weight:900;letter-spacing:1.8px;text-transform:uppercase;color:${payAppBrand.accent}">${payAppBrand.wordmark}</div>
+            <div style="font-size:22px;font-weight:900;color:${payAppBrand.primary};margin-top:4px">Pay Application #${pa.pay_app_no}</div>
+            <div style="font-size:13px;color:${payAppBrand.muted}">Sent by ${payAppBrand.senderName} · ${payAppBrand.legalName}</div>
           </div>
           <p>Hello,</p>
-          <p>${buildBrand.emailOpening}</p>
+          <p>${payAppEmailOpeningForCompany(payAppBrand)}</p>
           <p>This package is for <strong>${contract.title}</strong>, period ending <strong>${pa.period_end}</strong>, and is sent as a <strong>DRAFT for your review</strong>. This is not yet a formal request for payment.</p>
           ${message.trim() ? `<p>${message.trim().replace(/\n/g, "<br/>")}</p>` : ""}
           <p>Please review and let us know of any questions.</p>
-          <p>Regards,<br/>${buildBrand.senderName}<br/><span style="color:${buildBrand.muted}">${buildBrand.legalName}</span></p>
+          <p>Regards,<br/>${payAppBrand.senderName}<br/><span style="color:${payAppBrand.muted}">${payAppBrand.legalName}</span></p>
           </div>`,
         bodyText: `Pay Application #${pa.pay_app_no} (period ending ${pa.period_end}) for ${contract.title} — DRAFT for your review. ${message.trim()}`,
         attachments: [{ filename, contentBase64: finalBase64, contentType: "application/pdf", size: sizeApprox }],
@@ -168,12 +168,12 @@ export function PayAppSignSendDialog({
       </DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Sign &amp; send APAS Build package</DialogTitle>
+          <DialogTitle>Sign &amp; send {payAppBrand.shortName} package</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="rounded-md border p-3 text-xs" style={{ borderColor: `${buildBrand.accent}66`, background: buildBrand.surface, color: buildBrand.ink }}>
-            <strong>{buildBrand.legalName}</strong> pay applications go out from <strong>{buildBrand.senderName}</strong>.
+          <div className="rounded-md border p-3 text-xs" style={{ borderColor: `${payAppBrand.accent}66`, background: payAppBrand.surface, color: payAppBrand.ink }}>
+            <strong>{payAppBrand.legalName}</strong> pay applications go out from <strong>{payAppBrand.senderName}</strong>.
             The typed signature is stamped onto the G702 with a <strong>DRAFT - for owner review</strong> banner,
             then emailed as one client-ready package. It does not submit or approve the pay app.
           </div>

@@ -10,7 +10,7 @@ import { Download } from "lucide-react";
 import { toast } from "sonner";
 import { usePayAppContinuation } from "@/hooks/usePayAppContinuation";
 import { useCoSettings } from "@/hooks/useCoSettings";
-import { APAS_COMPANY_BRANDS, coSettingsForCompanyBrand } from "@/lib/financial/apasCompanyBranding";
+import { coSettingsForPayAppCompanyBrand, payAppCompanyBrandForContract } from "@/lib/financial/apasCompanyBranding";
 import { PayApplicationDocument } from "@/lib/payApp/PayApplicationDocument";
 import { buildPayAppSpec } from "@/lib/payApp/buildSpec";
 import { downloadPayAppPdf } from "@/lib/payApp/payAppPdf";
@@ -29,7 +29,8 @@ export function PayAppPDFExport({ payAppId, contract }: PayAppPDFExportProps) {
   const [busy, setBusy] = useState(false);
 
   const pa = detail.data;
-  const s: any = coSettingsForCompanyBrand(APAS_COMPANY_BRANDS.apas_build, coSettings ?? {});
+  const payAppBrand = payAppCompanyBrandForContract(contract);
+  const s: any = coSettingsForPayAppCompanyBrand(payAppBrand, coSettings ?? {});
 
   const spec = pa ? buildPayAppSpec(pa, contract, s, g702, lines) : null;
 
