@@ -10,15 +10,16 @@ type ProjectWithStatus = {
   status?: string | null;
 };
 
-/** "All" means the complete portfolio, including certified closed projects. */
+/** "All" means the active main portfolio; closed work is shown only by choosing Closed. */
 export function matchesPortfolioStatus(
   project: ProjectWithStatus,
   statusFilter: PortfolioStatusFilter,
 ) {
-  return statusFilter === 'all' || project.status === statusFilter;
+  if (statusFilter === 'all') return project.status !== 'closed';
+  return project.status === statusFilter;
 }
 
-/** Keep certified closeouts celebratory and visible at the top of the full portfolio. */
+/** Historical closeout sorter for explicit closed/audit views. */
 export function compareClosedProjectsFirst(
   a: ProjectWithStatus,
   b: ProjectWithStatus,

@@ -34,11 +34,12 @@ The north star should be simple:
 Current local status:
 
 - **Implemented locally and verified:** client first dashboard portfolio cards, closed project hiding in default project lists, R4 presentation grouping for Glorieta style aliases and named standalone consulting projects, project lifecycle panel, removal of the large Glorieta Gardens Site Accountability spotlight from the organization page, and the Notion first visible meeting workflow.
+- **Release 1 to 3 verification on 2026-09-22:** focused tests passed for client portfolio grouping, portfolio project visibility, project lifecycle guardrails, proposal upload boundary, consulting billing, consulting invoice PDF footer, and consulting financial navigation. Production build and critical typecheck passed locally. Release 1 and 2 still require scoped commit, push, CI, and live domain check before they can be called production live.
 - **Partially deployed and verified on 2026-09-22:** Proj OS public Notion OAuth database schema now exists in Supabase for `notion_connections`, `notion_project_mappings`, and `notion_sync_runs`. The isolated `notion` and `notion-oauth-callback` Edge Functions are deployed. The `notion` control endpoint correctly rejects unauthenticated calls with `401`. The public callback safely redirects invalid or missing state to `https://projos.ai/settings?notion=error`. Notion OAuth cannot complete yet because `NOTION_OAUTH_CLIENT_ID` and `NOTION_OAUTH_CLIENT_SECRET` are not configured in Supabase secrets.
 - **Implemented locally, pending verification:** Proj OS settings UI, safe status surface, selected source search, and client/project mapping UI. These are local app changes and are not proven on the live frontend until the frontend release is explicitly approved.
 - **Verified outside Proj OS on 2026-09-22:** the personal desktop Hostinger Hermes backend was updated from `0.20.1` to `0.21.4` and reported healthy. User approved Notion OAuth on the active Hostinger profile. Hermes discovered 45 Notion MCP tools. A minimal read only `notion-list-private-pages(limit:1)` check returned HTTP 200 without an RPC or tool error. The desktop Notion tool list loaded without an Authenticate warning. This proves the direct Hermes vendor Notion MCP read connection is alive. It does not prove writes, comments, meeting summarization, or a Proj OS to Notion sync workflow.
 - **Verified personal Hermes to Proj OS on 2026-09-22:** the active personal desktop Hostinger Hermes profile now authenticates to Proj OS MCP through OAuth rather than the old literal bearer configuration. `hermes mcp test proj_os` connected with OAuth 2.0 and discovered 35 tools. A direct read only `proj_os_health` call returned HTTP 200, `isError: false`, `connection_mode: workspace_dynamic`, and `project_count: 53`. Hermes Desktop MCP JSON was saved in OAuth form and MCP was reloaded. This proves the personal desktop profile can read Proj OS through MCP. It does not prove Proj OS writes, client releases, financial changes, or restricted production runtime readiness.
-- **Implemented locally and verified:** proposal-driven Notice to Proceed drafting now fills the NTP from approved proposal facts, uses an official branded letterhead, signs automatically as Hardeep Anand, PE, and prepares branded Resend email plus PDF delivery through the `contractor-ntp` Edge Function. Supabase already has the `RESEND_API_KEY` secret configured. This is local code plus verified tests; a scoped Git commit, isolated Supabase function deploy, and live smoke test are still required before claiming production live.
+- **Production live on 2026-09-22:** proposal-driven Notice to Proceed drafting fills the NTP from approved proposal facts, uses official branded letterhead, signs automatically as Hardeep Anand, PE, and prepares branded Resend email plus PDF delivery through the `contractor-ntp` Edge Function. Commit `3a66bf9` was pushed to GitHub. CI passed, Supabase deploy passed, the live route returned HTTP 200, and the function enforces auth on unauthenticated smoke test.
 - **Agreed or planned:** sync job from mapped Notion sources into reviewed meeting/project records, Hermes meeting tools, full grouped project navigation rewrite, full mobile first rewrite, package based navigation enforcement, and production deployment of this revamp.
 - **Not authorized in this local pass:** replacing the current GitHub/live production version. Push and deploy require explicit user direction.
 
@@ -643,7 +644,8 @@ Scope:
 Local implementation status:
 
 - Client portfolio cards, closed project hiding, R4 presentation grouping, and project lifecycle panel exist locally.
-- These changes require scoped review before production release.
+- Focused Release 1 tests passed on 2026-09-22.
+- These changes require scoped commit, push, CI, and live domain check before production live status.
 
 Acceptance checks:
 
@@ -688,6 +690,12 @@ Acceptance checks:
 - No primary navigation item leads to an empty or dead end page.
 - Mobile shows five major project actions, not the full desktop tab set.
 
+Local implementation status:
+
+- Project lifecycle panel is mounted on desktop and mobile overview.
+- Focused Release 2 tests passed on 2026-09-22.
+- Requires scoped commit, push, CI, and live domain check before production live status.
+
 Do not touch in this release:
 
 - Locked historical documents.
@@ -718,6 +726,11 @@ Acceptance checks:
 - APAS margin is visible to internal users and hidden from clients.
 - A "dumb simple" side guide explains step 1, step 2, step 3.
 
+Current implementation status:
+
+- Verified on 2026-09-22 with focused tests and production build: exactly two proposal paths, manual-only uploaded executed proposal values, project directory requirement for non-APAS value lines, approved-value billing caps, percent billing shortcuts, invoice footer cleanup, and consulting financial navigation.
+- No additional code changes were required in this pass beyond carrying the already implemented tracked behavior through verification.
+
 Do not touch in this release:
 
 - Glorieta Gardens finalized pay applications except through an explicitly approved migration or correction task.
@@ -737,11 +750,11 @@ Scope:
 
 Current implementation status:
 
-- Implemented locally.
-- Local typecheck passed.
-- Focused NTP tests passed.
+- Production live as of commit `3a66bf9`.
+- CI passed.
+- Supabase migrations and Edge Functions deploy passed.
 - Supabase `RESEND_API_KEY` secret exists.
-- Requires scoped commit, isolated `contractor-ntp` Edge Function deploy, and live smoke test.
+- Live domain route returned HTTP 200.
 
 Acceptance checks:
 

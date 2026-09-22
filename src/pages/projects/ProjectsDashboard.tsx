@@ -59,6 +59,10 @@ import {
   matchesPortfolioStatus,
   type PortfolioStatusFilter,
 } from '@/lib/projects/portfolioProjectVisibility';
+import {
+  resolveClientPortfolioProjects,
+  shouldIncludeProjectForClientFilter,
+} from '@/lib/projects/clientPortfolio';
 
 type ViewMode = 'cards' | 'list' | 'table';
 type StatusFilter = PortfolioStatusFilter;
@@ -89,6 +93,7 @@ export default function ProjectsDashboard() {
   const { isSuperAdmin: canDeleteProjects } = usePlatformSuperAdmin();
   const [searchParams, setSearchParams] = useSearchParams();
   const propertyFilterId = searchParams.get('propertyId');
+  const clientFilterId = searchParams.get('clientId');
 
   // --- UI state ---
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -121,10 +126,19 @@ export default function ProjectsDashboard() {
   const filteredProperty = propertyFilterId
     ? properties?.find((p) => p.id === propertyFilterId) ?? null
     : null;
+  const filteredClient = clientFilterId
+    ? projects?.find((p: any) => p.client_id === clientFilterId)?.client ?? null
+    : null;
+  const filteredClientName = filteredClient?.name ?? null;
 
   const clearPropertyFilter = () => {
     const next = new URLSearchParams(searchParams);
     next.delete('propertyId');
+    setSearchParams(next, { replace: true });
+  };
+  const clearClientFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('clientId');
     setSearchParams(next, { replace: true });
   };
 
@@ -166,14 +180,27 @@ export default function ProjectsDashboard() {
       filtered = filtered.filter((p: any) => p.property_id === propertyFilterId);
     }
 
+    // Client filter (from dashboard portfolio cards)
+    if (clientFilterId) {
+      const selectedClientName = projects.find((p: any) => p.client_id === clientFilterId)?.client?.name ?? null;
+      filtered = filtered.filter((p: any) =>
+        shouldIncludeProjectForClientFilter(p, clientFilterId, selectedClientName),
+      );
+    }
+
     // Search
     if (search.trim()) {
       const q = search.toLowerCase();
       filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
     }
 
-    // "All Projects" is literal: certified closed cards remain visible after refresh.
+    // Main portfolio views stay focused on current work; closed projects are
+    // visible only when the user deliberately selects Closed.
     filtered = filtered.filter((project) => matchesPortfolioStatus(project, statusFilter));
+
+    // Portfolio normalization keeps legacy standalone/R4 items grouped in the
+    // right client journey without changing the underlying project records.
+    filtered = resolveClientPortfolioProjects(filtered);
 
     // Kind filter (construction vs consulting) — they measure different things.
     if (kindFilter !== 'all') {
@@ -223,7 +250,7 @@ export default function ProjectsDashboard() {
     });
 
     return filtered;
-  }, [projects, financials, consultingTotals, propertyFilterId, search, statusFilter, kindFilter, healthFilter, sectorFilter, sortBy, sortDir]);
+  }, [projects, financials, consultingTotals, propertyFilterId, clientFilterId, search, statusFilter, kindFilter, healthFilter, sectorFilter, sortBy, sortDir]);
 
   // ── Hierarchy (shared rollup layer) ────────────────────────────────────────
   const tree = useMemo(() => buildProjectTree((projects ?? []) as Project[]), [projects]);
@@ -546,6 +573,26 @@ export default function ProjectsDashboard() {
             variant="ghost"
             size="sm"
             onClick={clearPropertyFilter}
+            className="h-7 gap-1 text-xs"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </Button>
+        </div>
+      )}
+
+      {/* ── Client filter banner ── */}
+      {clientFilterId && (
+        <div className="flex items-center justify-between gap-3 rounded-lg border border-[var(--apas-sapphire)]/30 bg-[var(--apas-sapphire)]/5 px-4 py-2.5">
+          <div className="flex items-center gap-2 text-sm">
+            <Briefcase className="h-4 w-4 text-[var(--apas-sapphire)]" />
+            <span className="text-muted-foreground">Filtered to client</span>
+            <span className="font-semibold text-foreground">{filteredClientName ?? 'Selected client'}</span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={clearClientFilter}
             className="h-7 gap-1 text-xs"
           >
             <X className="h-3.5 w-3.5" />

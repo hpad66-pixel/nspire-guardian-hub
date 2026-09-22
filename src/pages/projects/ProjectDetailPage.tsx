@@ -60,6 +60,7 @@ import { ModuleVisibilityDialog } from '@/components/projects/ModuleVisibilityDi
 import { ProjectTypeDialog } from '@/components/projects/ProjectTypeDialog';
 import { ProjectKindBadge, ProjectTypeMissingAlert } from '@/components/projects/ProjectKindBadge';
 import { ProjectOwnerBadge } from '@/components/projects/ProjectOwnerBadge';
+import { ProjectLifecyclePanel } from '@/components/projects/ProjectLifecyclePanel';
 import { useFinancialProposals } from '@/hooks/useFinancialProposals';
 import { useConsultingArLedger } from '@/hooks/useConsultingInvoices';
 import { proposalTotals } from '@/lib/financial/proposalPricing';
@@ -842,6 +843,7 @@ export default function ProjectDetailPage() {
               {/* RIGHT: Tab content */}
               <div className="flex-1 min-w-0 space-y-4">
                 <TabsContent value="overview" className="space-y-6 mt-0">
+                  <ProjectLifecyclePanel project={project} teamCount={teamMembers.length} />
                   {closeout.readiness && (
                     <ConstructionCloseoutBanner
                       projectId={id!}
@@ -1214,6 +1216,7 @@ export default function ProjectDetailPage() {
             {/* ── Tablet + Mobile tab contents ─────────────────────────── */}
             <div className="lg:hidden mt-2 space-y-4">
               <TabsContent value="overview" className="space-y-6">
+                <ProjectLifecyclePanel project={project} teamCount={teamMembers.length} />
                 {closeout.readiness && (
                   <ConstructionCloseoutBanner
                     projectId={id!}

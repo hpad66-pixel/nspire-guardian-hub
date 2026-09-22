@@ -11,9 +11,12 @@ describe('portfolio project visibility', () => {
     { id: 'planning', status: 'planning' },
   ];
 
-  it('shows closed projects in the default all-projects view', () => {
+  it('hides closed projects in the default all-projects view', () => {
     expect(projects.filter((project) => matchesPortfolioStatus(project, 'all')))
-      .toHaveLength(3);
+      .toEqual([
+        { id: 'active', status: 'active' },
+        { id: 'planning', status: 'planning' },
+      ]);
   });
 
   it('keeps explicit status filters exact', () => {

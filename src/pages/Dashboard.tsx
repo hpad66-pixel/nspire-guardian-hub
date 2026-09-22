@@ -12,7 +12,7 @@ import {
   Settings2, Eye, EyeOff, RotateCcw, Plus,
   MessageCircle, ClipboardList, BarChart3, Sunrise, HardHat, Lightbulb,
   FileText, Inbox, Phone, LayoutDashboard, Sparkles, Compass,
-  Shield, Gauge, Contact, Files, Link2, Smartphone, Camera, ReceiptText,
+  Shield, Gauge, Contact, Files, Link2, Smartphone, Camera, ReceiptText, Droplets,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -32,6 +32,7 @@ import { usePendingReviewCount } from '@/hooks/useInspectionReview';
 import { useUnreadThreadCount } from '@/hooks/useThreadReadStatus';
 import { useModules } from '@/contexts/ModuleContext';
 import { type ActionCardData } from '@/components/dashboard/ActionCard';
+import { ClientPortfolioSection } from '@/components/dashboard/ClientPortfolioSection';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
 import { isActiveProject } from '@/lib/projects';
 import { dashboardHeroCopy, type DashboardHeroCta } from '@/lib/dashboard/hero';
@@ -64,6 +65,7 @@ const NAV_ICONS: Record<DashboardNavItemId, LucideIcon> = {
   inbox: Inbox,
   voice: Phone,
   stores: LayoutDashboard,
+  'water-intel': Droplets,
   reports: BarChart3,
   documents: Files,
   portals: Link2,
@@ -770,6 +772,8 @@ export default function Dashboard() {
           hasClientPortal={hasClientPortal}
           onNavigate={navigate}
         />
+
+        <ClientPortfolioSection projects={activeProjectsList} />
 
         <ProductValueMoments onNavigate={navigate} />
 
