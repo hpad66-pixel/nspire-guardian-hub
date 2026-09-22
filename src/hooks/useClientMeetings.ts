@@ -147,49 +147,6 @@ export function useClientMeetings(clientId?: string) {
             p_instruction: instruction || '',
         }), onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
     const submitCompletion = useMutation({ mutationFn: (actionId: string) => meetingRpc<{ id: string }>('client_meeting_submit_completion', { p_client_id: clientId, p_action_id: actionId }), onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
-    const generate = useMutation({ mutationFn: async (input: {
-            meetingId: string;
-            transcript: string;
-            sections: MeetingSection[];
-            instructions: string;
-        }) => {
-            const { data, error } = await supabase.functions.invoke('client-meeting-ai', { body: { clientId, ...input } });
-            if (error) {
-                let message = error.message;
-                try {
-                    message = (await error.context.json()).error || message;
-                }
-                catch { /* Keep original error. */ }
-                throw new Error(message);
-            }
-            if (data?.error)
-                throw new Error(data.error);
-            return data as {
-                title: string;
-                sections: MeetingSection[];
-                actions: Partial<MeetingAction>[];
-            };
-        }, onError: (e: Error) => toast.error(e.message) });
     const manage = useMutation({ mutationFn: ({ operation, id }: { operation: string; id: string }) => meetingRpc<void>('client_meeting_manage_command', { p_client: clientId, p_operation: operation, p_id: id }), onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
-    const uploadSource = useMutation({ mutationFn: async ({ meetingId, file, extractedText }: { meetingId: string; file: File; extractedText?: string }) => {
-            const body = new FormData();
-            body.append('clientId', clientId || '');
-            body.append('meetingId', meetingId);
-            body.append('file', file);
-            if (extractedText)
-                body.append('extractedText', extractedText);
-            const { data, error } = await supabase.functions.invoke('client-meeting-source', { body });
-            if (error) {
-                let message = error.message;
-                try {
-                    message = (await error.context.json()).error || message;
-                }
-                catch { /* Keep original error. */ }
-                throw new Error(message);
-            }
-            if (data?.error)
-                throw new Error(data.error);
-            return data;
-        }, onSuccess: () => qc.invalidateQueries({ queryKey: key }), onError: (e: Error) => toast.error(e.message) });
-    return { ...list, command, addUpdate, bulkAssign, submitCompletion, generate, manage, uploadSource };
+    return { ...list, command, addUpdate, bulkAssign, submitCompletion, manage };
 }

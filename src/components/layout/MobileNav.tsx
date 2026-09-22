@@ -659,10 +659,6 @@ export function MobileNav() {
     isModuleEnabled('projectsEnabled');
 
   const activeSection = getActiveSection(location.pathname);
-  const hideOwnerWalkShortcut =
-    location.pathname === '/site-accountability' ||
-    location.pathname.endsWith('/accountability') ||
-    location.pathname.startsWith('/owner-portal');
 
   return (
     <>
@@ -730,31 +726,6 @@ export function MobileNav() {
           onClick={() => setMoreOpen(true)}
         />
       </div>
-
-      {hasSiteAccountability && !hideOwnerWalkShortcut && (
-        <button
-          type="button"
-          onClick={() => navigate(siteAccountabilityPath)}
-          className="fixed inset-x-4 z-[55] lg:hidden"
-          style={{ bottom: 'calc(4.9rem + env(safe-area-inset-bottom, 0px))' }}
-          data-testid="mobile-owner-walk-shortcut"
-          aria-label="Open Site Accountability owner walkthrough"
-        >
-          <span className="flex min-h-14 items-center justify-between gap-3 rounded-2xl border border-amber-200/70 bg-gradient-to-r from-[#0d6b57] via-[#0a473a] to-[#082b23] px-4 py-3 text-left text-white shadow-[0_18px_45px_rgba(8,43,35,.28)] backdrop-blur-xl active:scale-[0.98]">
-            <span className="flex items-center gap-3">
-              <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-300 text-amber-950">
-                <ScanEye className="h-5 w-5" />
-                <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-emerald-300 ring-2 ring-[#0d6b57]" />
-              </span>
-              <span>
-                <span className="block text-[11px] font-bold uppercase tracking-[0.16em] text-amber-200">Owner walkthrough</span>
-                <span className="block text-[15px] font-semibold leading-tight">Open Site Accountability</span>
-              </span>
-            </span>
-            <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-bold text-emerald-50">Open</span>
-          </span>
-        </button>
-      )}
 
       {/* More drawer */}
       <MoreDrawer

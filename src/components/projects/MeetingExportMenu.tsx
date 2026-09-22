@@ -1,8 +1,8 @@
 /**
- * Print / Download PDF / Email control for a single meeting's minutes.
+ * Print / Download PDF / Email control for a single reviewed meeting record.
  * - layout="inline"  → three prominent buttons (used at the top of the editor)
  * - layout="menu"    → compact dropdown (used on list rows)
- * Email sends a BRANDED HTML body (the minutes, inline-styled for email clients)
+ * Email sends a BRANDED HTML body (the record, inline-styled for email clients)
  * plus the PDF attached, via the generic send-email function. All three actions
  * render from one hidden PrintableMeetingMinutes so they stay identical.
  */
@@ -28,7 +28,7 @@ export interface MeetingForExport {
   location?: string | null;
   status: string;
   attendees?: MeetingMinutesAttendee[] | null;
-  /** Formatted HTML minutes — preferred so the export keeps headings, lists and tables. */
+  /** Formatted HTML record — preferred so the export keeps headings, lists and tables. */
   polished_notes_html?: string | null;
   polished_notes?: string | null;
   raw_notes?: string | null;
@@ -36,7 +36,7 @@ export interface MeetingForExport {
 
 const INK = "#15233B", SAPPHIRE = "#1D6FE8", GOLD = "#C9A227", MUTED = "#6B7280", LINE = "#E5E7EB";
 
-/** Inject inline styles into the minutes HTML so tables/lists render in email
+/** Inject inline styles into the record HTML so tables/lists render in email
  *  clients (which strip <style> blocks and most class-based CSS). */
 function inlineForEmail(html: string): string {
   return (html || "")
@@ -73,7 +73,7 @@ export function MeetingExportMenu({
 
   const companyName = branding?.company_name ?? "APAS Consulting";
   const exportId = `meeting-export-${meeting.id}`;
-  const fileBase = `minutes-${meeting.meeting_date}-${(meeting.title || "meeting").slice(0, 24).replace(/\s+/g, "-")}`;
+  const fileBase = `meeting-record-${meeting.meeting_date}-${(meeting.title || "meeting").slice(0, 24).replace(/\s+/g, "-")}`;
   const minutesHtml = meeting.polished_notes_html ?? meeting.polished_notes ?? meeting.raw_notes ?? "";
 
   async function withBusy(fn: () => Promise<void>) {
@@ -117,10 +117,10 @@ export function MeetingExportMenu({
     const pdfBase64 = await generatePDFBase64({ elementId: exportId, scale: 1.35 });
     const bodyText = [
       personalMessage,
-      `MEETING MINUTES - ${meeting.title}`,
+      `MEETING RECORD - ${meeting.title}`,
       `Project: ${projectName}`,
       [safeDate(meeting.meeting_date), meeting.meeting_time, meeting.location].filter(Boolean).join(" | "),
-      "The complete minutes are included in this email and attached as a formatted PDF.",
+      "The complete reviewed meeting record is included in this email and attached as a formatted PDF.",
     ].filter(Boolean).join("\n\n").replace(/[—–‑]/g, "-");
     return { bodyHtml: buildEmailHtml(personalMessage), bodyText, pdfBase64, pdfSize: Math.round(pdfBase64.length * 0.75) };
   }
@@ -157,14 +157,14 @@ export function MeetingExportMenu({
       reportTitle={meeting.title}
       projectName={projectName}
       filename={`${fileBase}.pdf`}
-      defaultSubject={`Meeting minutes - ${meeting.title} | ${projectName}`}
-      defaultMessage="Please review the meeting minutes and advise if any correction is needed."
+      defaultSubject={`Meeting record - ${meeting.title} | ${projectName}`}
+      defaultMessage="Please review the meeting record and advise if any correction is needed."
       projectId={projectId}
       sourceModule="project-meetings"
       reportType="meeting_minutes"
       prepareDelivery={prepareEmailDelivery}
-      dialogTitle="Email the client-ready meeting minutes"
-      htmlDescription="The complete minutes are readable directly in the message."
+      dialogTitle="Email the client-ready meeting record"
+      htmlDescription="The complete reviewed record is readable directly in the message."
     />
   );
 
@@ -198,7 +198,7 @@ export function MeetingExportMenu({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           {triggerVariant === "icon" ? (
-            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={busy} aria-label="Export minutes">
+            <Button variant="ghost" size="icon" className="h-8 w-8" disabled={busy} aria-label="Export meeting record">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
             </Button>
           ) : (

@@ -5,7 +5,7 @@
  *   - Header with date/time/location/attendees (count).
  *   - Two-column layout: agenda/attendees panel + the raw notes editor.
  *   - Status transitions (draft → reviewed → finalized) via the hook.
- *   - One-click "Download minutes" using the meetingMinutes PDF generator.
+ *   - One-click record download using the meeting PDF generator.
  */
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -30,7 +30,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 
-const MEETING_EXPORT_ID = "meeting-minutes-export";
+const MEETING_EXPORT_ID = "meeting-record-export";
 
 export default function MeetingRunPage() {
   const { projectId = "", meetingId = "" } = useParams();
@@ -86,7 +86,7 @@ export default function MeetingRunPage() {
     }
   }
 
-  const fileBase = `minutes-${meeting.meeting_date}-${(meeting.title || "meeting").slice(0, 24).replace(/\s+/g, "-")}`;
+  const fileBase = `meeting-record-${meeting.meeting_date}-${(meeting.title || "meeting").slice(0, 24).replace(/\s+/g, "-")}`;
 
   async function handlePdf() {
     setBusy("pdf");
@@ -109,7 +109,7 @@ export default function MeetingRunPage() {
       const pdfBase64 = await generatePDFBase64({ elementId: MEETING_EXPORT_ID, scale: 2 });
       await sendEmail.mutateAsync({
         recipients: [emailTo.trim()],
-        subject: `Meeting minutes — ${meeting.title} · ${project?.name ?? "Project"}`,
+        subject: `Meeting record — ${meeting.title} · ${project?.name ?? "Project"}`,
         reportType: "daily_report",
         reportId: meeting.id,
         propertyName: project?.name ?? "Project",
@@ -119,7 +119,7 @@ export default function MeetingRunPage() {
         pdfFilename: `${fileBase}.pdf`,
         projectId: projectId || undefined,
       });
-      toast.success("Minutes emailed.");
+      toast.success("Meeting record emailed.");
       setEmailOpen(false); setEmailTo("");
     } catch (e: any) { toast.error(e?.message || "Could not send email."); }
   }
@@ -239,7 +239,7 @@ export default function MeetingRunPage() {
               />
               {isFinalized && (
                 <p className="text-xs text-muted-foreground mt-2">
-                  This meeting is finalized — minutes are read-only. Create a new
+                  This meeting is finalized, so the reviewed record is read-only. Create a new
                   meeting to amend.
                 </p>
               )}
@@ -276,7 +276,7 @@ export default function MeetingRunPage() {
       <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Email meeting minutes</DialogTitle>
+            <DialogTitle>Email meeting record</DialogTitle>
           </DialogHeader>
           <div className="space-y-2">
             <Label>Recipient email</Label>
@@ -286,7 +286,7 @@ export default function MeetingRunPage() {
               onChange={(e) => setEmailTo(e.target.value)}
               placeholder="name@example.com"
             />
-            <p className="text-xs text-muted-foreground">A branded PDF of these minutes will be attached.</p>
+            <p className="text-xs text-muted-foreground">A branded PDF of this reviewed meeting record will be attached.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEmailOpen(false)}>Cancel</Button>

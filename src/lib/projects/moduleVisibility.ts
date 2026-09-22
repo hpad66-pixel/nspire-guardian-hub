@@ -127,7 +127,7 @@ export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'reports', label: 'Reports', description: 'Narrative-to-report studio with source manifests, photographs, PDF, and client delivery', group: 'documents', portalSlug: 'reports' },
   { slug: 'repository', label: 'Documents', description: 'Deliverables, files, knowledge base', group: 'documents', portalSlug: 'documents' },
   { slug: 'gallery', label: 'Gallery', description: 'Photos and site imagery', group: 'documents' },
-  { slug: 'meetings', label: 'Meetings & agenda', description: 'Agendas, minutes, transcript → actions', group: 'documents' },
+  { slug: 'meetings', label: 'Meetings & agenda', description: 'Notion-fed meeting records, agendas, and reviewed actions', group: 'documents' },
   { slug: 'correspondence', label: 'Correspondence', description: 'Email trail, branded letters — uses project CRM', group: 'documents' },
   { slug: 'project-log', label: 'Project log', description: 'Timestamped update history', group: 'documents' },
 

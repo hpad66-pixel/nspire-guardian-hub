@@ -34,6 +34,7 @@ import { AssistantSettings } from '@/components/settings/AssistantSettings';
 import { ClickUpSettings } from '@/components/settings/ClickUpSettings';
 import { TrelloSettings } from '@/components/settings/TrelloSettings';
 import { SmsSettings } from '@/components/settings/SmsSettings';
+import { NotionSettings } from '@/components/settings/NotionSettings';
 import { DemoModeButton } from '@/components/settings/DemoModeButton';
 import { useActivityLogStats } from '@/hooks/useActivityLog';
 import { useUsers } from '@/hooks/useUserManagement';
@@ -147,6 +148,7 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-6">
+          <NotionSettings />
           <SmsSettings />
           <TrelloSettings />
           <ClickUpSettings />

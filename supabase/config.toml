@@ -272,6 +272,16 @@ verify_jwt = false
 [functions.gmail-oauth-callback]
 verify_jwt = false
 
+# Authenticated Notion connection control. Starts OAuth, exposes safe status,
+# searches selected Notion pages/databases, and manages project mappings.
+[functions.notion]
+verify_jwt = true
+
+# Public Notion OAuth callback — Notion redirects here with ?code&state and no
+# Supabase JWT; authenticity is enforced by the signed `state`.
+[functions.notion-oauth-callback]
+verify_jwt = false
+
 # Narrative and selected-source report drafting for consulting projects.
 [functions.consulting-report-ai]
 verify_jwt = true

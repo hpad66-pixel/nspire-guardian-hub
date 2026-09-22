@@ -760,7 +760,7 @@ export function MeetingEditorSheet({
     isPolishing, handlePolish, handleSave, handleFinalize, handleSupervisorUnlock, handleAiContinue,
   };
 
-  const editorTitle = title.trim() || 'Meeting minutes editor';
+  const editorTitle = title.trim() || 'Meeting record editor';
 
   if (isFullScreen) {
     return (

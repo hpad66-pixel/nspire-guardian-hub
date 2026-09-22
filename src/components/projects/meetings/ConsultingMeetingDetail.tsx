@@ -1,15 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useAiEnabled } from '@/hooks/useAiEnabled';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Sparkles, Plus, Loader2, CheckSquare, MessageSquare, Send, X, Trash2, BookMarked, CalendarClock } from 'lucide-react';
+import { Plus, CheckSquare, MessageSquare, Send, X, Trash2, CalendarClock } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { ProRichTextEditor } from '@/components/ui/rich-text-editor';
 import { useConsultingMeetings, type ConsultingMeeting } from '@/hooks/useConsultingMeetings';
 import { useActionItemsByProject, useCreateActionItem, useUpdateActionItem, useDeleteActionItem, type ActionItem } from '@/hooks/useActionItems';
@@ -17,9 +14,7 @@ import { useProjectScopes } from '@/hooks/useProjectScopes';
 import { useProjectTeamMembers } from '@/hooks/useProjectTeam';
 import { ActionItemDetailDialog } from '@/components/projects/actionItems/ActionItemDetailDialog';
 import { MeetingRecapDialog } from './MeetingRecapDialog';
-import { ProjectDictionaryDialog } from '@/components/projects/ProjectDictionaryDialog';
 import { AgendaBoardDialog } from './AgendaBoardDialog';
-import { useProjectDictionary, glossaryForAI } from '@/hooks/useProjectDictionary';
 import { PRIORITY_META } from '@/components/projects/actionItems/actionItemMeta';
 import { useClickUpStatus, usePushToClickUp } from '@/hooks/useClickUp';
 
@@ -46,16 +41,11 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
   const [date, setDate] = useState('');
   const [attendees, setAttendees] = useState('');
   const [minutes, setMinutes] = useState('');
-  const [transcript, setTranscript] = useState('');
-  const [extracting, setExtracting] = useState(false);
-  const aiEnabled = useAiEnabled();
   const [newItem, setNewItem] = useState('');
   const [selected, setSelected] = useState<ActionItem | null>(null);
   const [recapOpen, setRecapOpen] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
-  const [dictOpen, setDictOpen] = useState(false);
   const [agendaOpen, setAgendaOpen] = useState(false);
-  const { data: dictionary } = useProjectDictionary(projectId);
 
   // Seed local fields only when the dialog opens or a DIFFERENT meeting is
   // shown — NOT on every refetch. Otherwise saving one field triggers a refetch
@@ -66,7 +56,6 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
     setDate(meeting.meeting_date ?? '');
     setAttendees(meeting.attendees ?? '');
     setMinutes(meeting.minutes ?? '');
-    setTranscript(meeting.transcript ?? '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [meeting?.id, open]);
 
@@ -88,43 +77,6 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
     return created;
   };
 
-  const handleExtract = async () => {
-    if (!transcript.trim()) { toast.error('Paste the transcript or notes first.'); return; }
-    setExtracting(true);
-    try {
-      // Persist the transcript first so it isn't lost.
-      save({ transcript });
-      const { data, error } = await supabase.functions.invoke('extract-action-items', {
-        body: {
-          text: transcript,
-          projectName,
-          meetingDate: meeting.meeting_date,
-          teamMembers: (team ?? []).map((m) => ({ id: m.user_id, name: m.profile?.full_name || m.profile?.email || '' })).filter((m) => m.name),
-          glossary: glossaryForAI(dictionary),
-        },
-      });
-      if (error) throw error;
-      const draftMinutes: string = (data?.minutes as string) || '';
-      const items: Array<{ title: string; description?: string; priority?: ActionItem['priority']; assignee_id?: string | null; due_date?: string | null }> = data?.items ?? [];
-
-      // Fill the minutes editor with the AI summary, and persist it.
-      if (draftMinutes) { setMinutes(draftMinutes); save({ minutes: draftMinutes }); }
-
-      await Promise.all(items.map((it) => addItem({ title: it.title, description: it.description, priority: it.priority, assigned_to: it.assignee_id ?? null, due_date: it.due_date ?? null })));
-
-      const assigned = items.filter((i) => i.assignee_id).length;
-      const parts: string[] = [];
-      if (draftMinutes) parts.push('minutes drafted');
-      if (items.length) parts.push(`${items.length} action item${items.length === 1 ? '' : 's'}${assigned ? ` (${assigned} assigned)` : ''}`);
-      if (parts.length) toast.success(parts.join(' · '));
-      else toast.message('Nothing to summarize or extract from that text.');
-    } catch (e) {
-      toast.error(`Couldn't extract: ${e instanceof Error ? e.message : 'try again'}`);
-    } finally {
-      setExtracting(false);
-    }
-  };
-
   const toggleDone = (item: ActionItem) =>
     updateItem.mutate({ id: item.id, status: item.status === 'done' ? 'todo' : 'done', previous_assigned_to: item.assigned_to } as never);
 
@@ -133,7 +85,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="sm:max-w-[820px] max-h-[92vh] overflow-y-auto">
           <DialogHeader className="flex flex-row items-center justify-between gap-2 pr-8">
-            <DialogTitle>Meeting</DialogTitle>
+            <DialogTitle>Project meeting record</DialogTitle>
             <div className="flex items-center gap-2">
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setAgendaOpen(true)}><CalendarClock className="h-4 w-4" />Agenda</Button>
               <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setRecapOpen(true)}><Send className="h-4 w-4" />Send recap</Button>
@@ -157,26 +109,10 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
             </div>
 
             <div className="grid gap-1.5">
-              <Label className="text-xs">Minutes</Label>
-              <ProRichTextEditor content={minutes} onChange={setMinutes} minHeight="180px" placeholder="Write the meeting minutes…" />
+              <Label className="text-xs">Reviewed project record</Label>
+              <ProRichTextEditor content={minutes} onChange={setMinutes} minHeight="180px" placeholder="Write the reviewed project record from the approved Notion source…" />
               <div className="flex justify-end">
-                <Button size="sm" variant="outline" disabled={minutes === (meeting.minutes ?? '')} onClick={() => save({ minutes })}>Save minutes</Button>
-              </div>
-            </div>
-
-            <div className="grid gap-1.5">
-              <Label className="text-xs">Transcript</Label>
-              <Textarea rows={5} value={transcript} onChange={(e) => setTranscript(e.target.value)} onBlur={() => transcript !== (meeting.transcript ?? '') && save({ transcript })} placeholder="Paste or dump the meeting transcript here…" />
-              <div className="flex justify-between items-center">
-                <Button size="sm" variant="ghost" className="gap-1.5 text-muted-foreground" onClick={() => setDictOpen(true)}>
-                  <BookMarked className="h-4 w-4" />Vocabulary{(dictionary ?? []).length ? ` (${(dictionary ?? []).length})` : ''}
-                </Button>
-                {aiEnabled && (
-                  <Button size="sm" onClick={handleExtract} disabled={extracting || !transcript.trim()} className="gap-1.5">
-                    {extracting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-                    {extracting ? 'Summarizing…' : 'Summarize & extract'}
-                  </Button>
-                )}
+                <Button size="sm" variant="outline" disabled={minutes === (meeting.minutes ?? '')} onClick={() => save({ minutes })}>Save record</Button>
               </div>
             </div>
 
@@ -205,7 +141,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
 
               <div className="rounded-lg border divide-y mb-2">
                 {linkedItems.length === 0 ? (
-                  <p className="text-sm text-muted-foreground px-3 py-4">None yet. Extract from the transcript, or add one below.</p>
+                  <p className="text-sm text-muted-foreground px-3 py-4">None yet. Sync approved items from Notion, or add one below.</p>
                 ) : linkedItems.map((item) => {
                   const done = item.status === 'done' || item.status === 'cancelled';
                   return (
@@ -238,8 +174,6 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
 
       <ActionItemDetailDialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)} projectId={projectId} item={selected} scopes={scopes ?? []} team={team ?? []} projectName={projectName} />
 
-      <ProjectDictionaryDialog open={dictOpen} onOpenChange={setDictOpen} projectId={projectId} projectName={projectName} />
-
       <AgendaBoardDialog open={agendaOpen} onOpenChange={setAgendaOpen} projectId={projectId} projectName={projectName} meeting={meeting} team={team ?? []} />
 
       <MeetingRecapDialog
@@ -247,7 +181,7 @@ export function ConsultingMeetingDetail({ open, onOpenChange, projectId, project
         onOpenChange={setRecapOpen}
         projectId={projectId}
         projectName={projectName}
-        meeting={{ title: meeting.title, meeting_date: meeting.meeting_date, attendees: meeting.attendees, transcript }}
+        meeting={{ title: meeting.title, meeting_date: meeting.meeting_date, attendees: meeting.attendees, transcript: '' }}
         minutesHtml={minutes || meeting.minutes || ''}
         items={linkedItems}
         team={team ?? []}
