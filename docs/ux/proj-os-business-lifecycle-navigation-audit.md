@@ -34,14 +34,15 @@ The north star should be simple:
 Current local status:
 
 - **Implemented locally and verified:** client first dashboard portfolio cards, closed project hiding in default project lists, R4 presentation grouping for Glorieta style aliases and named standalone consulting projects, project lifecycle panel, removal of the large Glorieta Gardens Site Accountability spotlight from the organization page, and the Notion first visible meeting workflow.
-- **Release 1 to 3 verification on 2026-09-22:** focused tests passed for client portfolio grouping, portfolio project visibility, project lifecycle guardrails, proposal upload boundary, consulting billing, consulting invoice PDF footer, and consulting financial navigation. Production build and critical typecheck passed locally. Release 1 and 2 still require scoped commit, push, CI, and live domain check before they can be called production live.
+- **Release 1 to 3 verification and deployment on 2026-09-22:** focused tests passed for client portfolio grouping, portfolio project visibility, project lifecycle guardrails, proposal upload boundary, consulting billing, consulting invoice lifecycle controls, consulting invoice PDF footer, editable proposal number boundaries, and consulting financial navigation. Critical typecheck, targeted Vitest checks, production build, and the mobile production-bundle smoke passed locally. Commits `48a29f1` and `5c58b03` were pushed to GitHub `main`; Supabase migration `20260922153000_consulting_invoice_lifecycle_guards.sql` was applied to the linked production project; Cloudflare Pages was deployed to `nspire-guardian-hub`; `https://projos.ai`, `https://client.projos.ai`, and the exact Pages deployment returned HTTP 200.
 - **Partially deployed and verified on 2026-09-22:** Proj OS public Notion OAuth database schema now exists in Supabase for `notion_connections`, `notion_project_mappings`, and `notion_sync_runs`. The isolated `notion` and `notion-oauth-callback` Edge Functions are deployed. The `notion` control endpoint correctly rejects unauthenticated calls with `401`. The public callback safely redirects invalid or missing state to `https://projos.ai/settings?notion=error`. Notion OAuth cannot complete yet because `NOTION_OAUTH_CLIENT_ID` and `NOTION_OAUTH_CLIENT_SECRET` are not configured in Supabase secrets.
 - **Implemented locally, pending verification:** Proj OS settings UI, safe status surface, selected source search, and client/project mapping UI. These are local app changes and are not proven on the live frontend until the frontend release is explicitly approved.
 - **Verified outside Proj OS on 2026-09-22:** the personal desktop Hostinger Hermes backend was updated from `0.20.1` to `0.21.4` and reported healthy. User approved Notion OAuth on the active Hostinger profile. Hermes discovered 45 Notion MCP tools. A minimal read only `notion-list-private-pages(limit:1)` check returned HTTP 200 without an RPC or tool error. The desktop Notion tool list loaded without an Authenticate warning. This proves the direct Hermes vendor Notion MCP read connection is alive. It does not prove writes, comments, meeting summarization, or a Proj OS to Notion sync workflow.
 - **Verified personal Hermes to Proj OS on 2026-09-22:** the active personal desktop Hostinger Hermes profile now authenticates to Proj OS MCP through OAuth rather than the old literal bearer configuration. `hermes mcp test proj_os` connected with OAuth 2.0 and discovered 35 tools. A direct read only `proj_os_health` call returned HTTP 200, `isError: false`, `connection_mode: workspace_dynamic`, and `project_count: 53`. Hermes Desktop MCP JSON was saved in OAuth form and MCP was reloaded. This proves the personal desktop profile can read Proj OS through MCP. It does not prove Proj OS writes, client releases, financial changes, or restricted production runtime readiness.
 - **Production live on 2026-09-22:** proposal-driven Notice to Proceed drafting fills the NTP from approved proposal facts, uses official branded letterhead, signs automatically as Hardeep Anand, PE, and prepares branded Resend email plus PDF delivery through the `contractor-ntp` Edge Function. Commit `3a66bf9` was pushed to GitHub. CI passed, Supabase deploy passed, the live route returned HTTP 200, and the function enforces auth on unauthenticated smoke test.
+- **Implemented locally and verified for mobile/project context on 2026-09-22:** the signed in app now keeps a compact current project or client identity pill in the top shell on project/client routes, and the mobile shell smoke verifies the APAS ivory bottom navigation, drawer, proposal, invoice, and stale-project-label behavior at phone width.
 - **Agreed or planned:** sync job from mapped Notion sources into reviewed meeting/project records, Hermes meeting tools, full grouped project navigation rewrite, full mobile first rewrite, package based navigation enforcement, and production deployment of this revamp.
-- **Not authorized in this local pass:** replacing the current GitHub/live production version. Push and deploy require explicit user direction.
+- **Authorized and completed in this pass:** scoped commit, GitHub `main` push, production Supabase migration, Cloudflare Pages deployment, and live domain checks for the verified lifecycle/mobile work.
 
 ## Current App Surfaces Verified In Source
 
@@ -728,8 +729,9 @@ Acceptance checks:
 
 Current implementation status:
 
-- Verified on 2026-09-22 with focused tests and production build: exactly two proposal paths, manual-only uploaded executed proposal values, project directory requirement for non-APAS value lines, approved-value billing caps, percent billing shortcuts, invoice footer cleanup, and consulting financial navigation.
-- No additional code changes were required in this pass beyond carrying the already implemented tracked behavior through verification.
+- Verified on 2026-09-22 with focused tests and production build: exactly two proposal paths, manual-only uploaded executed proposal values, project directory requirement for non-APAS value lines, approved-value billing caps, percent billing shortcuts, invoice footer cleanup, consulting invoice lifecycle controls, duplicate proposal number blocking, editable displayed proposal numbers with stable internal record IDs, and consulting financial navigation.
+- Consulting invoices now expose draft, sent, paid, and voided lifecycle actions instead of unrestricted delete or status mutation. Paid or payment-referenced invoices are preserved for audit; draft invoices and unpaid void invoices can be removed; sent or unpaid void invoices can return to draft through controlled actions.
+- Proposal numbers are editable as display identifiers while the internal proposal record, approved value lines, PDFs, signatures, and invoice relationships remain attached to the stable record ID.
 
 Do not touch in this release:
 
@@ -831,6 +833,12 @@ Acceptance checks:
 - Proposal, invoice, pay app, field note, and NTP flows are usable at phone width.
 - Important daily actions are reachable within two taps.
 - Desktop pages do not waste major left/right whitespace.
+
+Current implementation status:
+
+- Implemented locally and verified on 2026-09-22: mobile bottom navigation and the More drawer use the APAS ivory/gold/sapphire shell instead of the previous dark/green treatment.
+- Implemented locally and verified on 2026-09-22: project and client routes show a compact current project/client identity pill in the app header; global routes such as the dashboard do not show stale project context.
+- The production-bundle Playwright mobile smoke covers dashboard, proposal list, proposal builder, consulting invoice list/detail, return-to-draft and void actions, and switching between two project IDs to catch stale header labels.
 
 Do not touch in this release:
 
