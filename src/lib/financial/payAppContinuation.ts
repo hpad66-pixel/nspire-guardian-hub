@@ -453,9 +453,9 @@ export function computeG702(input: {
     sum(input.lines.filter((l) => l.kind === "change_order").map((l) => l.scheduled_value)),
   );
   const contract_sum_to_date = round2(original_contract_sum + net_change_orders);
-  const billableLines = input.lines.filter((l) => !isContractCreditOnly(l.billing_treatment));
-  const completed_stored_to_date = round2(sum(billableLines.map((l) => l.value_to_date)));
-  const retainage_total = round2(sum(billableLines.map((l) => l.retainage)));
+  const retainageEligibleLines = input.lines.filter((l) => !isContractCreditOnly(l.billing_treatment));
+  const completed_stored_to_date = round2(sum(input.lines.map((l) => l.value_to_date)));
+  const retainage_total = round2(sum(retainageEligibleLines.map((l) => l.retainage)));
   const total_earned_less_retainage = round2(completed_stored_to_date - retainage_total);
   const less_previous_certificates = round2(input.previousCertificates);
   const current_payment_due = round2(total_earned_less_retainage - less_previous_certificates);

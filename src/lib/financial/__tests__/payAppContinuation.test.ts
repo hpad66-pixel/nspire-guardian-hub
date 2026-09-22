@@ -254,7 +254,7 @@ describe("computeG702", () => {
       previousCertificates: 742871.38,
       isFinalInvoice: true,
       lines: [
-        { kind: "base", scheduled_value: 523061, value_to_date: 471287.30, retainage: 23564.37 },
+        { kind: "base", scheduled_value: 523061, value_to_date: 523061, retainage: 26153.05 },
         { kind: "change_order", scheduled_value: 430817.35, value_to_date: 430817.35, retainage: 21540.86 },
         {
           kind: "change_order",
@@ -269,8 +269,8 @@ describe("computeG702", () => {
     expect(g.net_change_orders).toBe(379043.65);
     expect(g.contract_sum_to_date).toBe(902104.65);
     expect(g.completed_stored_to_date).toBe(902104.65);
-    expect(g.retainage_total).toBe(45105.23);
-    expect(g.total_earned_less_retainage).toBe(856999.42);
+    expect(g.retainage_total).toBe(47693.91);
+    expect(g.total_earned_less_retainage).toBe(854410.74);
     expect(g.balance_to_finish).toBe(0);
   });
 
@@ -341,24 +341,25 @@ describe("computePaymentPosition", () => {
       original_contract_sum: 523061,
       net_change_orders: 379043.65,
       contract_sum_to_date: 902104.65,
-      completed_stored_to_date: 903369.16,
-      gross_retainage_at_5_pct: 45168.47,
-      retainage_released_this_app: 22584.24,
-      retainage_released_to_date: 22584.24,
-      retainage_remaining_held: 22584.23,
-      retainage_total: 22584.23,
-      total_earned_less_retainage: 880784.93,
-      less_previous_certificates: 879552.03,
-      current_payment_due: 1232.9,
-      balance_to_finish: -1264.51,
+      completed_stored_to_date: 902104.65,
+      gross_retainage_at_5_pct: 45105.23,
+      retainage_released_this_app: 22552.61,
+      retainage_released_to_date: 22552.61,
+      retainage_remaining_held: 22552.62,
+      retainage_total: 22552.62,
+      total_earned_less_retainage: 879552.03,
+      less_previous_certificates: 742871.38,
+      current_payment_due: 136680.65,
+      balance_to_finish: 0,
       is_final_invoice: true,
     };
-    const p = computePaymentPosition(released, 879552.03);
-    expect(p.grossRetainage).toBe(45168.47);
-    expect(p.retainageReleased).toBe(22584.24);
-    expect(p.retainageHeld).toBe(22584.23);
-    expect(p.earnedLessRetainage).toBe(880784.93);
-    expect(p.thisInvoice).toBe(1232.9);
+    const p = computePaymentPosition(released, 742871.38);
+    expect(p.grossRetainage).toBe(45105.23);
+    expect(p.retainageReleased).toBe(22552.61);
+    expect(p.retainageHeld).toBe(22552.62);
+    expect(p.earnedLessRetainage).toBe(879552.03);
+    expect(p.previouslyBilled).toBe(742871.38);
+    expect(p.thisInvoice).toBe(136680.65);
   });
 
   it("handles a zero cover / no cash with no NaN and no divide-by-zero", () => {
@@ -508,14 +509,14 @@ describe("computeG703GrandTotals", () => {
         { scheduled_value: 100000, value_to_date: 100000, retainage: 25000 },
       ],
       {
-        completed_stored_to_date: 903369.16,
-        gross_retainage_at_5_pct: 45168.47,
-        retainage_released_to_date: 22584.24,
-        retainage_remaining_held: 22584.23,
-        retainage_total: 22584.23,
+        completed_stored_to_date: 902104.65,
+        gross_retainage_at_5_pct: 45105.23,
+        retainage_released_to_date: 22552.61,
+        retainage_remaining_held: 22552.62,
+        retainage_total: 22552.62,
       },
     );
-    expect(totals.toDate).toBe(903369.16);
-    expect(totals.retainage).toBe(45168.47);
+    expect(totals.toDate).toBe(902104.65);
+    expect(totals.retainage).toBe(45105.23);
   });
 });
