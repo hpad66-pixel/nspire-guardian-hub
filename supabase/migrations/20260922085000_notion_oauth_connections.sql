@@ -68,6 +68,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS notion_project_mappings_unique_active_source
 
 ALTER TABLE public.notion_project_mappings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS notion_project_mappings_select ON public.notion_project_mappings;
 CREATE POLICY notion_project_mappings_select ON public.notion_project_mappings
   FOR SELECT TO authenticated
   USING (
@@ -79,6 +80,7 @@ CREATE POLICY notion_project_mappings_select ON public.notion_project_mappings
     )
   );
 
+DROP POLICY IF EXISTS notion_project_mappings_insert ON public.notion_project_mappings;
 CREATE POLICY notion_project_mappings_insert ON public.notion_project_mappings
   FOR INSERT TO authenticated
   WITH CHECK (
@@ -91,6 +93,7 @@ CREATE POLICY notion_project_mappings_insert ON public.notion_project_mappings
     )
   );
 
+DROP POLICY IF EXISTS notion_project_mappings_update ON public.notion_project_mappings;
 CREATE POLICY notion_project_mappings_update ON public.notion_project_mappings
   FOR UPDATE TO authenticated
   USING (
@@ -132,6 +135,7 @@ CREATE INDEX IF NOT EXISTS notion_sync_runs_mapping_idx
 
 ALTER TABLE public.notion_sync_runs ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS notion_sync_runs_select ON public.notion_sync_runs;
 CREATE POLICY notion_sync_runs_select ON public.notion_sync_runs
   FOR SELECT TO authenticated
   USING (
