@@ -152,7 +152,7 @@ function PortalNavigationLinks({
  * project-controls navigation, administration, or unrelated tenant records.
  */
 export function ClientPortalShell() {
-  const { user, signOut } = useAuth();
+  const { user, userRole, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const routeProjectId = location.pathname.match(/^\/owner-portal\/projects\/([^/]+)/)?.[1];
@@ -162,7 +162,8 @@ export function ClientPortalShell() {
   const { data: ownerData, isLoading: ownerLoading } = useOwnerPortalData();
   const { data: portalKind } = useMyPortalKind();
   const { data: hasMainPortalMembership } = useHasMainPortalMembership(user?.id);
-  const isOwnerWorkbench = portalKind === "main" || Boolean(hasMainPortalMembership) || isPlatformSuperAdmin(user);
+  const isInternalProjectUser = userRole === "admin" || userRole === "administrator" || userRole === "project_manager";
+  const isOwnerWorkbench = portalKind === "main" || Boolean(hasMainPortalMembership) || isInternalProjectUser || isPlatformSuperAdmin(user);
 
   const contracts = useMemo(() => ownerData?.primeContracts ?? [], [ownerData?.primeContracts]);
   const catalog = useMemo(() => ownerData?.projects ?? [], [ownerData?.projects]);

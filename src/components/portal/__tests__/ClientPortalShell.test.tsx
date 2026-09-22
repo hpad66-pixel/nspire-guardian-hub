@@ -6,11 +6,13 @@ import { ClientPortalShell } from "../ClientPortalShell";
 const mockPortalState = vi.hoisted(() => ({
   portalKind: "owner" as "main" | "owner",
   hasMainPortalMembership: false,
+  userRole: null as "admin" | null,
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
     user: { email: "owner@example.com", user_metadata: { full_name: "Pat Owner" } },
+    userRole: mockPortalState.userRole,
     signOut: vi.fn(),
   }),
 }));
@@ -66,6 +68,7 @@ describe("ClientPortalShell project tabs", () => {
     vi.clearAllMocks();
     mockPortalState.portalKind = "owner";
     mockPortalState.hasMainPortalMembership = false;
+    mockPortalState.userRole = null;
   });
 
   it("renders a tab for each of the client's projects", () => {
@@ -122,5 +125,14 @@ describe("ClientPortalShell project tabs", () => {
       "/projects/p2/client-updates?compose=1",
     );
     expect(screen.getByTestId("owner-portal-workbench-tools")).toHaveTextContent("Write update");
+  });
+
+  it("uses owner workbench navigation for internal admin roles", () => {
+    mockPortalState.userRole = "admin";
+    renderAt("/owner-portal/projects/p1");
+    expect(screen.getByTestId("owner-portal-project-tab-p2")).toHaveAttribute(
+      "href",
+      "/projects/p2/client-updates?compose=1",
+    );
   });
 });
