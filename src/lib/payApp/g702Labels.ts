@@ -95,8 +95,8 @@ const FINAL_LINE_OVERRIDES: Partial<Record<G702LineKey, Pick<G702LineCopy, "labe
     sub: "Cash / certificates already paid by the Owner/Client through prior applications",
   },
   current_payment_due: {
-    label: "Current payment due (FINAL)",
-    sub: "Remaining balance now due — this is the final invoice",
+    label: "Certified amount for this application (FINAL)",
+    sub: "Certified on this application before applying the recorded receipt",
   },
   balance_to_finish: {
     label: "Unbilled / unbuilt contract balance (not billed)",

@@ -487,7 +487,7 @@ describe("computeG703GrandTotals", () => {
     expect(totals.toDate).toBeLessThan(1_000_000);
   });
 
-  it("pins Column G / Column I footers to G702 Lines 4 / 5 (AIA)", () => {
+  it("pins Column G to G702 Line 4 but keeps Column I as the row audit subtotal", () => {
     // Live lines sum ~$27k retainage; cover is the reconciled workbook figure.
     const totals = computeG703GrandTotals(
       [
@@ -497,12 +497,14 @@ describe("computeG703GrandTotals", () => {
       { completed_stored_to_date: 921212.36, retainage_total: 34008.16 },
     );
     expect(totals.toDate).toBe(921212.36);
-    expect(totals.retainage).toBe(34008.16);
+    expect(totals.retainage).toBe(27657.75);
+    expect(totals.coverGrossRetainage).toBe(34008.16);
+    expect(totals.retainageAdjustment).toBe(6350.41);
     // Scheduled still sums from the sheet
     expect(totals.scheduled).toBe(600000);
   });
 
-  it("keeps G703 Column I at gross retainage when the G702 cover has a separate release", () => {
+  it("returns the gross-retainage adjustment when the G702 cover has a separate release", () => {
     const totals = computeG703GrandTotals(
       [
         { scheduled_value: 500000, value_to_date: 400000, retainage: 20000 },
@@ -517,6 +519,8 @@ describe("computeG703GrandTotals", () => {
       },
     );
     expect(totals.toDate).toBe(902104.65);
-    expect(totals.retainage).toBe(45105.23);
+    expect(totals.retainage).toBe(45000);
+    expect(totals.coverGrossRetainage).toBe(45105.23);
+    expect(totals.retainageAdjustment).toBe(105.23);
   });
 });

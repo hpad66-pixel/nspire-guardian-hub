@@ -273,6 +273,18 @@ export interface G702Summary {
   less_previous_certificates: number;
   current_payment_due: number;
   balance_to_finish: number;
+  /** Certified amount on this application before any cash receipt is applied. */
+  certified_amount_this_application?: number;
+  /** Cash receipt allocated to this application. */
+  payment_received_this_app?: number;
+  /** Receipt date for the cash applied to this application. */
+  payment_received_date?: string;
+  /** Current application balance after receipts. */
+  outstanding_this_application?: number;
+  /** Legacy snapshot key for current application balance after receipts. */
+  balance_still_due_this_app?: number;
+  /** Net retainage adjustment used when credit-only rows carry no retainage. */
+  retainage_credit_basis_adjustment?: number;
   /**
    * When true (or when a reconciliation_note is present), draft pay apps serve
    * this snapshot for the G702 cover / PDF instead of recomputing from live SOV
@@ -364,16 +376,22 @@ export interface G703GrandTotals {
   thisP: number;
   /** Column G — must equal G702 Line 4 when a cover snapshot is supplied. */
   toDate: number;
-  /** Column I — must equal G702 Line 5 when a cover snapshot is supplied. */
+  /** Column I subtotal directly from the detail rows. */
   retainage: number;
+  /** Cover gross retainage before any release, when supplied. */
+  coverGrossRetainage: number | null;
+  /** Difference from row subtotal to cover gross retainage. */
+  retainageAdjustment: number;
 }
 
 /**
  * Sum G703 money columns with Number() coercion (Postgres `numeric` arrives as
  * strings; bare `+` would concatenate into bogus totals like $90,000,369.16).
  *
- * AIA: when a G702 cover is present, Column G / Column I footers are pinned to
- * Lines 4 / 5 so the continuation sheet never disagrees with the certificate.
+ * AIA: when a G702 cover is present, Column G is pinned to Line 4 so the
+ * continuation sheet never disagrees with the certificate. Column I remains the
+ * detail-row audit subtotal; any cover adjustment is returned separately so the
+ * PDF can explain it instead of silently scaling retainage on the rows.
  */
 export function computeG703GrandTotals(
   lines: Array<{
@@ -395,11 +413,9 @@ export function computeG703GrandTotals(
     toDate = round2(cover.completed_stored_to_date);
   }
   const coverGrossRetainage = grossRetainageForG703(cover);
-  if (coverGrossRetainage != null) {
-    retainage = coverGrossRetainage;
-  }
+  const retainageAdjustment = coverGrossRetainage == null ? 0 : round2(coverGrossRetainage - retainage);
 
-  return { scheduled, prev, thisP, toDate, retainage };
+  return { scheduled, prev, thisP, toDate, retainage, coverGrossRetainage, retainageAdjustment };
 }
 
 /**

@@ -23,8 +23,6 @@ import {
   round2,
   round4,
   shouldUseG702Snapshot,
-  alignLineRetainageToCover,
-  grossRetainageForG703,
   withResolvedLine9,
   type G702Summary,
   type PriorProgressLike,
@@ -464,12 +462,10 @@ export function usePayAppContinuation(payAppId: string | null) {
     isFinalInvoiceFlag,
   );
 
-  // AIA: Line 5 = Column I total. When the cover is pinned, keep G703 retainage
-  // in lockstep so the printed continuation sheet does not disagree with G702.
-  const displayLines = useMemo(
-    () => (useSnapshot ? alignLineRetainageToCover(lines, grossRetainageForG703(g702)) : lines),
-    [useSnapshot, lines, g702],
-  );
+  // Keep the continuation sheet as the audit trail. Positive rows show their
+  // true 5% retainage and negative contract-credit rows show $0; the cover/PDF
+  // explains any net-retainage adjustment separately.
+  const displayLines = lines;
 
   const upsertLine = useMutation({
     mutationFn: async (input: {

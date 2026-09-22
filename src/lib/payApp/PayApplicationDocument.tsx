@@ -96,14 +96,14 @@ const PAGE: React.CSSProperties = {
 // Wide landscape sheet for the G703 quantity continuation (Procore-style) so all
 // the quantity + dollar columns fit. Rendered as a landscape PDF page (payAppPdf).
 const PAGE_LANDSCAPE: React.CSSProperties = {
-  width: 1040, minHeight: 620, background: "#fff", color: INK,
+  width: 1056, minHeight: 850, background: "#fff", color: INK,
   fontFamily: "Georgia, 'Times New Roman', serif", padding: "28px 30px", boxSizing: "border-box", position: "relative",
 };
 // G702 cover — landscape at the exact US-Letter landscape aspect (11 : 8.5 ≈
 // 1.294) so the rasterized PDF page fills edge-to-edge like Procore's cover
 // instead of centering a near-square block with wide side margins.
 const PAGE_COVER: React.CSSProperties = {
-  width: 1056, minHeight: 620, background: "#fff", color: INK,
+  width: 1056, minHeight: 850, background: "#fff", color: INK,
   fontFamily: "Georgia, 'Times New Roman', serif", padding: "26px 34px", boxSizing: "border-box", position: "relative",
 };
 // Lining tabular figures stay inside the cell. Georgia oldstyle digits hang below
@@ -219,9 +219,9 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
             boxShadow: `inset 0 0 0 1px ${GOLD}66`,
           }}
         >
-          Final Invoice
+          Final Pay Application
           <span style={{ display: "block", fontSize: 9.5, fontWeight: 600, letterSpacing: "0.06em", marginTop: 4, color: GOLD, textTransform: "none" }}>
-            Closing application — leftover quantities and credits will not be billed
+            Paid reconciliation copy — remaining warranty retainage is tracked separately
           </span>
         </div>
       ) : null;
@@ -245,7 +245,7 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
     );
 
     const Footer = ({ n, of }: { n: number; of: number }) => (
-      <div style={{ position: "absolute", left: 40, right: 40, bottom: 24, display: "flex", justifyContent: "space-between", fontSize: 9, color: MUTE, borderTop: `1px solid ${RULE}`, paddingTop: 6 }}>
+      <div style={{ position: "absolute", left: 40, right: 40, bottom: 12, display: "flex", justifyContent: "space-between", fontSize: 9, color: MUTE, borderTop: `1px solid ${RULE}`, paddingTop: 6 }}>
         <span>{spec.footer || `${spec.wordmark} · Application for Payment ${spec.payAppNo}`}</span>
         <span>Page {n} of {of}</span>
       </div>
@@ -298,6 +298,17 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
     const contractFor = spec.contractFor ?? spec.contractTitle;
     const engineer = spec.engineer ?? "";
     const amountCertified = spec.amountCertified ?? g.current_payment_due;
+    const certifiedThisApp = round2(Number(g.certified_amount_this_application ?? amountCertified) || 0);
+    const receiptThisApp = round2(Number(g.payment_received_this_app ?? 0) || 0);
+    const outstandingThisApp = round2(
+      Number(g.outstanding_this_application ?? g.balance_still_due_this_app ?? (certifiedThisApp - receiptThisApp)) || 0,
+    );
+    const receiptDate = g.payment_received_date || "";
+    const showPaymentReconciliation = spec.reconciled || receiptThisApp > 0.005 || outstandingThisApp === 0;
+    const creditBasisAdjustment = round2(
+      Number(g.retainage_credit_basis_adjustment ?? totals.retainageAdjustment) || 0,
+    );
+    const netGrossRetainage = round2(totals.retainage + creditBasisAdjustment);
 
     // Procore cover row helpers.
     const HdrCol = ({ label, lines }: { label: string; lines: (string | null | undefined)[] }) => (
@@ -368,11 +379,41 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
             <div style={{ fontSize: 10, color: MUTE, marginTop: 2 }}>{spec.wordmark} · AIA G702 (adapted){isFinal ? " · FINAL INVOICE" : ""}</div>
           </div>
 
-          {spec.reconciled && (
-            <div style={{ position: "absolute", top: 110, right: 46, transform: "rotate(-9deg)", textAlign: "center", border: "3px solid #10B981", borderRadius: 10, padding: "6px 14px", color: "#10B981", background: "rgba(16,185,129,0.06)", lineHeight: 1.15, zIndex: 2 }}>
-              <div style={{ fontSize: 9, letterSpacing: "0.24em", fontWeight: 900 }}>RECONCILED</div>
-              <div style={{ fontSize: 17, fontWeight: 900, fontVariantNumeric: "tabular-nums" }}>{money(g.current_payment_due)}</div>
-              <div style={{ fontSize: 7.5, letterSpacing: "0.12em", fontWeight: 700 }}>PAID IN FULL</div>
+          {showPaymentReconciliation && (
+            <div
+              data-testid="payment-reconciliation-strip"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1.15fr 0.95fr 0.95fr 0.95fr",
+                gap: 8,
+                border: "1.5px solid #10B981",
+                background: "rgba(16,185,129,0.055)",
+                color: INK,
+                marginTop: 8,
+                padding: "7px 9px",
+                alignItems: "center",
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 9.5, letterSpacing: "0.18em", fontWeight: 900, color: "#047857", textTransform: "uppercase" }}>
+                  Paid — Reconciled
+                </div>
+                <div style={{ fontSize: 10.5, color: MUTE, marginTop: 2 }}>
+                  Certified amount is preserved; receipt is shown separately.
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 9.5, color: MUTE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Certified this app</div>
+                <div data-money-cell style={{ ...NUM, fontSize: 13, fontWeight: 800 }}>{money(certifiedThisApp)}</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 9.5, color: MUTE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Receipt applied{receiptDate ? ` · ${receiptDate}` : ""}</div>
+                <div data-money-cell style={{ ...NUM, fontSize: 13, fontWeight: 800, color: "#047857" }}>({money(receiptThisApp)})</div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <div style={{ fontSize: 9.5, color: MUTE, textTransform: "uppercase", letterSpacing: "0.05em" }}>Outstanding this app</div>
+                <div data-money-cell style={{ ...NUM, fontSize: 13, fontWeight: 900, color: outstandingThisApp === 0 ? "#047857" : "#B45309" }}>{money(outstandingThisApp)}</div>
+              </div>
             </div>
           )}
 
@@ -572,6 +613,11 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                     {money(amountCertified)}
                   </div>
                 </div>
+                {showPaymentReconciliation && (
+                  <div style={{ marginTop: 6, fontSize: 9.5, color: MUTE, lineHeight: 1.35 }}>
+                    This final copy shows the certified amount above and records the matching receipt separately. It is not an additional open request for payment.
+                  </div>
+                )}
                 <div style={{ marginTop: 6, fontStyle: "italic", fontSize: 8.5, color: MUTE }}>
                   (Attach explanation if amount certified differs from the amount applied for. Initial all figures on this
                   Application and on the Continuation Sheet that are changed to conform to the amount certified.)
@@ -651,13 +697,29 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
               {pi === sovPages.length - 1 && (
                 <tfoot>
                   <tr style={{ borderTop: `2px solid ${INK}`, fontWeight: 700 }} data-testid="g703-grand-total">
-                    <td style={{ ...cell, borderBottom: "none" }} colSpan={5}>Grand total</td>
+                    <td style={{ ...cell, borderBottom: Math.abs(creditBasisAdjustment) > 0.005 ? `1px solid ${RULE}` : "none" }} colSpan={5}>Grand total</td>
                     <td data-money-cell data-testid="g703-total-scheduled" style={{ ...numCell, borderBottom: "none" }}>{money(totals.scheduled)}</td>
                     <td style={{ ...numCell, borderBottom: "none" }} colSpan={3} />
                     <td style={{ ...numCell, borderBottom: "none" }} />
                     <td data-money-cell data-testid="g703-total-to-date" style={{ ...numCell, borderBottom: "none" }}>{money(totals.toDate)}</td>
                     <td data-money-cell data-testid="g703-total-retainage" style={{ ...numCell, borderBottom: "none" }}>{money(totals.retainage)}</td>
                   </tr>
+                  {Math.abs(creditBasisAdjustment) > 0.005 && (
+                    <>
+                      <tr data-testid="g703-retainage-credit-adjustment">
+                        <td style={{ ...cell, borderBottom: `1px solid ${RULE}`, fontSize: 9.5, color: MUTE }} colSpan={11}>
+                          Credit-only retainage basis adjustment. Negative contract credits reduce the cover retainage basis but carry $0 retainage on their own rows.
+                        </td>
+                        <td data-money-cell style={{ ...numCell, borderBottom: `1px solid ${RULE}`, color: creditBasisAdjustment < 0 ? "#B45309" : "#047857" }}>
+                          {money(creditBasisAdjustment)}
+                        </td>
+                      </tr>
+                      <tr data-testid="g703-net-cover-retainage" style={{ fontWeight: 700 }}>
+                        <td style={{ ...cell, borderBottom: "none", fontSize: 10 }} colSpan={11}>Net gross retainage shown on G702 Line 5a before release</td>
+                        <td data-money-cell style={{ ...numCell, borderBottom: "none" }}>{money(netGrossRetainage)}</td>
+                      </tr>
+                    </>
+                  )}
                 </tfoot>
               )}
             </table>

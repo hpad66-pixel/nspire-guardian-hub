@@ -32,6 +32,7 @@ export function buildPayAppSpec(
   const isFinal =
     Boolean(pa?.is_final_invoice) ||
     Boolean(pa?.pay_app_data?.is_final_invoice) ||
+    Boolean(pa?.pay_app_data?.final_document_copy) ||
     Boolean(opts.isFinalInvoice);
   // Final invoices must show Line 9 = contract − completed (unbuilt), never the
   // AIA "incl. retainage" figure left in an older snapshot.

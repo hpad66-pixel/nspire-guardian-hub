@@ -123,13 +123,13 @@ describe("PayApplicationDocument", () => {
         }}
       />,
     );
-    expect(getByTestId("final-invoice-banner").textContent).toMatch(/Final Invoice/i);
+    expect(getByTestId("final-invoice-banner").textContent).toMatch(/Final Pay Application/i);
     expect(getByText(/INVOICE TYPE:/)).toBeTruthy();
     expect(getAllByText(/FINAL INVOICE/i).length).toBeGreaterThanOrEqual(1);
     expect(getAllByText(/paid to date/i).length).toBeGreaterThanOrEqual(1);
     expect(getByText(/Unbilled \/ unbuilt contract balance/i)).toBeTruthy();
     expect(getAllByText(/will not be billed/i).length).toBeGreaterThanOrEqual(1);
-    expect(getByText(/Current payment due \(FINAL\)/i)).toBeTruthy();
+    expect(getByText(/Certified amount for this application \(FINAL\)/i)).toBeTruthy();
     expect(getAllByText(/\$32,137\.99/).length).toBeGreaterThanOrEqual(1);
   });
 
@@ -139,7 +139,7 @@ describe("PayApplicationDocument", () => {
     expect(queryByText(/Unbilled \/ unbuilt contract balance/i)).toBeNull();
   });
 
-  it("pins G703 Column G / I grand totals to G702 Lines 4 / 5 even when live lines disagree", () => {
+  it("pins G703 Column G to G702 Line 4 while explaining retainage adjustment separately", () => {
     const reconciled: PayApplicationSpec = {
       ...spec,
       isFinalInvoice: true,
@@ -174,7 +174,9 @@ describe("PayApplicationDocument", () => {
     };
     const { getByTestId, getAllByText, container } = render(<PayApplicationDocument spec={reconciled} />);
     expect(getByTestId("g703-total-to-date").textContent).toBe("$921,212.36");
-    expect(getByTestId("g703-total-retainage").textContent).toBe("$34,008.16");
+    expect(getByTestId("g703-total-retainage").textContent).toBe("$27,657.75");
+    expect(getByTestId("g703-retainage-credit-adjustment").textContent).toContain("$6,350.41");
+    expect(getByTestId("g703-net-cover-retainage").textContent).toContain("$34,008.16");
     // CO summary must use cover net ($430,289.35), not the lone $1,710 SOV CO line
     expect(getAllByText("$430,289.35").length).toBeGreaterThanOrEqual(2); // Line 2 + CO summary
     const coSummary = Array.from(container.querySelectorAll("td")).find((td) =>

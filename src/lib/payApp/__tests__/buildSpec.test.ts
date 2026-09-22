@@ -63,7 +63,7 @@ describe("buildPayAppSpec", () => {
     expect(spec.amountCertified).toBe(144332.82);
   });
 
-  it("marks the spec as final invoice from the column or pay_app_data", () => {
+  it("marks the spec as final invoice from the column, pay_app_data, or final document copy flag", () => {
     const fromCol = buildPayAppSpec(
       { pay_app_no: 5, period_end: "2026-07-22", is_final_invoice: true },
       contract, {}, g702, lines,
@@ -74,6 +74,11 @@ describe("buildPayAppSpec", () => {
       contract, {}, g702, lines,
     );
     expect(fromData.isFinalInvoice).toBe(true);
+    const fromPresentationFlag = buildPayAppSpec(
+      { pay_app_no: 6, period_end: "2026-09-02", pay_app_data: { final_document_copy: true } },
+      contract, {}, g702, lines,
+    );
+    expect(fromPresentationFlag.isFinalInvoice).toBe(true);
     const progress = buildPayAppSpec(
       { pay_app_no: 4, period_end: "2026-05-31" },
       contract, {}, g702, lines,

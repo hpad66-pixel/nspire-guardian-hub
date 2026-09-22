@@ -291,16 +291,32 @@ export function PayAppContinuationBuilder({
               })),
               g702,
             );
-            const colSpan = isAdmin ? 5 : 4;
+            const showRetainageAdjustment = Math.abs(t.retainageAdjustment) > 0.005;
             return (
               <tfoot>
                 <tr className="border-t-2 bg-muted/30 font-semibold" data-testid="continuation-grand-total">
-                  <td className="p-2" colSpan={colSpan}>Grand total</td>
-                  <td className="p-2" colSpan={4} />
+                  <td className="p-2" colSpan={3}>Grand total</td>
+                  <td className="p-2" colSpan={6} />
                   <td className="p-2 text-right font-mono" data-testid="continuation-total-to-date">{money(t.toDate)}</td>
                   <td className="p-2 text-center font-mono" data-testid="continuation-total-retainage">{money(t.retainage)}</td>
                   {isAdmin && <td />}
                 </tr>
+                {showRetainageAdjustment && (
+                  <>
+                    <tr className="border-t bg-amber-50/60 text-xs text-muted-foreground" data-testid="continuation-retainage-adjustment">
+                      <td className="p-2" colSpan={10}>
+                        Credit-only retainage basis adjustment. Negative contract credits reduce the cover retainage basis but carry $0 retainage on their own rows.
+                      </td>
+                      <td className="p-2 text-center font-mono">{money(t.retainageAdjustment)}</td>
+                      {isAdmin && <td />}
+                    </tr>
+                    <tr className="border-t bg-muted/20 text-xs font-semibold" data-testid="continuation-net-cover-retainage">
+                      <td className="p-2" colSpan={10}>Net gross retainage shown on G702 Line 5a before release</td>
+                      <td className="p-2 text-center font-mono">{money(t.coverGrossRetainage ?? t.retainage)}</td>
+                      {isAdmin && <td />}
+                    </tr>
+                  </>
+                )}
               </tfoot>
             );
           })()}
