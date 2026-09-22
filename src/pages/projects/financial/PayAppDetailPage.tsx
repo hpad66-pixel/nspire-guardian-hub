@@ -3,7 +3,7 @@ import { useState } from "react";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { usePayApp, useDeletePayApp, useSetPayAppFinalInvoice } from "@/hooks/usePayApp";
 import { usePayAppContinuation } from "@/hooks/usePayAppContinuation";
-import { computePaymentPosition } from "@/lib/financial/payAppContinuation";
+import { computePaymentPosition, grossRetainageForG703, round2 } from "@/lib/financial/payAppContinuation";
 import { g702SidebarRows } from "@/lib/payApp/g702Labels";
 import { usePrimeContractPayments, usePrimeContractPaymentsTotal } from "@/hooks/usePrimeContractPayments";
 import { ContractPaymentPosition } from "@/components/financial/ContractPaymentPosition";
@@ -53,6 +53,11 @@ export default function PayAppDetailPage() {
   const isFinalInvoice =
     Boolean((pa as any).is_final_invoice) ||
     Boolean((pa as any).pay_app_data?.is_final_invoice);
+  const grossRetainage = grossRetainageForG703((pa as any).pay_app_data) ?? Number((pa as any).pay_app_data?.retainage_total ?? pa.retainage_held ?? 0);
+  const retainageReleased = round2(
+    Number((pa as any).pay_app_data?.retainage_released_to_date ?? (pa as any).pay_app_data?.retainage_released_this_app ?? 0) || 0,
+  );
+  const retainageRemaining = round2(Number((pa as any).pay_app_data?.retainage_remaining_held ?? pa.retainage_held ?? 0));
 
   async function doSubmit() {
     try { await submit.mutateAsync(); toast.success("Submitted — G702 cover saved."); }
@@ -236,6 +241,16 @@ export default function PayAppDetailPage() {
                 ))}
               </tbody>
             </table></div>
+            {retainageReleased > 0.005 && (
+              <div className="mt-3 rounded-md border border-[var(--apas-emerald)]/30 bg-[var(--apas-emerald)]/5 p-3 text-xs">
+                <div className="font-semibold text-foreground">Retainage release</div>
+                <div className="mt-1 grid gap-2 sm:grid-cols-3">
+                  <span>Gross 5% retainage: <strong className="font-mono">{money(grossRetainage)}</strong></span>
+                  <span>Released on this application: <strong className="font-mono text-[var(--apas-emerald)]">{money(retainageReleased)}</strong></span>
+                  <span>Still held: <strong className="font-mono text-[var(--apas-amber)]">{money(retainageRemaining)}</strong></span>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

@@ -24,6 +24,7 @@ import {
   round4,
   shouldUseG702Snapshot,
   alignLineRetainageToCover,
+  grossRetainageForG703,
   withResolvedLine9,
   type G702Summary,
   type PriorProgressLike,
@@ -466,8 +467,8 @@ export function usePayAppContinuation(payAppId: string | null) {
   // AIA: Line 5 = Column I total. When the cover is pinned, keep G703 retainage
   // in lockstep so the printed continuation sheet does not disagree with G702.
   const displayLines = useMemo(
-    () => (useSnapshot ? alignLineRetainageToCover(lines, g702.retainage_total) : lines),
-    [useSnapshot, lines, g702.retainage_total],
+    () => (useSnapshot ? alignLineRetainageToCover(lines, grossRetainageForG703(g702)) : lines),
+    [useSnapshot, lines, g702],
   );
 
   const upsertLine = useMutation({

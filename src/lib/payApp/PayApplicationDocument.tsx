@@ -14,7 +14,7 @@
  */
 import { forwardRef } from "react";
 import type { G702Summary } from "@/lib/financial/payAppContinuation";
-import { computeG703GrandTotals, round2 } from "@/lib/financial/payAppContinuation";
+import { computeG703GrandTotals, grossRetainageForG703, round2 } from "@/lib/financial/payAppContinuation";
 import { g702LineCopy } from "@/lib/payApp/g702Labels";
 
 const INK = "#1A1714";
@@ -257,8 +257,13 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
     // Blended retainage rate = total retainage ÷ total completed work. This is a
     // roll-up of the PER-LINE retainage (Column I) — lines that carry no retainage
     // (e.g. General Conditions) pull the blended rate below the nominal contract %.
+    const grossRetainage = grossRetainageForG703(g) ?? g.retainage_total;
+    const retainageReleased = round2(
+      Number(g.retainage_released_to_date ?? g.retainage_released_this_app ?? 0) || 0,
+    );
+    const remainingRetainage = round2(Number(g.retainage_remaining_held ?? g.retainage_total ?? 0));
     const blendedRetPct =
-      g.completed_stored_to_date > 0 ? (g.retainage_total / g.completed_stored_to_date) * 100 : 0;
+      g.completed_stored_to_date > 0 ? (grossRetainage / g.completed_stored_to_date) * 100 : 0;
     const pct2 = (n: number) => `${n.toFixed(2)}%`;
 
     // Change Order Summary (additions vs deductions), split into prior periods vs
@@ -447,15 +452,21 @@ export const PayApplicationDocument = forwardRef<HTMLDivElement, { spec: PayAppl
                   </div>
                   <div style={{ display: "flex", alignItems: "center", marginLeft: 14, marginTop: 5, minHeight: 24 }}>
                     <div style={{ flex: 1, fontSize: 12, lineHeight: 1.35 }}>a. <span style={{ textDecoration: "underline" }}>{pct2(blendedRetPct)}</span> of completed work</div>
-                    <div data-money-cell style={{ width: 118, marginRight: 80, textAlign: "right", fontSize: 12.5, lineHeight: 1.35, padding: "3px 4px", ...NUM, overflow: "visible", boxSizing: "border-box" }}>{money(g.retainage_total)}</div>
+                    <div data-money-cell style={{ width: 118, marginRight: 80, textAlign: "right", fontSize: 12.5, lineHeight: 1.35, padding: "3px 4px", ...NUM, overflow: "visible", boxSizing: "border-box" }}>{money(grossRetainage)}</div>
                   </div>
+                  {retainageReleased > 0.005 && (
+                    <div style={{ display: "flex", alignItems: "center", marginLeft: 14, marginTop: 5, minHeight: 24 }}>
+                      <div style={{ flex: 1, fontSize: 12, lineHeight: 1.35, color: "#047857" }}>Less retainage released on this application</div>
+                      <div data-money-cell style={{ width: 118, marginRight: 80, textAlign: "right", fontSize: 12.5, lineHeight: 1.35, padding: "3px 4px", ...NUM, overflow: "visible", boxSizing: "border-box", color: "#047857" }}>({money(retainageReleased)})</div>
+                    </div>
+                  )}
                   <div style={{ display: "flex", alignItems: "center", marginLeft: 14, marginTop: 5, minHeight: 24 }}>
                     <div style={{ flex: 1, fontSize: 12, lineHeight: 1.35 }}>b. <span style={{ textDecoration: "underline" }}>0.00%</span> of stored material</div>
                     <div data-money-cell style={{ width: 118, marginRight: 80, textAlign: "right", fontSize: 12.5, lineHeight: 1.35, padding: "3px 4px", ...NUM, overflow: "visible", boxSizing: "border-box" }}>{money(0)}</div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", marginTop: 8, minHeight: 28 }}>
-                    <div style={{ flex: 1, fontSize: 10.5, color: MUTE, lineHeight: 1.35 }}>Total retainage<br />(Line 5a + 5b or total in Column I of detail sheet)</div>
-                    <div data-money-cell style={{ width: 158, textAlign: "right", fontSize: 13, lineHeight: 1.35, padding: "4px 6px", ...NUM, overflow: "visible", borderTop: `1px solid ${INK}`, boxSizing: "border-box", minHeight: 24 }}>{money(g.retainage_total)}</div>
+                    <div style={{ flex: 1, fontSize: 10.5, color: MUTE, lineHeight: 1.35 }}>Total retainage still held<br />{retainageReleased > 0.005 ? "gross 5% less retainage released" : "(Line 5a + 5b or total in Column I of detail sheet)"}</div>
+                    <div data-money-cell style={{ width: 158, textAlign: "right", fontSize: 13, lineHeight: 1.35, padding: "4px 6px", ...NUM, overflow: "visible", borderTop: `1px solid ${INK}`, boxSizing: "border-box", minHeight: 24 }}>{money(remainingRetainage)}</div>
                   </div>
                 </div>
               </div>

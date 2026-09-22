@@ -260,6 +260,14 @@ export interface G702Summary {
   net_change_orders: number;
   contract_sum_to_date: number;
   completed_stored_to_date: number;
+  /** Gross retainage calculated from the SOV detail before any release. */
+  gross_retainage_at_5_pct?: number;
+  /** Retainage released on this pay application. */
+  retainage_released_this_app?: number;
+  /** Cumulative retainage released through this pay application. */
+  retainage_released_to_date?: number;
+  /** Retainage still held after release. When present, this equals Line 5. */
+  retainage_remaining_held?: number;
   retainage_total: number;
   total_earned_less_retainage: number;
   less_previous_certificates: number;
@@ -275,6 +283,19 @@ export interface G702Summary {
   amount_certified?: number;
   /** Mirrored from prime_contract_pay_apps.is_final_invoice for PDF snapshots. */
   is_final_invoice?: boolean;
+}
+
+export function grossRetainageForG703(summary: Partial<G702Summary> | null | undefined): number | null {
+  if (!summary) return null;
+  const gross = Number(summary.gross_retainage_at_5_pct);
+  if (Number.isFinite(gross) && gross > 0) return round2(gross);
+  const remaining = Number(summary.retainage_remaining_held);
+  const released = Number(summary.retainage_released_to_date ?? summary.retainage_released_this_app);
+  if (Number.isFinite(remaining) && Number.isFinite(released) && released > 0) {
+    return round2(remaining + released);
+  }
+  const retained = Number(summary.retainage_total);
+  return Number.isFinite(retained) ? round2(retained) : null;
 }
 
 /** Prefer a stored pay_app_data snapshot over live SOV math. */
@@ -362,7 +383,7 @@ export function computeG703GrandTotals(
     value_to_date?: number | string | null;
     retainage?: number | string | null;
   }>,
-  cover?: Pick<G702Summary, "completed_stored_to_date" | "retainage_total"> | null,
+  cover?: Pick<G702Summary, "completed_stored_to_date" | "retainage_total" | "gross_retainage_at_5_pct" | "retainage_released_to_date" | "retainage_released_this_app" | "retainage_remaining_held"> | null,
 ): G703GrandTotals {
   const scheduled = round2(sum(lines.map((l) => Number(l.scheduled_value) || 0)));
   const prev = round2(sum(lines.map((l) => Number(l.prev_value) || 0)));
@@ -373,8 +394,9 @@ export function computeG703GrandTotals(
   if (cover && typeof cover.completed_stored_to_date === "number") {
     toDate = round2(cover.completed_stored_to_date);
   }
-  if (cover && typeof cover.retainage_total === "number") {
-    retainage = round2(cover.retainage_total);
+  const coverGrossRetainage = grossRetainageForG703(cover);
+  if (coverGrossRetainage != null) {
+    retainage = coverGrossRetainage;
   }
 
   return { scheduled, prev, thisP, toDate, retainage };
@@ -469,6 +491,8 @@ export interface PaymentPosition {
   revisedContract: number;     // base + change orders
   completedToDate: number;     // billed (completed & stored) to date
   pctComplete: number;         // completed / revised, %
+  grossRetainage?: number;     // gross retainage before release
+  retainageReleased?: number;  // retainage released through this app
   retainageHeld: number;       // retainage withheld to date
   earnedLessRetainage: number; // completed − retainage
   previouslyBilled: number;    // certified on prior pay apps
@@ -489,6 +513,10 @@ export interface PaymentPosition {
 export function computePaymentPosition(g702: G702Summary, receivedToDate: number): PaymentPosition {
   const revisedContract = round2(g702.contract_sum_to_date);
   const completedToDate = round2(g702.completed_stored_to_date);
+  const grossRetainage = grossRetainageForG703(g702) ?? round2(g702.retainage_total);
+  const retainageReleased = round2(
+    Number(g702.retainage_released_to_date ?? g702.retainage_released_this_app ?? 0) || 0,
+  );
   const earnedLessRetainage = round2(g702.total_earned_less_retainage);
   const paidToDate = round2(receivedToDate);
   return {
@@ -497,6 +525,8 @@ export function computePaymentPosition(g702: G702Summary, receivedToDate: number
     revisedContract,
     completedToDate,
     pctComplete: revisedContract > 0 ? round2((completedToDate / revisedContract) * 100) : 0,
+    grossRetainage,
+    retainageReleased,
     retainageHeld: round2(g702.retainage_total),
     earnedLessRetainage,
     previouslyBilled: round2(g702.less_previous_certificates),

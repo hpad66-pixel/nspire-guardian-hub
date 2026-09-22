@@ -323,6 +323,8 @@ describe("computePaymentPosition", () => {
     expect(p.revisedContract).toBe(547111);
     expect(p.completedToDate).toBe(400000);
     expect(p.pctComplete).toBe(73.11);
+    expect(p.grossRetainage).toBe(40000);
+    expect(p.retainageReleased).toBe(0);
     expect(p.retainageHeld).toBe(40000);
     expect(p.earnedLessRetainage).toBe(360000);
     expect(p.previouslyBilled).toBe(280000);
@@ -331,6 +333,31 @@ describe("computePaymentPosition", () => {
     expect(p.outstanding).toBe(60000);
     expect(p.balanceToBill).toBe(147111);
     expect(p.balanceToFinish).toBe(187111);
+  });
+
+  it("separates gross retainage, released retainage, and remaining retainage", () => {
+    const released: G702Summary = {
+      original_contract_sum: 523061,
+      net_change_orders: 379043.65,
+      contract_sum_to_date: 902104.65,
+      completed_stored_to_date: 903369.16,
+      gross_retainage_at_5_pct: 45168.47,
+      retainage_released_this_app: 22584.24,
+      retainage_released_to_date: 22584.24,
+      retainage_remaining_held: 22584.23,
+      retainage_total: 22584.23,
+      total_earned_less_retainage: 880784.93,
+      less_previous_certificates: 879552.03,
+      current_payment_due: 1232.9,
+      balance_to_finish: -1264.51,
+      is_final_invoice: true,
+    };
+    const p = computePaymentPosition(released, 879552.03);
+    expect(p.grossRetainage).toBe(45168.47);
+    expect(p.retainageReleased).toBe(22584.24);
+    expect(p.retainageHeld).toBe(22584.23);
+    expect(p.earnedLessRetainage).toBe(880784.93);
+    expect(p.thisInvoice).toBe(1232.9);
   });
 
   it("handles a zero cover / no cash with no NaN and no divide-by-zero", () => {
@@ -447,5 +474,23 @@ describe("computeG703GrandTotals", () => {
     expect(totals.retainage).toBe(34008.16);
     // Scheduled still sums from the sheet
     expect(totals.scheduled).toBe(600000);
+  });
+
+  it("keeps G703 Column I at gross retainage when the G702 cover has a separate release", () => {
+    const totals = computeG703GrandTotals(
+      [
+        { scheduled_value: 500000, value_to_date: 400000, retainage: 20000 },
+        { scheduled_value: 100000, value_to_date: 100000, retainage: 25000 },
+      ],
+      {
+        completed_stored_to_date: 903369.16,
+        gross_retainage_at_5_pct: 45168.47,
+        retainage_released_to_date: 22584.24,
+        retainage_remaining_held: 22584.23,
+        retainage_total: 22584.23,
+      },
+    );
+    expect(totals.toDate).toBe(903369.16);
+    expect(totals.retainage).toBe(45168.47);
   });
 });

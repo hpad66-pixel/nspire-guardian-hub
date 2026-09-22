@@ -21,7 +21,7 @@ import {
 } from "@/hooks/usePayAppContinuation";
 import { usePrimeContract } from "@/hooks/usePrimeContract";
 import { useUserPermissions } from "@/hooks/usePermissions";
-import { computeG703GrandTotals, round2 } from "@/lib/financial/payAppContinuation";
+import { computeG703GrandTotals, grossRetainageForG703, round2 } from "@/lib/financial/payAppContinuation";
 import { g702SidebarRows } from "@/lib/payApp/g702Labels";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -56,6 +56,11 @@ export function PayAppContinuationBuilder({
     Boolean((detail.data as any)?.is_final_invoice) ||
     Boolean((detail.data as any)?.pay_app_data?.is_final_invoice);
   const G702_ROWS = g702SidebarRows(isFinalInvoice);
+  const grossRetainage = grossRetainageForG703(g702) ?? Number(g702.retainage_total ?? 0);
+  const retainageReleased = round2(
+    Number(g702.retainage_released_to_date ?? g702.retainage_released_this_app ?? 0) || 0,
+  );
+  const remainingRetainage = round2(Number(g702.retainage_remaining_held ?? g702.retainage_total ?? 0));
   // A submitted pay app is a fixed certificate — lock ordinary editing.
   // Admins can still correct scheduled values and reload the cover.
   const locked = isFrozen;
@@ -322,6 +327,19 @@ export function PayAppContinuationBuilder({
             ))}
           </tbody>
         </table>
+        {retainageReleased > 0.005 && (
+          <div className="border-t bg-[var(--apas-emerald)]/5 px-3 py-2 text-xs leading-relaxed">
+            <div className="font-semibold text-foreground">Retainage release reconciliation</div>
+            <div className="mt-1 grid gap-1 sm:grid-cols-3">
+              <span>Gross 5% retainage: <strong className="font-mono">{money(grossRetainage)}</strong></span>
+              <span>Released on this app: <strong className="font-mono text-[var(--apas-emerald)]">{money(retainageReleased)}</strong></span>
+              <span>Still held: <strong className="font-mono text-[var(--apas-amber)]">{money(remainingRetainage)}</strong></span>
+            </div>
+            <p className="mt-1 text-muted-foreground">
+              The continuation sheet keeps the gross 5% per-line retainage for audit. The cover deducts only the retainage still held after the approved release.
+            </p>
+          </div>
+        )}
         {isFinalInvoice && (
           <div className="border-t px-3 py-2 text-xs text-muted-foreground leading-relaxed">
             <strong className="text-foreground">Final invoice:</strong> Line 7 is paid to date.

@@ -39,6 +39,8 @@ export function ContractPaymentPosition({
   position: PaymentPosition; payAppNo: number | null;
 }) {
   const owed = p.outstanding > 0.01;
+  const grossRetainage = p.grossRetainage ?? p.retainageHeld;
+  const retainageReleased = p.retainageReleased ?? 0;
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -56,6 +58,12 @@ export function ContractPaymentPosition({
 
         <SectionLabel>Billed to date</SectionLabel>
         <Row label="Completed &amp; stored to date" value={p.completedToDate} hint={`${p.pctComplete.toFixed(0)}% of contract`} />
+        {retainageReleased > 0.005 && (
+          <>
+            <Row label="Gross retainage at 5%" value={grossRetainage} sign="−" accent="var(--apas-amber)" />
+            <Row label="Retainage released on this app" value={retainageReleased} sign="+" accent="var(--apas-emerald)" />
+          </>
+        )}
         <Row label="Retainage held (deducted)" value={p.retainageHeld} sign="−" accent="var(--apas-amber)" />
         <div className="border-t border-border" />
         <Row label="Earned to date (less retainage)" value={p.earnedLessRetainage} strong />
@@ -68,13 +76,18 @@ export function ContractPaymentPosition({
 
         <SectionLabel>Cash position</SectionLabel>
         <Row label="Paid by client to date" value={p.paidToDate} accent="var(--apas-emerald)" strong />
-        <Row label="Retainage still held" value={p.retainageHeld} hint="released at closeout" />
+        <Row label="Retainage still held" value={p.retainageHeld} hint={retainageReleased > 0.005 ? "after current release" : "released at closeout"} />
         <Row label="Billed but not yet paid" value={p.outstanding} accent={owed ? "var(--apas-rose)" : undefined} />
         <Row label="Balance left to bill" value={p.balanceToBill} />
 
         <p className="mt-3 border-t border-border pt-2 text-xs leading-relaxed text-muted-foreground">
           You&apos;ve received <span className="font-medium text-foreground">{money(p.paidToDate)}</span> in cash to date.{" "}
-          <span className="font-medium text-foreground">{money(p.retainageHeld)}</span> is held back as retainage (released at closeout)
+          {retainageReleased > 0.005 && (
+            <>
+              <span className="font-medium text-foreground">{money(retainageReleased)}</span> of retainage is released on this application.{" "}
+            </>
+          )}
+          <span className="font-medium text-foreground">{money(p.retainageHeld)}</span> is still held back as retainage
           {owed
             ? <>, and <span className="font-medium text-foreground">{money(p.outstanding)}</span> of billed work is still awaiting payment.</>
             : <>, and billed work is fully paid up.</>}{" "}
