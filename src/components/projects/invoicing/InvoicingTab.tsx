@@ -248,7 +248,7 @@ export function InvoicingTab({
               const meta = INVOICE_STATUS_META[inv.status] ?? INVOICE_STATUS_META.draft;
               const actions = actionsFor(inv);
               return (
-                <div key={inv.id} className="rounded-lg border bg-card p-3 shadow-sm">
+                <div key={inv.id} data-testid={`consulting-invoice-card-${inv.invoice_no}`} className="rounded-lg border bg-card p-3 shadow-sm">
                   <button type="button" className="w-full text-left" onClick={() => setDetailId(inv.id)}>
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, Send, Plus, Loader2, Mail, Pencil, Paperclip, Upload, X, RotateCcw, XCircle } from 'lucide-react';
+import { Download, Send, Plus, Loader2, Mail, Pencil, Paperclip, Upload, X, RotateCcw, XCircle, Trash2 } from 'lucide-react';
 import {
   invoiceLifecycleActions,
   useInvoiceDetail,
@@ -70,7 +70,7 @@ export function InvoiceDetailDialog({
   billingBrand = APAS_COMPANY_BRANDS.apas_consulting,
 }: Props) {
   const { data, isLoading, addPayment } = useInvoiceDetail(invoiceId);
-  const { setStatus, returnToDraft } = useConsultingInvoices(projectId);
+  const { setStatus, returnToDraft, remove } = useConsultingInvoices(projectId);
   const { data: ledger } = useConsultingArLedger(projectId);
   const { billedByProposal, paidByProposal } = useProposalBillingMaps(projectId, open && !!invoiceId);
   const { data: coSettings } = useCoSettings();
@@ -313,6 +313,15 @@ export function InvoiceDetailDialog({
     setStatus.mutate({ id: inv.id, status: 'sent' });
   };
 
+  const deleteEligibleInvoice = async () => {
+    if (!inv) return;
+    const label = inv.status === 'void' ? 'voided invoice' : 'draft invoice';
+    const ok = window.confirm(`Delete ${label} #${inv.invoice_no}? This cannot be undone.`);
+    if (!ok) return;
+    await remove.mutateAsync(inv.id);
+    onOpenChange(false);
+  };
+
   const billDisplay =
     inv?.bill_to_name || inv?.bill_to_company || clientName || clientSeed?.name || '—';
 
@@ -546,6 +555,18 @@ export function InvoiceDetailDialog({
                     <XCircle className="h-4 w-4" />Void unpaid invoice
                   </Button>
                 )}
+                {lifecycleActions.has('delete') && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="ml-auto gap-1.5 text-destructive hover:text-destructive"
+                    onClick={() => void deleteEligibleInvoice()}
+                    disabled={remove.isPending}
+                  >
+                    {remove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    {inv.status === 'void' ? 'Delete voided invoice' : 'Delete draft'}
+                  </Button>
+                )}
               </div>
               {inv.status === 'draft' ? (
                 <p className="text-xs text-muted-foreground">
@@ -573,6 +594,7 @@ export function InvoiceDetailDialog({
         clientSeed={clientSeed}
         editInvoiceId={invoiceId}
         billingBrand={consultingBrand}
+        onDeleted={() => onOpenChange(false)}
       />
 
       {inv && (

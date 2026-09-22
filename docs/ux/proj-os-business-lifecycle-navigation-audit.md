@@ -838,7 +838,11 @@ Current implementation status:
 
 - Implemented locally and verified on 2026-09-22: mobile bottom navigation and the More drawer use the APAS ivory/gold/sapphire shell instead of the previous dark/green treatment.
 - Implemented locally and verified on 2026-09-22: project and client routes show a compact current project/client identity pill in the app header; global routes such as the dashboard do not show stale project context.
+- Implemented locally, pending production verification: the primary mobile nav now matches the iPhone spec order of Home, Projects, Capture, Money, and More; Capture opens a project-aware action sheet and deep-links permit scanning into the existing project permit scan flow.
+- Implemented locally, pending production deployment and migration verification: consulting client invoice draft edit exposes invoice-number amendment and draft deletion inside the edit modal; eligible unpaid voided invoices expose delete in the detail view; the delete mutation preserves paid/payment-referenced records and returns voided invoices through the guarded draft path before removal.
 - The production-bundle Playwright mobile smoke covers dashboard, proposal list, proposal builder, consulting invoice list/detail, return-to-draft and void actions, and switching between two project IDs to catch stale header labels.
+- The production-bundle Playwright mobile smoke also covers disposable fixture deletion for an unpaid voided invoice, draft invoice-number amendment, and draft deletion from the edit modal.
+- Not yet complete: live production proof for the Stucco Repairs invoice screen after deployment, full project cockpit redesign, five-group project drawer simplification, mobile tests for client updates/reports/documents/messages/portals/pay apps/NTP/client-owner/subcontractor entry points, tablet and 360 px Android screenshots, and proof that every signed in primary route has no 390 px body overflow.
 
 Do not touch in this release:
 

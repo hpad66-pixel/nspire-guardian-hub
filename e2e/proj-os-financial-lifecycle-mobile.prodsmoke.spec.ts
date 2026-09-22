@@ -272,6 +272,28 @@ test('mobile financial lifecycle renders with ivory shell and usable invoice/pro
   await page.getByText('Invoice #3').first().click();
   await expect(page.getByRole('dialog').getByRole('button', { name: /Return to draft/i })).toBeVisible();
   await expect(page.getByRole('dialog').getByRole('button', { name: /Void unpaid invoice/i })).toBeVisible();
+  await page.keyboard.press('Escape');
+  page.on('dialog', (dialog) => void dialog.accept());
+  await page.getByText('Invoice #2').first().click();
+  await expect(page.getByRole('dialog').getByRole('button', { name: /Delete voided invoice/i })).toBeVisible();
+  await page.getByRole('dialog').getByRole('button', { name: /Delete voided invoice/i }).click();
+  await expect(page.getByText('Invoice #2')).toHaveCount(0);
+  await page.getByTestId('consulting-invoice-card-1').getByRole('button', { name: /Edit/i }).click();
+  const editOneDialog = page.getByRole('dialog', { name: /Edit invoice #1/i });
+  await expect(editOneDialog).toBeVisible();
+  await expect(editOneDialog.getByLabel(/Invoice number/i)).toHaveValue('1');
+  await editOneDialog.getByLabel(/Invoice number/i).fill('4');
+  await editOneDialog.getByRole('button', { name: /Save changes/i }).scrollIntoViewIfNeeded();
+  await editOneDialog.getByRole('button', { name: /Save changes/i }).click();
+  await expect(editOneDialog).toBeHidden();
+  await expect(page.getByTestId('consulting-invoice-card-4')).toBeVisible();
+  await expect(page.getByText('Invoice #1')).toHaveCount(0);
+  await page.getByTestId('consulting-invoice-card-4').getByRole('button', { name: /Edit/i }).click();
+  const editFourDialog = page.getByRole('dialog', { name: /Edit invoice #4/i });
+  await expect(editFourDialog).toBeVisible();
+  await editFourDialog.getByRole('button', { name: /Delete draft/i }).scrollIntoViewIfNeeded();
+  await editFourDialog.getByRole('button', { name: /Delete draft/i }).click();
+  await expect(page.getByText('Invoice #4')).toHaveCount(0);
   await expectNoDocumentOverflow(page);
 
   await page.goto(`/projects/${SECOND_PROJECT_ID}/financials/proposals`);

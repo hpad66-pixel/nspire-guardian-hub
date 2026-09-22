@@ -85,6 +85,7 @@ export interface InvoiceBillTo {
 }
 
 export interface InvoiceHeaderInput extends InvoiceBillTo {
+  invoice_no?: number | null;
   issue_date: string;
   due_date: string | null;
   notes: string | null;
@@ -257,9 +258,24 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
       if (inv && inv.status !== 'draft') {
         throw new Error('Only draft invoices can be fully edited. Void and recreate, or record a payment.');
       }
+      const nextInvoiceNo = input.invoice_no == null ? undefined : Number(input.invoice_no);
+      if (nextInvoiceNo !== undefined) {
+        if (!Number.isInteger(nextInvoiceNo) || nextInvoiceNo < 1) {
+          throw new Error('Invoice number must be a positive whole number.');
+        }
+        const duplicate = (list.data ?? []).find((i) => (
+          i.project_id === projectId
+          && i.id !== input.id
+          && Number(i.invoice_no) === nextInvoiceNo
+        ));
+        if (duplicate) {
+          throw new Error(`Invoice #${nextInvoiceNo} already exists on this project.`);
+        }
+      }
       const subtotal = input.lines.reduce((s, l) => s + (Number(l.amount) || 0), 0);
-      const tenant_id = await requireTenantId();
+      const tenant_id = inv?.tenant_id ?? await requireTenantId();
       const { error } = await invoices().update({
+        ...(nextInvoiceNo !== undefined ? { invoice_no: nextInvoiceNo } : {}),
         issue_date: input.issue_date,
         due_date: input.due_date,
         notes: input.notes,
@@ -376,10 +392,20 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
       if (!invoiceLifecycleActions(inv, paid).has('delete')) {
         throw lifecycleError(explainBlockedInvoiceDelete(inv.status, paid));
       }
+      if (inv.status === 'void') {
+        const { error: draftError } = await invoices()
+          .update({ status: 'draft', updated_at: new Date().toISOString() })
+          .eq('id', id);
+        if (draftError) throw draftError;
+      }
       const { error } = await invoices().delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { invalidate(); toast.success('Invoice deleted'); },
+    onSuccess: (_d, id) => {
+      invalidate();
+      qc.removeQueries({ queryKey: ['consulting-invoice-detail', id] });
+      toast.success('Invoice deleted');
+    },
     onError: (e: Error) => toast.error(`Couldn't delete invoice: ${e.message}`),
   });
 
@@ -480,9 +506,12 @@ export function useProposalBillingMaps(projectId: string | null | undefined, ena
 /** Running A/R ledger for consulting dashboards. */
 export function useConsultingArLedger(projectId: string | null | undefined) {
   const { data: invoices = [], isLoading: invLoading } = useConsultingInvoices(projectId);
+  const ledgerInvoiceKey = (invoices ?? [])
+    .map((i) => `${i.id}:${i.invoice_no}:${i.status}:${i.total}:${i.updated_at}`)
+    .join('|');
 
   const ledgerQuery = useQuery({
-    queryKey: ['consulting-ar-ledger', projectId, (invoices ?? []).map((i) => i.id).join(',')],
+    queryKey: ['consulting-ar-ledger', projectId, ledgerInvoiceKey],
     queryFn: async () => {
       if (!projectId) {
         return {

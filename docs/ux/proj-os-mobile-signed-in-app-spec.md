@@ -376,6 +376,15 @@ The signed in app should feel quiet, premium, and operational:
 
 ## Implementation Plan
 
+### Status As Of 2026-09-22
+
+- Implemented locally: the app shell bottom navigation now uses Home, Projects, Capture, Money, and More.
+- Implemented locally: Capture opens a project-aware action sheet and routes current-project actions to existing photo, daily log, permit scan, punch, accountability, voice, repository, and incident workflows.
+- Implemented locally, pending production deployment and migration verification: consulting client invoice draft edit exposes invoice-number amendment and draft deletion inside the edit modal; eligible unpaid voided invoices expose delete in the detail view while paid/payment-referenced invoices remain preserved.
+- Verified locally: financial mobile smoke covers proposal and invoice lifecycle at 390 px, unpaid voided invoice deletion, draft invoice-number amendment, draft deletion from the edit modal, and stale project identity protection.
+- Not yet complete: the project cockpit, full five-group project drawer simplification, client/owner portal mobile parity, subcontractor portal mobile parity, all client interaction flows, and Notion/Hermes meeting intelligence end-to-end verification.
+- Runtime blocker: Proj OS public Notion OAuth still needs `NOTION_OAUTH_CLIENT_ID` and `NOTION_OAUTH_CLIENT_SECRET` configured in Supabase secrets before consent, source search, mapping, and sync can be tested end to end.
+
 ### Phase 1: Spec Alignment And Cleanup
 
 - Add this spec.
@@ -451,4 +460,3 @@ The first implementation should be:
 4. Add a project action sheet that includes Scan Permit as one option.
 5. Keep permit scan dialog and OCR flow exactly as is.
 6. Add mobile no overflow tests for project detail and permit action entry.
-

@@ -210,6 +210,35 @@ const json = (route: Route, body: unknown, status = 200) =>
     body: JSON.stringify(body),
   });
 
+let generatedRowId = 0;
+
+function nextGeneratedRowId(table: string) {
+  generatedRowId += 1;
+  return `e2e-${table}-${String(generatedRowId).padStart(4, "0")}`;
+}
+
+function rowMatchesPostgrestFilters(row: Record<string, unknown>, requestUrl: URL) {
+  for (const [key, value] of requestUrl.searchParams) {
+    if (value.startsWith("eq.") && Object.prototype.hasOwnProperty.call(row, key)) {
+      if (String(row[key]) !== value.slice(3)) return false;
+    }
+    if (value.startsWith("neq.") && Object.prototype.hasOwnProperty.call(row, key)) {
+      if (String(row[key]) === value.slice(4)) return false;
+    }
+  }
+  return true;
+}
+
+function cascadeConsultingInvoiceDelete(deletedIds: Set<string>) {
+  if (deletedIds.size === 0) return;
+  TABLE_ROWS.consulting_invoice_lines = (TABLE_ROWS.consulting_invoice_lines ?? []).filter(
+    (row) => !deletedIds.has(String((row as Record<string, unknown>).invoice_id)),
+  );
+  TABLE_ROWS.consulting_invoice_payments = (TABLE_ROWS.consulting_invoice_payments ?? []).filter(
+    (row) => !deletedIds.has(String((row as Record<string, unknown>).invoice_id)),
+  );
+}
+
 /**
  * Seed a session and intercept every Supabase call so protected routes mount.
  * Data is deliberately empty — we are asserting the route *renders*, not what
@@ -237,8 +266,48 @@ export async function bootAuthedProdApp(page: Page) {
     if (url.includes("/auth/v1/logout")) return json(route, {});
     if (url.includes("/rpc/")) return json(route, []);
 
-    let rows = TABLE_ROWS[tableFromUrl(url)] ?? [];
+    const table = tableFromUrl(url);
+    const method = route.request().method();
+    let rows = TABLE_ROWS[table] ?? [];
     const requestUrl = new URL(url);
+
+    if (method === "POST") {
+      const body = route.request().postDataJSON() as Record<string, unknown> | Record<string, unknown>[];
+      const records = (Array.isArray(body) ? body : [body]).map((row) => ({
+        id: row.id ?? nextGeneratedRowId(table),
+        ...row,
+      }));
+      TABLE_ROWS[table] = [...rows, ...records];
+      const accept = route.request().headers()["accept"] ?? "";
+      if (accept.includes("vnd.pgrst.object")) return json(route, records[0] ?? {}, 201);
+      return json(route, records, 201);
+    }
+
+    if (method === "PATCH") {
+      const patch = route.request().postDataJSON() as Record<string, unknown>;
+      const updated: unknown[] = [];
+      TABLE_ROWS[table] = rows.map((row) => {
+        const record = row as Record<string, unknown>;
+        if (!rowMatchesPostgrestFilters(record, requestUrl)) return row;
+        const next = { ...record, ...patch };
+        updated.push(next);
+        return next;
+      });
+      return json(route, updated);
+    }
+
+    if (method === "DELETE") {
+      const deletedIds = new Set<string>();
+      TABLE_ROWS[table] = rows.filter((row) => {
+        const record = row as Record<string, unknown>;
+        const matched = rowMatchesPostgrestFilters(record, requestUrl);
+        if (matched && record.id) deletedIds.add(String(record.id));
+        return !matched;
+      });
+      if (table === "consulting_invoices") cascadeConsultingInvoiceDelete(deletedIds);
+      return json(route, []);
+    }
+
     for (const [key, value] of requestUrl.searchParams) {
       if (!value.startsWith("eq.") || !rows.some((row) => Object.prototype.hasOwnProperty.call(row, key))) continue;
       const expected = value.slice(3);

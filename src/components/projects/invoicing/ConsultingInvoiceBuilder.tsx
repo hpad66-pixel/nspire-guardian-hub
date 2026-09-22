@@ -56,6 +56,7 @@ interface Props {
   /** Preselect one executed proposal when launched from its Create invoice action. */
   initialProposalId?: string | null;
   billingBrand?: ApasCompanyBrand;
+  onDeleted?: () => void;
 }
 
 interface ScopeRow extends NewInvoiceLine {
@@ -90,10 +91,11 @@ export function ConsultingInvoiceBuilder({
   editInvoiceId,
   initialProposalId,
   billingBrand = APAS_COMPANY_BRANDS.apas_consulting,
+  onDeleted,
 }: Props) {
   const { data: scopes } = useProjectScopes(projectId);
   const { data: proposals = [] } = useFinancialProposals(projectId);
-  const { create, update, data: invoices = [] } = useConsultingInvoices(projectId);
+  const { create, update, remove, data: invoices = [] } = useConsultingInvoices(projectId);
   const { data: editDetail } = useInvoiceDetail(open && editInvoiceId ? editInvoiceId : null);
   const { billedByProposal, paidByProposal } = useProposalBillingMaps(projectId, open);
   const editing = !!editInvoiceId;
@@ -103,6 +105,7 @@ export function ConsultingInvoiceBuilder({
   );
 
   const [mode, setMode] = useState<Mode>('proposals');
+  const [invoiceNo, setInvoiceNo] = useState('');
   const [issueDate, setIssueDate] = useState(todayIso());
   const [dueDate, setDueDate] = useState(addDaysIso(todayIso(), 30));
   const [notes, setNotes] = useState('');
@@ -138,6 +141,7 @@ export function ConsultingInvoiceBuilder({
     };
 
     if (existing) {
+      setInvoiceNo(String(existing.invoice_no));
       setIssueDate(existing.issue_date);
       setDueDate(existing.due_date || addDaysIso(existing.issue_date, 30));
       setNotes(existing.notes || '');
@@ -146,6 +150,7 @@ export function ConsultingInvoiceBuilder({
       setPoNumber(existing.po_number || '');
       seedBillTo();
     } else {
+      setInvoiceNo('');
       setIssueDate(todayIso());
       setDueDate(addDaysIso(todayIso(), 30));
       setNotes('');
@@ -331,8 +336,18 @@ export function ConsultingInvoiceBuilder({
         : !hasSelectedProposalAmount
           ? 'Select at least one proposal amount to bill.'
           : null;
-  const canCreate = !invoiceBlocker;
+  const parsedInvoiceNo = Number(invoiceNo);
+  const invoiceNoError = editing
+    ? !Number.isInteger(parsedInvoiceNo) || parsedInvoiceNo < 1
+      ? 'Invoice number must be a positive whole number.'
+      : invoices.some((i) => i.id !== editInvoiceId && Number(i.invoice_no) === parsedInvoiceNo)
+        ? `Invoice #${parsedInvoiceNo} already exists on this project.`
+        : null
+    : null;
+  const saveBlocker = invoiceBlocker ?? invoiceNoError;
+  const canSave = !saveBlocker;
   const saving = create.isPending || update.isPending;
+  const deleting = remove.isPending;
   const consultingBrand = billingBrand;
   const invoiceDocumentLabel = invoiceDocumentLabelForCompany(consultingBrand);
   const setupSteps = [
@@ -343,22 +358,26 @@ export function ConsultingInvoiceBuilder({
     'Return here and bill a percent complete, the remaining balance, or a typed amount inside the approved balance.',
   ];
 
-  const buildHeader = (): InvoiceHeaderInput => ({
-    issue_date: issueDate,
-    due_date: dueDate || null,
-    notes: notes.trim() || null,
-    subject: subject.trim() || null,
-    payment_terms: paymentTerms.trim() || null,
-    po_number: poNumber.trim() || null,
-    bill_to_name: billToName.trim() || null,
-    bill_to_company: billToCompany.trim() || null,
-    bill_to_email: billToEmail.trim() || null,
-    bill_to_phone: billToPhone.trim() || null,
-    bill_to_address: billToAddress.trim() || null,
-    bill_to_city: billToCity.trim() || null,
-    bill_to_state: billToState.trim() || null,
-    bill_to_postal: billToPostal.trim() || null,
-  });
+  const buildHeader = (): InvoiceHeaderInput => {
+    const header: InvoiceHeaderInput = {
+      issue_date: issueDate,
+      due_date: dueDate || null,
+      notes: notes.trim() || null,
+      subject: subject.trim() || null,
+      payment_terms: paymentTerms.trim() || null,
+      po_number: poNumber.trim() || null,
+      bill_to_name: billToName.trim() || null,
+      bill_to_company: billToCompany.trim() || null,
+      bill_to_email: billToEmail.trim() || null,
+      bill_to_phone: billToPhone.trim() || null,
+      bill_to_address: billToAddress.trim() || null,
+      bill_to_city: billToCity.trim() || null,
+      bill_to_state: billToState.trim() || null,
+      bill_to_postal: billToPostal.trim() || null,
+    };
+    if (editing) header.invoice_no = parsedInvoiceNo;
+    return header;
+  };
 
   const buildLines = (): NewInvoiceLine[] => {
     if (mode === 'proposals') return buildInvoiceLinesFromProposals(proposalRows);
@@ -382,6 +401,10 @@ export function ConsultingInvoiceBuilder({
         toast.error(invoiceBlocker);
         return;
       }
+      if (invoiceNoError) {
+        toast.error(invoiceNoError);
+        return;
+      }
       const header = buildHeader();
       const lines = buildLines();
       if (editing && editInvoiceId) {
@@ -390,6 +413,17 @@ export function ConsultingInvoiceBuilder({
         await create.mutateAsync({ ...header, lines });
       }
       onOpenChange(false);
+    } catch { /* toast handled */ }
+  };
+
+  const handleDeleteDraft = async () => {
+    if (!editing || !editInvoiceId || existing?.status !== 'draft') return;
+    const ok = window.confirm(`Delete draft invoice #${existing.invoice_no}? This cannot be undone.`);
+    if (!ok) return;
+    try {
+      await remove.mutateAsync(editInvoiceId);
+      onOpenChange(false);
+      onDeleted?.();
     } catch { /* toast handled */ }
   };
 
@@ -561,6 +595,20 @@ export function ConsultingInvoiceBuilder({
           <Label>Subject / RE</Label>
           <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Professional services — PROP-001 — Project" />
         </div>
+
+        {editing && (
+          <div className="grid gap-1.5 sm:max-w-xs">
+            <Label htmlFor="consulting-invoice-number">Invoice number</Label>
+            <Input
+              id="consulting-invoice-number"
+              inputMode="numeric"
+              value={invoiceNo}
+              onChange={(e) => setInvoiceNo(e.target.value)}
+              aria-invalid={!!invoiceNoError}
+            />
+            {invoiceNoError && <p className="text-xs text-destructive">{invoiceNoError}</p>}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="grid gap-1.5">
@@ -843,19 +891,32 @@ export function ConsultingInvoiceBuilder({
           </div>
         )}
 
-        <DialogFooter className="gap-2 sm:justify-end">
+        </div>
+        </ResizableWorkspace>
+
+        <DialogFooter className="sticky bottom-0 z-10 -mx-4 -mb-4 gap-2 border-t bg-background/95 p-4 backdrop-blur sm:justify-end">
+          {editing && existing?.status === 'draft' && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full gap-1.5 text-destructive hover:text-destructive sm:mr-auto sm:w-auto"
+              onClick={handleDeleteDraft}
+              disabled={saving || deleting}
+            >
+              {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              Delete draft
+            </Button>
+          )}
           <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => onOpenChange(false)}>Cancel</Button>
           <Button
             type="button"
             onClick={handleSave}
-            disabled={!canCreate || saving}
+            disabled={!canSave || saving || deleting}
             className="w-full bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90 sm:w-auto"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : editing ? 'Save changes' : 'Create proposal-linked invoice'}
           </Button>
         </DialogFooter>
-        </div>
-        </ResizableWorkspace>
       </DialogContent>
     </Dialog>
   );
