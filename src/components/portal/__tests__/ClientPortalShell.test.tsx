@@ -77,11 +77,11 @@ describe("ClientPortalShell project tabs", () => {
     expect(screen.getByTestId("owner-portal-project-tab-p2")).toHaveAttribute("aria-selected", "false");
   });
 
-  it("keeps the current section when switching project tabs", () => {
+  it("opens a project's main portal surface when switching project tabs", () => {
     renderAt("/owner-portal/projects/p1/documents");
     expect(screen.getByTestId("owner-portal-project-tab-p2")).toHaveAttribute(
       "href",
-      "/owner-portal/projects/p2/documents",
+      "/owner-portal/projects/p2",
     );
     expect(screen.getByText("DOCS")).toBeInTheDocument();
   });
@@ -102,5 +102,11 @@ describe("ClientPortalShell project tabs", () => {
     expect(screen.getByTestId("owner-portal-client-group-larkin")).toHaveTextContent("Larkin Consulting");
     expect(screen.getByTestId("owner-portal-project-tab-p1")).toHaveTextContent("Sewer close-out");
     expect(screen.getByTestId("owner-portal-project-tab-p5")).toHaveTextContent("Larkin MRI");
+    expect(screen.getByTestId("owner-portal-project-tab-p5")).toHaveAttribute(
+      "href",
+      "/projects/p5/client-updates?compose=1",
+    );
+    expect(screen.getByTestId("owner-portal-workbench-tools")).toHaveTextContent("Write update");
+    expect(screen.getByTestId("owner-portal-workbench-tools")).toHaveTextContent("Edit portal");
   });
 });

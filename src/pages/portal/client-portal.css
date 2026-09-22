@@ -264,6 +264,53 @@
 .client-portal-workspace { width: min(100% - 40px, 1500px); display: grid; grid-template-columns: 292px minmax(0,1fr); align-items: start; gap: 36px; margin: 0 auto; }
 .client-portal-sidebar { position: sticky; top: 98px; max-height: calc(100vh - 118px); overflow-y: auto; margin-top: 26px; padding: 14px; border: 1px solid var(--client-line); border-radius: 22px; background: rgba(255,253,248,.86); box-shadow: 0 18px 50px rgba(4,25,20,.07); backdrop-filter: blur(18px); scrollbar-width: thin; }
 .client-portal-sidebar__projects { padding-bottom: 15px; border-bottom: 1px solid #e6e2d8; }
+.client-portal-owner-tools {
+  display: grid;
+  gap: 8px;
+  padding: 15px 0;
+  border-bottom: 1px solid #e6e2d8;
+}
+.client-portal-owner-tools > .client-portal-rail__eyebrow { padding: 0 9px 2px; }
+.client-portal-owner-tool {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 3px 10px;
+  padding: 10px;
+  border: 1px solid #e4dccb;
+  border-radius: 13px;
+  color: var(--client-ink);
+  background: #fffbf2;
+  text-decoration: none;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+.client-portal-owner-tool:hover {
+  border-color: #d5aa52;
+  background: #fff6df;
+  transform: translateX(2px);
+}
+.client-portal-owner-tool > span {
+  grid-row: span 2;
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  color: white;
+  background: var(--client-ink);
+}
+.client-portal-owner-tool svg { width: 16px; height: 16px; }
+.client-portal-owner-tool strong {
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.client-portal-owner-tool small {
+  color: var(--client-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
 .client-portal-rail__heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 5px 11px; }
 .client-portal-rail__heading > div { display: grid; gap: 3px; }
 .client-portal-rail__heading strong { font-family: "Instrument Serif", Georgia, serif; font-size: 21px; font-weight: 500; }
@@ -292,6 +339,7 @@
 .client-portal-preview {
   min-height: 42px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -304,6 +352,18 @@
   font-size: 12px;
 }
 .client-portal-preview svg { width: 15px; height: 15px; }
+.client-portal-preview a {
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  border-radius: 9px;
+  color: #08271f;
+  background: #fffdf8;
+  font-weight: 800;
+  text-decoration: none;
+}
+.client-portal-preview a:hover { background: #f7e6b7; }
 
 .client-portal-main { width: 100%; min-height: calc(100vh - 240px); margin: 0; padding: 36px 0 70px; }
 .client-portal-main .container { width: 100%; max-width: none; padding: 0; }

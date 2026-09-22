@@ -19,8 +19,12 @@ export function OwnerAssistantLauncher() {
   const { data } = useOwnerPortalData();
   const [open, setOpen] = useState(false);
 
-  const contract = (data?.primeContracts as any[] | undefined)?.[0];
-  const projectId = data?.projects?.[0]?.id ?? contract?.project_id ?? null;
+  const routeProjectId = location.pathname.match(/^\/owner-portal\/projects\/([^/]+)/)?.[1] ?? null;
+  const contract = (data?.primeContracts as any[] | undefined)?.find((item) => item.project_id === routeProjectId)
+    ?? (data?.primeContracts as any[] | undefined)?.[0];
+  const project = data?.projects?.find((item) => item.id === routeProjectId) ?? data?.projects?.[0] ?? null;
+  const projectId = routeProjectId ?? project?.id ?? contract?.project_id ?? null;
+  const projectName = project?.name ?? contract?.title;
 
   if (!onOwnerPortal || !projectId) return null;
 
@@ -42,7 +46,7 @@ export function OwnerAssistantLauncher() {
       </button>
       <AssistantPanel
         projectId={projectId}
-        projectName={contract?.title}
+        projectName={projectName}
         audience="owner"
         open={open}
         onOpenChange={setOpen}

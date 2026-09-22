@@ -7,6 +7,8 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
+  Edit3,
+  ExternalLink,
   FileBadge2,
   FileText,
   FolderOpen,
@@ -16,6 +18,7 @@ import {
   Map,
   Menu,
   Package,
+  PencilLine,
   ScanEye,
   ShieldCheck,
   X,
@@ -30,7 +33,6 @@ import {
   buildOwnerProjectTabs,
   filterOwnerProjectsForClient,
   ownerPortalPath,
-  ownerPortalProjectSwitchPath,
   readRememberedOwnerPortalClient,
 } from "@/lib/portal/ownerPortalPaths";
 import { portalModulesForProject } from "@/lib/projects/moduleVisibility";
@@ -158,6 +160,7 @@ export function ClientPortalShell() {
   const [accountOpen, setAccountOpen] = useState(false);
   const { data: ownerData, isLoading: ownerLoading } = useOwnerPortalData();
   const { data: portalKind } = useMyPortalKind();
+  const isOwnerWorkbench = portalKind === "main";
 
   const contracts = useMemo(() => ownerData?.primeContracts ?? [], [ownerData?.primeContracts]);
   const catalog = useMemo(() => ownerData?.projects ?? [], [ownerData?.projects]);
@@ -171,10 +174,10 @@ export function ClientPortalShell() {
   const rememberedClientId = readRememberedOwnerPortalClient();
   const projects = useMemo(() => {
     if (portfolioClientId) return allProjects.filter(project => project.client_id === portfolioClientId);
-    if (portalKind === "owner" || portalKind === "main") return allProjects;
+    if (portalKind === "owner" || isOwnerWorkbench) return allProjects;
     const anchor = requestedProjectId ?? allProjects[0]?.id ?? null;
     return filterOwnerProjectsForClient(allProjects, anchor, portfolioClientId ?? rememberedClientId);
-  }, [allProjects, portalKind, portfolioClientId, rememberedClientId, requestedProjectId]);
+  }, [allProjects, isOwnerWorkbench, portalKind, portfolioClientId, rememberedClientId, requestedProjectId]);
   const projectGroups = useMemo(() => groupProjectsByClient(projects), [projects]);
   // Never silently fall back to projects[0] when a specific project was requested —
   // that made every client/preview see the same first contract.
@@ -244,7 +247,12 @@ export function ClientPortalShell() {
   }, [location.pathname, location.hash]);
 
   function setSelectedProjectId(projectId: string) {
-    navigate(ownerPortalProjectSwitchPath(location.pathname, projectId) + location.hash);
+    navigate(ownerPortalPath(projectId));
+  }
+
+  function projectTabHref(projectId: string) {
+    if (isOwnerWorkbench) return `/projects/${projectId}/client-updates?compose=1`;
+    return ownerPortalPath(projectId);
   }
 
   async function handleSignOut() {
@@ -327,7 +335,7 @@ export function ClientPortalShell() {
         {mobileOpen && (
           <div className="client-portal-mobile-menu">
             <div className="client-portal-mobile-menu__projects" data-testid="owner-portal-mobile-projects">
-              <p className="client-portal-rail__eyebrow">{companyName} portfolio</p>
+              <p className="client-portal-rail__eyebrow">{isOwnerWorkbench ? "Owner workbench" : `${companyName} portfolio`}</p>
               <div className="client-portal-project-tabs" role="tablist" aria-label="Mobile projects">
                 {projectGroups.map((group) => (
                   <div className="client-portal-project-group" key={group.key} data-testid={`owner-portal-client-group-${group.key}`}>
@@ -339,7 +347,7 @@ export function ClientPortalShell() {
                           key={project.id}
                           role="tab"
                           aria-selected={selected}
-                          to={ownerPortalProjectSwitchPath(location.pathname, project.id) + location.hash}
+                          to={projectTabHref(project.id)}
                           className={`client-portal-project-tab${selected ? " is-active" : ""}`}
                         >
                           <span className="client-portal-project-tab__number">{String(index + 1).padStart(2, "0")}</span>
@@ -353,6 +361,26 @@ export function ClientPortalShell() {
               </div>
             </div>
             <nav className="client-portal-mobile-menu__nav" aria-label="Mobile client portal">
+              {isOwnerWorkbench && activeProjectId && (
+                <>
+                  <p className="client-portal-rail__eyebrow">Owner actions</p>
+                  <Link to={`/projects/${activeProjectId}/client-updates?compose=1`} className="client-portal-mobile-menu__link">
+                    <span className="client-portal-rail__icon"><PencilLine aria-hidden /></span>
+                    <span>Write update</span>
+                    <ChevronRight className="client-portal-rail__arrow" aria-hidden />
+                  </Link>
+                  <Link to={`/projects/${activeProjectId}?tab=client-portal`} className="client-portal-mobile-menu__link">
+                    <span className="client-portal-rail__icon"><Edit3 aria-hidden /></span>
+                    <span>Edit portal</span>
+                    <ChevronRight className="client-portal-rail__arrow" aria-hidden />
+                  </Link>
+                  <Link to={ownerPortalPath(activeProjectId)} className="client-portal-mobile-menu__link">
+                    <span className="client-portal-rail__icon"><ScanEye aria-hidden /></span>
+                    <span>Preview client view</span>
+                    <ChevronRight className="client-portal-rail__arrow" aria-hidden />
+                  </Link>
+                </>
+              )}
               <PortalNavigationLinks items={portfolioNavigation} decisions={0} location={location} className="client-portal-mobile-menu__link" />
               <p className="client-portal-rail__eyebrow">Project workspace</p>
               <PortalNavigationLinks items={primaryNavigation} decisions={decisions} location={location} className="client-portal-mobile-menu__link" />
@@ -367,7 +395,7 @@ export function ClientPortalShell() {
         <aside className="client-portal-sidebar" aria-label="Client project navigation">
           <div className="client-portal-sidebar__projects">
             <div className="client-portal-rail__heading">
-              <div><p className="client-portal-rail__eyebrow">{companyName} portfolio</p><strong>Your projects</strong></div>
+              <div><p className="client-portal-rail__eyebrow">{isOwnerWorkbench ? "Owner workbench" : `${companyName} portfolio`}</p><strong>{isOwnerWorkbench ? "Edit projects" : "Your projects"}</strong></div>
               <span>{projects.length}</span>
             </div>
             {projects.length > 1 ? (
@@ -383,7 +411,7 @@ export function ClientPortalShell() {
                           role="tab"
                           aria-selected={selected}
                           data-testid={`owner-portal-project-tab-${project.id}`}
-                          to={ownerPortalProjectSwitchPath(location.pathname, project.id) + location.hash}
+                          to={projectTabHref(project.id)}
                           className={`client-portal-project-tab${selected ? " is-active" : ""}`}
                         >
                           <span className="client-portal-project-tab__number">{String(index + 1).padStart(2, "0")}</span>
@@ -398,6 +426,27 @@ export function ClientPortalShell() {
             ) : <strong className="client-portal-sidebar__single" data-testid="owner-portal-single-project">{projectName}</strong>}
           </div>
 
+          {isOwnerWorkbench && activeProjectId && (
+            <div className="client-portal-owner-tools" data-testid="owner-portal-workbench-tools">
+              <p className="client-portal-rail__eyebrow">Owner actions</p>
+              <Link to={`/projects/${activeProjectId}/client-updates?compose=1`} className="client-portal-owner-tool">
+                <span><PencilLine aria-hidden /></span>
+                <strong>Write update</strong>
+                <small>Talk or type, wrangle, preview, publish.</small>
+              </Link>
+              <Link to={`/projects/${activeProjectId}?tab=client-portal`} className="client-portal-owner-tool">
+                <span><Edit3 aria-hidden /></span>
+                <strong>Edit portal</strong>
+                <small>Portal access, messages, actions, documents.</small>
+              </Link>
+              <Link to={`/projects/${activeProjectId}`} className="client-portal-owner-tool">
+                <span><ExternalLink aria-hidden /></span>
+                <strong>Project record</strong>
+                <small>Scope, schedule, budget, logs, records.</small>
+              </Link>
+            </div>
+          )}
+
           <nav className="client-portal-rail" aria-label="Selected project">
             <p className="client-portal-rail__eyebrow">Client portfolio</p>
             <PortalNavigationLinks items={portfolioNavigation} decisions={0} location={location} className="client-portal-rail__link" />
@@ -407,14 +456,16 @@ export function ClientPortalShell() {
             <PortalNavigationLinks items={secondaryNavigation} decisions={decisions} location={location} className="client-portal-rail__link" />
           </nav>
 
-          <div className="client-portal-sidebar__secure"><ShieldCheck aria-hidden /><span><strong>Private workspace</strong><small>Role-restricted to the invited client team</small></span></div>
+          <div className="client-portal-sidebar__secure"><ShieldCheck aria-hidden /><span><strong>{isOwnerWorkbench ? "Admin editing mode" : "Private workspace"}</strong><small>{isOwnerWorkbench ? "Client preview stays separate from drafts" : "Role-restricted to the invited client team"}</small></span></div>
         </aside>
 
         <div className="client-portal-content">
-          {portalKind === "main" && (
+          {isOwnerWorkbench && activeProjectId && (
             <div className="client-portal-preview">
               <ShieldCheck aria-hidden />
-              <span><strong>Client-view preview.</strong> You are signed in as a project administrator.</span>
+              <span><strong>Admin mode.</strong> This is the client preview. Use the owner actions to edit, write, and publish.</span>
+              <Link to={`/projects/${activeProjectId}/client-updates?compose=1`}>Write update</Link>
+              <Link to={`/projects/${activeProjectId}?tab=client-portal`}>Edit portal</Link>
             </div>
           )}
 
