@@ -25,7 +25,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { useClientPortalContext, useMyPortalKind, useOwnerPortalData } from "@/hooks/usePortals";
+import { useClientPortalContext, useHasMainPortalMembership, useMyPortalKind, useOwnerPortalData } from "@/hooks/usePortals";
 import {
   ClientPortalProjectProvider,
 } from "./ClientPortalProjectContext";
@@ -38,6 +38,7 @@ import {
 import { portalModulesForProject } from "@/lib/projects/moduleVisibility";
 import type { OwnerPortalProjectMeta } from "@/hooks/usePortals";
 import { selectSiteAccountabilityProject } from "@/lib/accountability/accountabilityNavigation";
+import { isPlatformSuperAdmin } from "@/lib/auth/platformAdmin";
 import "@/pages/portal/client-portal.css";
 
 function portalNav(
@@ -160,7 +161,8 @@ export function ClientPortalShell() {
   const [accountOpen, setAccountOpen] = useState(false);
   const { data: ownerData, isLoading: ownerLoading } = useOwnerPortalData();
   const { data: portalKind } = useMyPortalKind();
-  const isOwnerWorkbench = portalKind === "main";
+  const { data: hasMainPortalMembership } = useHasMainPortalMembership(user?.id);
+  const isOwnerWorkbench = portalKind === "main" || Boolean(hasMainPortalMembership) || isPlatformSuperAdmin(user);
 
   const contracts = useMemo(() => ownerData?.primeContracts ?? [], [ownerData?.primeContracts]);
   const catalog = useMemo(() => ownerData?.projects ?? [], [ownerData?.projects]);

@@ -20,7 +20,7 @@ export interface PortalInvitation {
 export interface PortalMembership {
   id: string; tenant_id: string; user_id: string;
   organization_id: string | null;
-  portal_kind: "main"|"sub"|"owner";
+  portal_kind: "main"|"sub"|"owner"|"ops";
   role: string | null;
   is_active: boolean;
   created_at: string;
@@ -33,6 +33,26 @@ export function useMyPortalKind() {
       const { data, error } = await supabase.rpc("current_portal_kind" as any);
       if (error) return "main";
       return (data as "main"|"sub"|"owner"|"ops") ?? "main";
+    },
+    staleTime: 60_000,
+  });
+}
+
+export function useHasMainPortalMembership(userId?: string | null) {
+  return useQuery<boolean>({
+    queryKey: ["has-main-portal-membership", userId ?? "anonymous"],
+    enabled: Boolean(userId),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("portal_memberships" as any)
+        .select("id")
+        .eq("user_id", userId!)
+        .eq("portal_kind", "main")
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+      if (error) return false;
+      return Boolean(data);
     },
     staleTime: 60_000,
   });

@@ -5,6 +5,7 @@ import { ClientPortalShell } from "../ClientPortalShell";
 
 const mockPortalState = vi.hoisted(() => ({
   portalKind: "owner" as "main" | "owner",
+  hasMainPortalMembership: false,
 }));
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -18,6 +19,7 @@ vi.mock("@/hooks/usePortals", () => ({
   useClientPortalContext: () => ({
     data: { client_name: "Glorieta HOA", portal_name: "Glorieta", project_name: "Sewer" },
   }),
+  useHasMainPortalMembership: () => ({ data: mockPortalState.hasMainPortalMembership }),
   useMyPortalKind: () => ({ data: mockPortalState.portalKind }),
   useOwnerPortalData: () => ({
     isLoading: false,
@@ -63,6 +65,7 @@ describe("ClientPortalShell project tabs", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockPortalState.portalKind = "owner";
+    mockPortalState.hasMainPortalMembership = false;
   });
 
   it("renders a tab for each of the client's projects", () => {
@@ -108,5 +111,16 @@ describe("ClientPortalShell project tabs", () => {
     );
     expect(screen.getByTestId("owner-portal-workbench-tools")).toHaveTextContent("Write update");
     expect(screen.getByTestId("owner-portal-workbench-tools")).toHaveTextContent("Edit portal");
+  });
+
+  it("uses owner workbench navigation for main members even when portal kind resolves as owner", () => {
+    mockPortalState.portalKind = "owner";
+    mockPortalState.hasMainPortalMembership = true;
+    renderAt("/owner-portal/projects/p1");
+    expect(screen.getByTestId("owner-portal-project-tab-p2")).toHaveAttribute(
+      "href",
+      "/projects/p2/client-updates?compose=1",
+    );
+    expect(screen.getByTestId("owner-portal-workbench-tools")).toHaveTextContent("Write update");
   });
 });
