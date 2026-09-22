@@ -16,6 +16,12 @@ export const round2 = (n: number) => Math.round((Number(n) || 0) * 100) / 100;
 export const round4 = (n: number) => Math.round((Number(n) || 0) * 1e4) / 1e4;
 const sum = (xs: number[]) => xs.reduce((a, b) => a + (Number(b) || 0), 0);
 
+export type BillingTreatment = "normal" | "contract_credit_only";
+
+export function isContractCreditOnly(treatment: BillingTreatment | string | null | undefined): boolean {
+  return treatment === "contract_credit_only";
+}
+
 // ── Change order → SOV line ──────────────────────────────────────────────────
 
 export interface CoLineInput {
@@ -45,6 +51,7 @@ export function coToSovLine(
   unit_price: number;
   scheduled_value: number;
   sort_order: number;
+  billing_treatment: BillingTreatment;
 } {
   const value = round2(co.amount);
   const label =
@@ -62,6 +69,7 @@ export function coToSovLine(
     unit_price: value,
     scheduled_value: value,
     sort_order: opts.sortOrder,
+    billing_treatment: value < 0 ? "contract_credit_only" : "normal",
   };
 }
 
@@ -96,6 +104,7 @@ export function coPricedRowToSovLine(
   unit_price: number;
   scheduled_value: number;
   sort_order: number;
+  billing_treatment: BillingTreatment;
 } {
   const qty = round4(row.qty);
   const unit_price = round4(row.unitPrice);
@@ -111,6 +120,7 @@ export function coPricedRowToSovLine(
     unit_price,
     scheduled_value: round2(qty * unit_price),
     sort_order: opts.sortOrder,
+    billing_treatment: qty < 0 ? "contract_credit_only" : "normal",
   };
 }
 
@@ -410,6 +420,7 @@ export function computeG702(input: {
     scheduled_value: number;
     value_to_date: number;
     retainage: number;
+    billing_treatment?: BillingTreatment | string | null;
   }>;
   previousCertificates: number;
   /** When true, Line 9 = contract − completed (unbilled only). */
@@ -420,8 +431,9 @@ export function computeG702(input: {
     sum(input.lines.filter((l) => l.kind === "change_order").map((l) => l.scheduled_value)),
   );
   const contract_sum_to_date = round2(original_contract_sum + net_change_orders);
-  const completed_stored_to_date = round2(sum(input.lines.map((l) => l.value_to_date)));
-  const retainage_total = round2(sum(input.lines.map((l) => l.retainage)));
+  const billableLines = input.lines.filter((l) => !isContractCreditOnly(l.billing_treatment));
+  const completed_stored_to_date = round2(sum(billableLines.map((l) => l.value_to_date)));
+  const retainage_total = round2(sum(billableLines.map((l) => l.retainage)));
   const total_earned_less_retainage = round2(completed_stored_to_date - retainage_total);
   const less_previous_certificates = round2(input.previousCertificates);
   const current_payment_due = round2(total_earned_less_retainage - less_previous_certificates);

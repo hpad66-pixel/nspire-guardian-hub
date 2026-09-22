@@ -74,6 +74,7 @@ describe("coPricedRowToSovLine", () => {
     expect(line.scheduled_qty).toBe(-120);
     expect(line.scheduled_value).toBe(-1800);
     expect(line.source_sov_line_item_id).toBe("base-8in");
+    expect(line.billing_treatment).toBe("contract_credit_only");
   });
 
   it("defaults a blank unit to EA and null budget_code without a co_no", () => {
@@ -244,6 +245,32 @@ describe("computeG702", () => {
     expect(g.balance_to_finish).toBe(32137.99);
     // Proof: unbuilt + retainage = old AIA Line 9
     expect(round2(g.balance_to_finish + g.retainage_total)).toBe(66146.15);
+  });
+
+  it("treats contract-credit-only lines as contract credits, not negative completed work", () => {
+    const g = computeG702({
+      originalContractSum: 523061,
+      previousCertificates: 742871.38,
+      isFinalInvoice: true,
+      lines: [
+        { kind: "base", scheduled_value: 523061, value_to_date: 471287.30, retainage: 23564.37 },
+        { kind: "change_order", scheduled_value: 430817.35, value_to_date: 430817.35, retainage: 21540.86 },
+        {
+          kind: "change_order",
+          scheduled_value: -51773.70,
+          value_to_date: -51773.70,
+          retainage: 0,
+          billing_treatment: "contract_credit_only",
+        },
+      ],
+    });
+
+    expect(g.net_change_orders).toBe(379043.65);
+    expect(g.contract_sum_to_date).toBe(902104.65);
+    expect(g.completed_stored_to_date).toBe(902104.65);
+    expect(g.retainage_total).toBe(45105.23);
+    expect(g.total_earned_less_retainage).toBe(856999.42);
+    expect(g.balance_to_finish).toBe(0);
   });
 
   it("zero lines → all zeros with no NaN", () => {

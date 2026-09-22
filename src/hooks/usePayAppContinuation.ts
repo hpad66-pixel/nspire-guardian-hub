@@ -27,6 +27,7 @@ import {
   withResolvedLine9,
   type G702Summary,
   type PriorProgressLike,
+  type BillingTreatment,
 } from "@/lib/financial/payAppContinuation";
 
 const APPROVED_CO_STATUSES = ["executed", "approved"];
@@ -36,6 +37,7 @@ interface SovLineRow {
   change_order_id: string | null; description: string; unit: string | null;
   scheduled_qty: number; unit_price: number; scheduled_value: number; sort_order: number;
   retainage_pct: number | null; // per-line override; null = use contract default
+  billing_treatment: BillingTreatment | null;
 }
 interface ProgressRow {
   sov_line_item_id: string; qty_to_date: number; value_to_date: number;
@@ -85,7 +87,7 @@ async function loadApprovedCosInner(
 
   const { data: existing, error: exErr } = await supabase
     .from("sov_line_items" as any)
-    .select("id, item_no, change_order_id, sort_order, description, scheduled_value")
+    .select("id, item_no, change_order_id, sort_order, description, scheduled_value, billing_treatment")
     .eq("prime_contract_id", primeContractId);
   if (exErr) throw exErr;
 
@@ -115,6 +117,7 @@ async function loadApprovedCosInner(
           scheduled_qty: synced.scheduled_qty,
           unit_price: synced.unit_price,
           scheduled_value: synced.scheduled_value,
+          billing_treatment: synced.billing_treatment,
         } as any)
         .eq("id", line.id);
       if (upErr) throw upErr;
@@ -304,6 +307,7 @@ export interface ContinuationLine {
   value_to_date: number; qty_to_date: number; pct_complete: number; retainage: number;
   retainage_pct: number | null; // per-line override (null = contract default)
   retainage_exempt: boolean;    // true when the line holds no retainage (override = 0)
+  billing_treatment: BillingTreatment;
 }
 
 export function usePayAppContinuation(payAppId: string | null) {
@@ -415,6 +419,7 @@ export function usePayAppContinuation(payAppId: string | null) {
         retainage: cur ? Number(cur.retainage) : 0,
         retainage_pct: li.retainage_pct == null ? null : Number(li.retainage_pct),
         retainage_exempt: li.retainage_pct != null && Number(li.retainage_pct) === 0,
+        billing_treatment: li.billing_treatment ?? "normal",
       };
     });
   }, [sov.data, thisProgress.data, priorByLineId]);
@@ -432,6 +437,7 @@ export function usePayAppContinuation(payAppId: string | null) {
         lines: lines.map((l) => ({
           kind: l.kind, scheduled_value: l.scheduled_value,
           value_to_date: l.value_to_date, retainage: l.retainage,
+          billing_treatment: l.billing_treatment,
         })),
       }),
     [contract.data, prior.data, lines, isFinalInvoiceFlag],
@@ -574,13 +580,15 @@ export function usePayAppContinuation(payAppId: string | null) {
       if (!line) throw new Error("SOV line not found");
 
       const scheduled_value = round2(input.scheduled_value);
+      const billing_treatment: BillingTreatment =
+        line.kind === "change_order" && scheduled_value < 0 ? "contract_credit_only" : "normal";
       const qty = Number(line.scheduled_qty) || 1;
       const unit_price = qty !== 0 ? round2(scheduled_value / qty) : scheduled_value;
 
       // 1) Raise/lower scheduled value FIRST so the overbill guard accepts progress.
       const { error: sovErr } = await supabase
         .from("sov_line_items" as any)
-        .update({ scheduled_value, unit_price } as any)
+        .update({ scheduled_value, unit_price, billing_treatment } as any)
         .eq("id", input.sov_line_item_id);
       if (sovErr) throw sovErr;
 
@@ -604,7 +612,9 @@ export function usePayAppContinuation(payAppId: string | null) {
         const pr = priorByLineId[input.sov_line_item_id];
         const priorVal = pr ? Number(pr.value_to_date) : 0;
         const priorQty = pr ? Number(pr.qty_to_date) : 0;
-        const effPct = line.retainage_pct == null ? retainagePct : Number(line.retainage_pct);
+        const effPct = billing_treatment === "contract_credit_only"
+          ? 0
+          : line.retainage_pct == null ? retainagePct : Number(line.retainage_pct);
         // Lump-sum CO lines are qty 1 — bill full qty when value reaches scheduled.
         const qty_to_date =
           Math.abs(scheduled_value) < 0.01
@@ -668,6 +678,7 @@ export function usePayAppContinuation(payAppId: string | null) {
           scheduled_value: Number(li.scheduled_value) || 0,
           value_to_date: cur ? Number(cur.value_to_date) || 0 : 0,
           retainage: cur ? Number(cur.retainage) || 0 : 0,
+          billing_treatment: li.billing_treatment ?? "normal",
         };
       });
 

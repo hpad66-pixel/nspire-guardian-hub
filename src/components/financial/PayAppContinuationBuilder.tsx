@@ -150,7 +150,7 @@ export function PayAppContinuationBuilder({
   const base = lines.filter((l) => l.kind === "base");
   const cos = lines.filter((l) => l.kind === "change_order");
   // A line billed past its scheduled value (over 100%). Not allowed — needs a CO.
-  const overbilled = lines.filter((l) => l.value_to_date > l.scheduled_value + 0.01);
+  const overbilled = lines.filter((l) => l.billing_treatment !== "contract_credit_only" && l.value_to_date > l.scheduled_value + 0.01);
 
   // ── Reconciliation vs the contract / financial dashboard ──────────────────
   const reconReady = Boolean(contract) && approvedCoQ.isSuccess;
@@ -400,7 +400,8 @@ function LineSection({
         <tr><td colSpan={cols} className="p-4 text-center text-muted-foreground">No lines.</td></tr>
       )}
       {rows.map((l) => {
-        const over = l.value_to_date > l.scheduled_value + 0.01;
+        const isContractCredit = l.billing_treatment === "contract_credit_only";
+        const over = !isContractCredit && l.value_to_date > l.scheduled_value + 0.01;
         const remaining = Math.max(0, l.scheduled_qty - l.prior_qty_to_date);
         return (
         <tr key={l.sov_line_item_id} className={`border-t ${over ? "bg-[var(--apas-rose)]/5" : ""}`}>
@@ -408,6 +409,7 @@ function LineSection({
           <td className="p-2">
             {l.description}
             {l.kind === "change_order" && <Badge variant="outline" className="ml-2 text-[10px]">CO</Badge>}
+            {isContractCredit && <Badge variant="outline" className="ml-2 text-[10px]">Contract credit</Badge>}
             {over && <Badge className="ml-2 text-[10px] bg-[var(--apas-rose)] text-white">Over 100%</Badge>}
           </td>
           <td className="p-2 text-muted-foreground">{l.unit ?? "—"}</td>
@@ -434,7 +436,11 @@ function LineSection({
           <td className={`p-2 text-right font-mono ${over ? "text-[var(--apas-rose)] font-bold" : ""}`}>{l.pct_complete.toFixed(0)}%</td>
           <td className="p-2 text-right font-mono">{money(l.value_to_date)}</td>
           <td className="p-2 text-center">
-            {l.retainage_exempt ? (
+            {isContractCredit ? (
+              <span className="text-[10px] text-muted-foreground" title="Contract credits reduce Line 2 / Line 3 only and do not hold retainage">
+                No retainage
+              </span>
+            ) : l.retainage_exempt ? (
               <button type="button" disabled={locked && !isAdmin} onClick={() => onToggleRetainage(l)}
                 className="text-[10px] text-muted-foreground hover:text-foreground disabled:opacity-60" title="No retainage held — click to restore">
                 Exempt
