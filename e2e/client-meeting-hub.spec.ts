@@ -14,7 +14,7 @@ async function mount(page: Page, staff: boolean) {
         const url = route.request().url();
         let data: unknown = [];
         if (url.includes('client_meeting_manage_bundle'))
-            data = { sources: [{ id: 'source1', meeting_id: 'm1', original_name: 'site-walk.txt', mime_type: 'text/plain', byte_size: 512, manifest: [{ name: 'site-walk.txt', characters: 184 }], created_at: '2026-09-09T11:00:00Z' }], emails: [{ id: 'email1', report_id: 'pub1', subject: 'R4 weekly coordination', recipients: ['owner@example.com'], sent_at: '2026-09-09T13:00:00Z', status: 'sent' }], archivedMeetings: [], archivedSources: [], dismissedEmails: [] };
+            data = { sources: [], emails: [{ id: 'email1', report_id: 'pub1', subject: 'R4 weekly coordination', recipients: ['owner@example.com'], sent_at: '2026-09-09T13:00:00Z', status: 'sent' }], archivedMeetings: [], archivedSources: [], dismissedEmails: [] };
         if (url.includes('client_meeting_bundle'))
             data = { client: { id: client, name: 'R4 Capital' }, canEdit: staff, canAddInternalUpdates: staff, viewerKind: staff ? 'administrator' : 'client', projects: [{ id: project, name: 'Sewer extension' }], members: [{ id: user, name: 'R4 representative' }], meetings: staff ? [{ ...source, revision }] : [], publications: [{ id: 'pub1', meeting_id: 'm1', revision: 1, published_at: '2026-09-09T12:00:00Z', snapshot }], actions: [{ id: 'a1', meeting_id: 'm1', project_id: project, title: 'Confirm site access', assignee_id: user, assignee_name: 'R4 representative', ball_in_court: 'R4', due_date: null, source_quote: 'Please confirm access.', source_locator: '12:40', revision: 1, published: true, state: 'open', step: 1 }], comments: staff ? [{ id: 'c1', action_id: 'a1', author_name: 'APAS', body: 'Internal negotiation note', audience: 'internal', created_at: '2026-09-09T14:00:00Z' }, { id: 'c2', action_id: 'a1', author_name: 'APAS', body: 'Access coordination is underway.', audience: 'client', created_at: '2026-09-09T15:00:00Z' }] : [{ id: 'c2', action_id: 'a1', author_name: 'APAS', body: 'Access coordination is underway.', audience: 'client', created_at: '2026-09-09T15:00:00Z' }], delivery: null, deliveries: [] };
         if (url.includes('client_meeting_command')) {
@@ -36,12 +36,14 @@ async function mount(page: Page, staff: boolean) {
             commands.push(route.request().postDataJSON() as CapturedCall);
             data = null;
         }
-        if (url.includes('/functions/v1/client-meeting-source')) {
-            commands.push({ p_operation: 'upload_source' });
-            data = { source: { id: 'source2' }, manifest: [{ name: 'messages.txt', characters: 56 }], ignored: [] };
+        if (url.includes('/functions/v1/notion')) {
+            const body = route.request().postDataJSON();
+            if (body.action !== 'status')
+                commands.push({ p_operation: `notion_${body.action}` });
+            data = body.action === 'status'
+                ? { connected: false, connection: null, mappings: [] }
+                : { meetingId: 'm1', syncRunId: 'sync1' };
         }
-        if (url.includes('/functions/v1/client-meeting-ai'))
-            data = { title: 'R4 portfolio coordination report', sections: [{ heading: 'Executive summary', text: 'Site access and water records require coordination.', basis: 'needs_review' }, { heading: 'Project: Sewer extension', text: 'Confirm the next site access date.', basis: 'needs_review' }], actions: [{ title: 'Confirm site access', project_id: project, assignee_name: 'R4 representative', ball_in_court: 'R4', source_quote: 'Please confirm access.', source_locator: 'site-walk.txt, 12:40' }] };
         if (url.includes('/auth/v1/user'))
             data = { id: user, email: 'owner@example.com' };
         await route.fulfill({ json: data });
@@ -66,12 +68,11 @@ test('staff edits the whole narrative and saves with revision protection', async
     expect(calls[0].p_payload).toMatchObject({ title: 'Updated portfolio review', revision: 1, sections: [{ heading: 'Executive summary', text: 'Updated by the administrator on screen.', basis: 'verified' }] });
     await page.screenshot({ path: test.info().outputPath('meeting-editor.png'), fullPage: true });
 });
-test('staff can upload transcript packages and remove journal records safely', async ({ page }) => {
+test('staff sees the Notion source path and removes journal records safely', async ({ page }) => {
     const calls = await mount(page, true);
     await page.getByRole('button', { name: 'Edit entire report', exact: true }).click();
-    await expect(page.getByText('site-walk.txt', { exact: true })).toBeVisible();
-    await page.getByLabel('Choose transcript files').setInputFiles({ name: 'messages.txt', mimeType: 'text/plain', buffer: Buffer.from('R4: We will confirm access on Friday.') });
-    await expect.poll(() => calls.some(call => call.p_operation === 'upload_source')).toBe(true);
+    await expect(page.getByRole('heading', { name: 'Meetings come from Notion' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sync from Notion', exact: true })).toBeVisible();
     page.once('dialog', dialog => void dialog.accept());
     await page.getByLabel('Delete email R4 weekly coordination').click();
     await expect.poll(() => calls.some(call => call.p_operation === 'dismiss_email' && call.p_id === 'email1')).toBe(true);
@@ -79,26 +80,26 @@ test('staff can upload transcript packages and remove journal records safely', a
     await page.getByLabel('Delete meeting Portfolio coordination').click();
     await expect.poll(() => calls.some(call => call.p_operation === 'archive_meeting' && call.p_id === 'm1')).toBe(true);
 });
-test('staff builds an editable project-by-project draft from transcript sources', async ({ page }) => {
+test('staff understands the Notion-first project-by-project drafting boundary', async ({ page }) => {
     await mount(page, true);
     await page.getByRole('button', { name: 'Edit entire report', exact: true }).click();
-    await page.getByRole('button', { name: 'Extract and build report', exact: true }).click();
-    await expect(page.getByRole('heading', { name: 'AI draft preview' })).toBeVisible();
-    await expect(page.getByText('Project: Sewer extension', { exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Review and add action', exact: true })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Add an action the transcript missed', exact: true })).toBeVisible();
+    await expect(page.getByText('Capture in Notion.')).toBeVisible();
+    await expect(page.getByText('Sync into Proj OS.')).toBeVisible();
+    await expect(page.getByText('Review and release.')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Draft from Notion source', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Add action manually', exact: true })).toBeVisible();
 });
-test('staff can batch assign extracted actions with dictated instructions', async ({ page }) => {
+test('staff can still add and assign manual actions from the reviewed record', async ({ page }) => {
     const calls = await mount(page, true);
     await page.getByRole('button', { name: 'Edit entire report', exact: true }).click();
-    await page.getByRole('button', { name: 'Extract and build report', exact: true }).click();
-    await page.getByLabel('Select Confirm site access').check();
-    await page.getByLabel('Assign to').selectOption(user);
-    await page.getByLabel('Instructions for the team').fill('Confirm access and attach written evidence.');
-    await page.getByRole('button', { name: 'Add and assign 1 selected', exact: true }).click();
-    await expect.poll(() => calls.some(call => call.p_operation === 'bulk_actions')).toBe(true);
-    const call = calls.find(item => item.p_operation === 'bulk_actions');
-    expect(call?.p_payload).toMatchObject({ p_assignee_id: user, p_instruction: 'Confirm access and attach written evidence.' });
+    await page.getByRole('button', { name: 'Add action manually', exact: true }).click();
+    await page.getByLabel('Action', { exact: true }).fill('Confirm site access');
+    await page.locator('select[name="project_id"]').selectOption(project);
+    await page.getByLabel('Assigned portal/account user').selectOption(user);
+    await page.getByRole('button', { name: 'Save action', exact: true }).click();
+    await expect.poll(() => calls.some(call => call.p_operation === 'action')).toBe(true);
+    const call = calls.find(item => item.p_operation === 'action');
+    expect(call?.p_payload).toMatchObject({ meeting_id: 'm1', assignee_id: user, title: 'Confirm site access' });
 });
 test('client updates are interactive and internal editor stays hidden on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 900 });
