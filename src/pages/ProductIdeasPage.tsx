@@ -2,6 +2,7 @@ import { type CSSProperties, useMemo, useState } from 'react';
 import { format, formatDistanceToNow } from 'date-fns';
 import {
   ArrowUpRight,
+  CalendarCheck,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -40,6 +41,7 @@ import {
   PRODUCT_IDEA_STATUSES,
   PRODUCT_IDEA_STATUS_META,
   compareProductIdeaCompletion,
+  getProductIdeaEvaluation,
   isProductIdeaRoadmapStatus,
   productIdeaProgressIndex,
   productIdeaScore,
@@ -300,6 +302,7 @@ function ProgressTickler({
 function IdeaCard({ idea, onOpen }: { idea: ProductIdea; onOpen: () => void }) {
   const latestUpdate = idea.updates[0];
   const executed = idea.status === 'shipped';
+  const evaluation = getProductIdeaEvaluation(idea);
   return (
     <article
       role="button"
@@ -337,6 +340,21 @@ function IdeaCard({ idea, onOpen }: { idea: ProductIdea; onOpen: () => void }) {
             <Trophy className="h-3.5 w-3.5 text-amber-600" /> Execution complete · +1 client improvement
           </div>
         )}
+        <div className="mt-4 rounded-2xl border border-border/70 bg-background/80 p-3 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] font-bold text-primary">
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              {evaluation.phaseLabel}
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-foreground/70">
+              <CalendarCheck className="h-3.5 w-3.5 text-amber-600" />
+              {evaluation.targetLiveLabel}
+            </span>
+          </div>
+          <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted-foreground">
+            {evaluation.implementationRead}
+          </p>
+        </div>
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <Avatar className="h-5 w-5">
@@ -646,6 +664,7 @@ function IdeaDetailSheet({
 
   const rejectedUpdate = idea.updates.find((update) => update.to_status === 'rejected');
   const executed = idea.status === 'shipped';
+  const evaluation = getProductIdeaEvaluation(idea);
   const allUpdatesExpanded = idea.updates.length > 0 && idea.updates.every((update) => expandedUpdateIds.has(update.id));
 
   const openAdminEditor = (
@@ -774,6 +793,59 @@ function IdeaDetailSheet({
                 status={idea.status}
                 onStageSelect={isAdmin ? (status) => openAdminEditor(status) : undefined}
               />
+            </section>
+
+            <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+              <div className="border-b bg-gradient-to-r from-primary/[0.08] via-amber-500/[0.08] to-background p-5">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">Repository evaluation</p>
+                    <h3 className="mt-1 text-lg font-bold tracking-tight">Where this stands against the actual app</h3>
+                    <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">
+                      This read connects the idea to what is already in the Proj OS repository, what still needs product work, and the current go-live target.
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    <Badge variant="outline" className="rounded-full border-primary/25 bg-primary/10 px-3 py-1.5 font-bold text-primary">
+                      {evaluation.phaseLabel}
+                    </Badge>
+                    <Badge variant="outline" className="rounded-full border-amber-300 bg-amber-50 px-3 py-1.5 font-bold text-amber-800">
+                      {evaluation.targetLiveLabel}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <div className="grid gap-5 p-5 lg:grid-cols-[minmax(0,1fr)_240px]">
+                <div className="space-y-5">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Implementation read</p>
+                    <p className="mt-2 text-sm leading-6 text-foreground/85">{evaluation.implementationRead}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Recommendation</p>
+                    <p className="mt-2 text-sm leading-6 text-foreground/85">{evaluation.recommendation}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Next milestone</p>
+                    <p className="mt-2 text-sm leading-6 text-foreground/85">{evaluation.nextMilestone}</p>
+                  </div>
+                </div>
+                <div className="rounded-2xl border bg-muted/25 p-4">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">Repo evidence</p>
+                  <ul className="mt-3 space-y-3">
+                    {evaluation.repoEvidence.map((evidence) => (
+                      <li key={evidence} className="flex gap-2 text-sm leading-5 text-foreground/80">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+                        <span>{evidence}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-4 rounded-xl border bg-background p-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Readiness</p>
+                    <p className="mt-1 text-sm font-bold text-foreground">{evaluation.confidence}</p>
+                  </div>
+                </div>
+              </div>
             </section>
 
             {idea.status === 'rejected' && (
@@ -914,6 +986,8 @@ export default function ProductIdeasPage() {
     votes: ideas.reduce((sum, idea) => sum + idea.upvotes + idea.downvotes, 0),
     roadmap: ideas.filter((idea) => isProductIdeaRoadmapStatus(idea.status)).length,
     shipped: ideas.filter((idea) => idea.status === 'shipped').length,
+    evaluated: ideas.filter((idea) => getProductIdeaEvaluation(idea).repoEvidence[0] !== 'Awaiting repo evaluation').length,
+    production: ideas.filter((idea) => getProductIdeaEvaluation(idea).phase === 'production').length,
   }), [ideas]);
 
   const visibleIdeas = useMemo(() => {
@@ -971,11 +1045,13 @@ export default function ProductIdeasPage() {
                 Share an idea
               </Button>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-2">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2">
               {[
                 { label: 'Ideas', value: metrics.ideas, icon: Lightbulb },
+                { label: 'Evaluated', value: metrics.evaluated, icon: SlidersHorizontal },
                 { label: 'Votes', value: metrics.votes, icon: TrendingUp },
                 { label: 'On roadmap', value: metrics.roadmap, icon: Clock3 },
+                { label: 'In production', value: metrics.production, icon: ArrowUpRight },
                 { label: 'Executed', value: metrics.shipped, icon: CheckCircle2 },
               ].map(({ label, value, icon: Icon }) => (
                 <div key={label} className="min-w-[130px] rounded-2xl border border-white/10 bg-white/[0.08] p-4 backdrop-blur-sm">
