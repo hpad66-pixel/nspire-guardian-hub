@@ -664,16 +664,18 @@ export default function Dashboard() {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-5">
             <div className="min-w-0 space-y-3">
-              <div className="flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-[0.14em] text-[var(--apas-muted)]">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+              <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(251,248,241,0.88)]">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 shadow-sm">
                   <Building2 className="h-3 w-3 text-[var(--apas-amber)]" />
                   {workspaceName}
                 </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-2.5 py-1 shadow-sm">
                   <LayoutDashboard className="h-3 w-3 text-[var(--apas-sapphire)]" />
                   Command Center
                 </span>
-                <span className="text-[var(--apas-muted)] normal-case tracking-normal">{today}</span>
+                <span className="rounded-full border border-[var(--apas-amber)]/25 bg-[var(--apas-amber)]/10 px-2.5 py-1 normal-case tracking-normal text-[rgba(251,248,241,0.92)]">
+                  {today}
+                </span>
               </div>
 
               <h1 className="font-display text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight leading-tight max-w-3xl">
@@ -701,7 +703,7 @@ export default function Dashboard() {
                 </Button>
                 <WidgetCustomizer hiddenWidgets={hiddenWidgets} toggleWidget={toggleWidget} resetLayout={resetLayout} />
               </div>
-              <span className="text-[11px] text-[var(--apas-muted)] text-right hidden sm:block">
+              <span className="rounded-full border border-white/10 bg-white/[0.07] px-2.5 py-1 text-right text-[11px] font-medium text-[rgba(251,248,241,0.82)] hidden sm:block">
                 Refreshed {format(refreshedAt, 'h:mm a')}
               </span>
               <Button
@@ -730,7 +732,7 @@ export default function Dashboard() {
                   if (card.onClick) return card.onClick();
                   if (card.to) navigate(card.to);
                 }}
-                className="group flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3.5 text-left backdrop-blur-sm transition hover:bg-white/[0.08] hover:border-[var(--apas-amber)]/35"
+                className="group flex items-start gap-3 rounded-2xl border border-white/18 bg-white/[0.075] p-3.5 text-left backdrop-blur-sm transition hover:bg-white/[0.12] hover:border-[var(--apas-amber)]/45"
               >
                 <div
                   className={cn(
@@ -753,11 +755,11 @@ export default function Dashboard() {
                       </span>
                     )}
                   </div>
-                  <p className="mt-0.5 text-xs text-[rgba(251,248,241,0.55)] leading-snug line-clamp-2">
+                  <p className="mt-0.5 text-xs font-medium text-[rgba(251,248,241,0.76)] leading-snug line-clamp-2">
                     {card.description}
                   </p>
                 </div>
-                <ArrowRight className="h-4 w-4 shrink-0 text-white/30 group-hover:text-[var(--apas-amber)] transition-colors mt-1" />
+                <ArrowRight className="h-4 w-4 shrink-0 text-white/60 group-hover:text-[var(--apas-amber)] transition-colors mt-1" />
               </button>
             ))}
           </div>

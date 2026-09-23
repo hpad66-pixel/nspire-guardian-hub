@@ -21,15 +21,15 @@ export function PWAInstallBanner() {
       )}
       data-testid="pwa-install-banner"
     >
-      <div className="overflow-hidden rounded-2xl border border-[rgba(237,206,121,0.45)] bg-[linear-gradient(135deg,#082b23_0%,#12382f_58%,#243f68_100%)] text-white shadow-[0_24px_70px_rgba(8,43,35,0.28)]">
-        <div className="h-1.5 bg-[linear-gradient(90deg,#edce79,#86d6c2,#6f94d8)]" />
+      <div className="overflow-hidden rounded-2xl border border-[rgba(213,170,82,0.42)] bg-[linear-gradient(135deg,#10151f_0%,#1d2533_52%,#243f68_100%)] text-white shadow-[0_24px_70px_rgba(16,21,31,0.34)]">
+        <div className="h-1.5 bg-[linear-gradient(90deg,#d5aa52,#f2d997,#71a8cf)]" />
         <div className="flex items-start gap-3 p-4">
           <div className="grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-2xl border border-white/15 bg-white/10 shadow-inner">
             <img src="/icons/apas-os-192.png" alt="Proj OS" className="h-9 w-9 rounded-xl object-cover" />
           </div>
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#edce79]">
+              <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#f2d997]">
                 Mobile and desktop app
               </span>
             </div>
@@ -37,7 +37,7 @@ export function PWAInstallBanner() {
             {isIOS ? (
               <p className="mt-1 text-xs leading-relaxed text-white/78">
                 Tap <strong>Share</strong> then <strong>&quot;Add to Home Screen&quot;</strong>.{' '}
-                <Link to="/install" className="font-semibold text-[#edce79] underline underline-offset-4">
+                <Link to="/install" className="font-semibold text-[#f2d997] underline underline-offset-4">
                   View full guide →
                 </Link>
               </p>
@@ -48,26 +48,26 @@ export function PWAInstallBanner() {
             )}
             <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-white/82">
               <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1">
-                <Smartphone className="h-3.5 w-3.5 text-[#86d6c2]" />
+                <Smartphone className="h-3.5 w-3.5 text-[#71a8cf]" />
                 iPhone and Android
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1">
-                <MonitorDown className="h-3.5 w-3.5 text-[#edce79]" />
+                <MonitorDown className="h-3.5 w-3.5 text-[#f2d997]" />
                 Desktop app
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-white/10 px-2.5 py-1">
-                <Wifi className="h-3.5 w-3.5 text-[#6f94d8]" />
+                <Wifi className="h-3.5 w-3.5 text-[#d5aa52]" />
                 Offline ready
               </span>
             </div>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               {!isIOS && isInstallable ? (
-                <Button size="sm" className="h-9 gap-1.5 bg-[#edce79] text-[#082b23] hover:bg-[#f2dc9a]" onClick={() => void install()}>
+                <Button size="sm" className="h-9 gap-1.5 bg-[#d5aa52] text-[#10151f] hover:bg-[#f2d997]" onClick={() => void install()}>
                   <Download className="h-3 w-3" />
                   Install app
                 </Button>
               ) : !isIOS ? (
-                <Button size="sm" className="h-9 bg-[#edce79] text-[#082b23] hover:bg-[#f2dc9a]" asChild>
+                <Button size="sm" className="h-9 bg-[#d5aa52] text-[#10151f] hover:bg-[#f2d997]" asChild>
                   <Link to="/install">How to install</Link>
                 </Button>
               ) : null}
