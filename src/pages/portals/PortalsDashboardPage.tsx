@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Share2, Plus, Loader2 } from 'lucide-react';
+import { Share2, Plus, Loader2, ArrowRight, LayoutGrid } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePortals, usePortalCount } from '@/hooks/usePortal';
 import { PortalCard } from '@/components/portals/PortalCard';
@@ -33,12 +33,20 @@ export default function PortalsDashboardPage() {
   }, [portals]);
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-6">
+    <div className="mx-auto max-w-7xl space-y-5 p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 rounded-2xl border border-border/70 bg-card p-4 shadow-sm sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Client Portals</h1>
-          <p className="text-muted-foreground text-sm mt-1">
+          <div className="flex items-center gap-2">
+            <div className="grid h-9 w-9 place-items-center rounded-xl bg-primary/10 text-primary">
+              <LayoutGrid className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-[11px] font-black uppercase tracking-[0.14em] text-muted-foreground">External access</p>
+              <h1 className="text-2xl font-bold text-foreground">Client Portals</h1>
+            </div>
+          </div>
+          <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
             One link per client. If they have several projects, every job appears as a tab on that same portal.
           </p>
         </div>
@@ -46,6 +54,7 @@ export default function PortalsDashboardPage() {
           onClick={() => setCreateOpen(true)}
           disabled={atLimit}
           title={atLimit ? `You've reached your ${limit} portal limit. Upgrade to create more.` : undefined}
+          className="shrink-0 self-start"
         >
           <Plus className="h-4 w-4 mr-2" />
           Create Portal
@@ -92,12 +101,30 @@ export default function PortalsDashboardPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-8">
+        <div className="space-y-4">
+          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-border/70 bg-muted/25 p-2">
+            {groups.map((group) => (
+              <button
+                key={group.key}
+                type="button"
+                onClick={() => document.getElementById(`portal-client-${group.key}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                className="shrink-0 rounded-full border border-border/80 bg-background px-3 py-1.5 text-xs font-semibold text-foreground shadow-sm transition hover:border-primary/35 hover:bg-primary/5 hover:text-primary"
+              >
+                {group.label}
+                <span className="ml-1 text-muted-foreground">{group.portals.length}</span>
+              </button>
+            ))}
+          </div>
           {groups.map((group) => {
             const primary = group.portals.find((p) => p.project_id) ?? group.portals[0];
             return (
-              <section key={group.key} className="space-y-3" data-testid={`portal-client-group-${group.key}`}>
-                <div className="flex flex-wrap items-end justify-between gap-2">
+              <section
+                key={group.key}
+                id={`portal-client-${group.key}`}
+                className="scroll-mt-4 rounded-2xl border border-border/70 bg-muted/15 p-3"
+                data-testid={`portal-client-group-${group.key}`}
+              >
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Client</p>
                     <h2 className="text-lg font-semibold">{group.label}</h2>
@@ -106,14 +133,14 @@ export default function PortalsDashboardPage() {
                     </p>
                   </div>
                   {primary?.project_id && (
-                    <Button size="sm" variant="outline" onClick={() => window.open(ownerPortalPath(primary.project_id), '_blank')}>
-                      Open client portal
+                    <Button size="sm" variant="outline" className="h-8 gap-1 text-xs" onClick={() => window.open(ownerPortalPath(primary.project_id), '_blank')}>
+                      Open client portal <ArrowRight className="h-3 w-3" />
                     </Button>
                   )}
                 </div>
-                <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   {group.portals.map((portal) => (
-                    <PortalCard key={portal.id} portal={portal} />
+                    <PortalCard key={portal.id} portal={portal} compact />
                   ))}
                 </div>
               </section>

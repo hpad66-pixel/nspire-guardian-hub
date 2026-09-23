@@ -18,6 +18,7 @@ import { ownerPortalPath } from '@/lib/portal/ownerPortalPaths';
 
 interface PortalCardProps {
   portal: ClientPortal;
+  compact?: boolean;
 }
 
 const MODULE_LABELS: Record<string, string> = {
@@ -27,7 +28,7 @@ const MODULE_LABELS: Record<string, string> = {
   equipment: 'Equipment',
 };
 
-export function PortalCard({ portal }: PortalCardProps) {
+export function PortalCard({ portal, compact = false }: PortalCardProps) {
   const navigate = useNavigate();
   const archive = useArchivePortal();
   const [confirming, setConfirming] = useState(false);
@@ -63,17 +64,17 @@ export function PortalCard({ portal }: PortalCardProps) {
     : null;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 flex flex-col gap-4 hover:shadow-sm transition-shadow">
+    <div className={cn('rounded-xl border border-border bg-card flex flex-col hover:shadow-sm transition-shadow', compact ? 'gap-3 p-3.5' : 'gap-4 p-5')}>
       {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           {/* Logo or initials */}
           <div
-            className="h-10 w-10 rounded-lg flex-shrink-0 flex items-center justify-center text-sm font-bold text-white"
+            className={cn('rounded-lg flex-shrink-0 flex items-center justify-center text-sm font-bold text-white', compact ? 'h-9 w-9' : 'h-10 w-10')}
             style={{ backgroundColor: portal.brand_accent_color ?? '#0F172A' }}
           >
             {portal.brand_logo_url ? (
-              <img src={portal.brand_logo_url} alt="logo" className="h-10 w-10 rounded-lg object-contain" />
+              <img src={portal.brand_logo_url} alt="logo" className={cn('rounded-lg object-contain', compact ? 'h-9 w-9' : 'h-10 w-10')} />
             ) : (
               (portal.client_name ?? portal.name).charAt(0).toUpperCase()
             )}
@@ -81,7 +82,7 @@ export function PortalCard({ portal }: PortalCardProps) {
 
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-semibold text-foreground truncate">{portal.name}</h3>
+              <h3 className={cn('font-semibold text-foreground truncate', compact && 'text-sm')}>{portal.name}</h3>
               <span className="flex items-center gap-1.5">
                 <span className={cn('h-2 w-2 rounded-full flex-shrink-0', statusDot)} />
                 <span className="text-xs text-muted-foreground">{statusLabel}</span>
@@ -124,7 +125,7 @@ export function PortalCard({ portal }: PortalCardProps) {
       </div>
 
       {/* Stats row */}
-      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+      <div className={cn('flex items-center text-xs text-muted-foreground', compact ? 'gap-3' : 'gap-4')}>
         <span className="flex items-center gap-1">
           <Users className="h-3.5 w-3.5" />
           {/* Contact count shown as placeholder — loaded per portal */}
@@ -159,19 +160,21 @@ export function PortalCard({ portal }: PortalCardProps) {
           variant="outline"
           size="sm"
           onClick={() => window.open(previewUrl, '_blank')}
+          className={compact ? 'h-8 px-2 text-xs' : undefined}
         >
           <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
-          Open Portal
+          {compact ? 'Open' : 'Open Portal'}
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={() => navigate(`/portals/${portal.id}`)}
+          className={compact ? 'h-8 px-2 text-xs' : undefined}
         >
           Manage
         </Button>
         {portal.project_id && (
-          <Button size="sm" onClick={() => navigate(`/projects/${portal.project_id}/client-updates?compose=1`)}>
+          <Button size="sm" onClick={() => navigate(`/projects/${portal.project_id}/client-updates?compose=1`)} className={compact ? 'h-8 px-2 text-xs' : undefined}>
             <Megaphone className="mr-1.5 h-3.5 w-3.5" />
             Update
           </Button>
