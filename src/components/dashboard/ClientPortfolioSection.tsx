@@ -56,6 +56,8 @@ export function ClientPortfolioSection({
           const lockedCount = group.projects.filter((project) => isProjectLocked(project)).length;
           const protectedCount = group.projects.filter((project) => isProtectedHistoricalProject(project)).length;
           const target = group.clientId ? `/projects?clientId=${group.clientId}` : '/projects';
+          const kindTarget = (kind: 'construction' | 'consulting') =>
+            group.clientId ? `/projects?clientId=${group.clientId}&kind=${kind}` : `/projects?kind=${kind}`;
 
           return (
             <article
@@ -75,20 +77,36 @@ export function ClientPortfolioSection({
               </div>
 
               <div className="mt-4 grid grid-cols-2 gap-2">
-                <div className="rounded-xl border border-[var(--kind-construction-accent)]/20 bg-[var(--kind-construction)]/70 p-3 text-[var(--kind-construction-ink)]">
+                <button
+                  type="button"
+                  onClick={() => navigate(kindTarget('construction'))}
+                  className="rounded-xl border border-[var(--kind-construction-accent)]/20 bg-[var(--kind-construction)]/70 p-3 text-left text-[var(--kind-construction-ink)] transition hover:-translate-y-0.5 hover:border-[var(--kind-construction-accent)]/45 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kind-construction-accent)]/35"
+                  aria-label={`Open ${group.name} construction projects`}
+                >
                   <div className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
                     <span className="text-xs font-bold uppercase tracking-wide">Construction</span>
                   </div>
-                  <p className="mt-2 text-2xl font-black tabular-nums">{kinds.construction.length}</p>
-                </div>
-                <div className="rounded-xl border border-[var(--kind-consulting-accent)]/25 bg-[var(--kind-consulting)] p-3 text-[var(--kind-consulting-ink)]">
+                  <div className="mt-2 flex items-end justify-between gap-2">
+                    <p className="text-2xl font-black tabular-nums">{kinds.construction.length}</p>
+                    <ArrowRight className="h-3.5 w-3.5 opacity-70" />
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => navigate(kindTarget('consulting'))}
+                  className="rounded-xl border border-[var(--kind-consulting-accent)]/25 bg-[var(--kind-consulting)] p-3 text-left text-[var(--kind-consulting-ink)] transition hover:-translate-y-0.5 hover:border-[var(--kind-consulting-accent)]/45 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kind-consulting-accent)]/35"
+                  aria-label={`Open ${group.name} consulting projects`}
+                >
                   <div className="flex items-center gap-2">
                     <Briefcase className="h-4 w-4" />
                     <span className="text-xs font-bold uppercase tracking-wide">Consulting</span>
                   </div>
-                  <p className="mt-2 text-2xl font-black tabular-nums">{kinds.consulting.length}</p>
-                </div>
+                  <div className="mt-2 flex items-end justify-between gap-2">
+                    <p className="text-2xl font-black tabular-nums">{kinds.consulting.length}</p>
+                    <ArrowRight className="h-3.5 w-3.5 opacity-70" />
+                  </div>
+                </button>
               </div>
 
               <div className="mt-4 flex flex-wrap gap-2">

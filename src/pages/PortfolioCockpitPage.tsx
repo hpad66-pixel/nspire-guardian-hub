@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import {
   Gauge, Sparkles, Loader2, AlertTriangle, TrendingUp, DollarSign, ListChecks, Flame,
   Trophy, Medal, ChevronRight, ChevronDown as ChevronDownIcon, Network, ShieldAlert, CircleDot, Radar, ArrowRight, Users,
+  Building2, Briefcase,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -66,6 +67,25 @@ export default function PortfolioCockpitPage() {
     const s = new Set<string>();
     for (const r of rows) { const n = (r.project as any).client?.name; if (n) s.add(n); }
     return [...s].sort();
+  }, [rows]);
+  const clientDrilldowns = useMemo(() => {
+    const clients = new Map<string, { id: string; name: string; construction: number; consulting: number; total: number }>();
+    for (const r of rows) {
+      const clientId = (r.project as any).client_id;
+      const clientName = (r.project as any).client?.name;
+      if (!clientId || !clientName) continue;
+      const current = clients.get(clientId) ?? {
+        id: clientId,
+        name: clientName,
+        construction: 0,
+        consulting: 0,
+        total: 0,
+      };
+      current.total += 1;
+      current[r.kind] += 1;
+      clients.set(clientId, current);
+    }
+    return [...clients.values()].sort((a, b) => a.name.localeCompare(b.name));
   }, [rows]);
 
   const shown = useMemo(() => rows.filter((r) => {
@@ -294,6 +314,71 @@ export default function PortfolioCockpitPage() {
             <KpiCard icon={AlertTriangle} label="Overdue items" value={String(totals.overdueItems)} sub={`${totals.openItems} open total`} tone={totals.overdueItems ? 'text-[var(--apas-amber)]' : undefined} />
             <KpiCard icon={DollarSign} label="Contract value" value={money(totals.contractValue)} sub={`${money(totals.billed)} billed`} />
           </div>
+
+          {clientDrilldowns.length > 0 && (
+            <div className="rounded-xl border bg-card p-4">
+              <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold">Client drill-down</div>
+                  <p className="text-xs text-muted-foreground">
+                    Open a client, or jump directly to its construction or consulting projects.
+                  </p>
+                </div>
+                <Button variant="ghost" size="sm" className="h-8 gap-1 self-start text-xs sm:self-auto" onClick={() => navigate('/projects')}>
+                  All projects <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-2">
+                {clientDrilldowns.map((client) => (
+                  <div key={client.id} className="rounded-xl border border-border/70 bg-muted/20 p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/projects?clientId=${client.id}`)}
+                        className="min-w-0 text-left"
+                      >
+                        <div className="truncate text-sm font-semibold">{client.name}</div>
+                        <div className="text-[11px] text-muted-foreground">{client.total} project{client.total === 1 ? '' : 's'}</div>
+                      </button>
+                      <Button variant="outline" size="sm" className="h-7 shrink-0 gap-1 text-xs" onClick={() => navigate(`/projects?clientId=${client.id}`)}>
+                        Open <ArrowRight className="h-3 w-3" />
+                      </Button>
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/projects?clientId=${client.id}&kind=construction`)}
+                        className="rounded-lg border border-[var(--kind-construction-accent)]/25 bg-[var(--kind-construction)]/70 px-3 py-2 text-left text-[var(--kind-construction-ink)] transition hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kind-construction-accent)]/30"
+                        aria-label={`Open ${client.name} construction projects`}
+                      >
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                          <Building2 className="h-3.5 w-3.5" /> Construction
+                        </span>
+                        <span className="mt-1 flex items-end justify-between gap-2">
+                          <span className="text-xl font-black tabular-nums">{client.construction}</span>
+                          <ArrowRight className="h-3 w-3 opacity-70" />
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/projects?clientId=${client.id}&kind=consulting`)}
+                        className="rounded-lg border border-[var(--kind-consulting-accent)]/25 bg-[var(--kind-consulting)] px-3 py-2 text-left text-[var(--kind-consulting-ink)] transition hover:-translate-y-0.5 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--kind-consulting-accent)]/30"
+                        aria-label={`Open ${client.name} consulting projects`}
+                      >
+                        <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wide">
+                          <Briefcase className="h-3.5 w-3.5" /> Consulting
+                        </span>
+                        <span className="mt-1 flex items-end justify-between gap-2">
+                          <span className="text-xl font-black tabular-nums">{client.consulting}</span>
+                          <ArrowRight className="h-3 w-3 opacity-70" />
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid gap-4 lg:grid-cols-3">
             <div className="rounded-xl border bg-card p-4 lg:col-span-2">

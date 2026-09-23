@@ -1,5 +1,5 @@
 import { isActiveProject } from '@/lib/projects';
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,6 +72,9 @@ type SortBy = 'name' | 'created' | 'due_date' | 'budget' | 'health';
 
 const LS_VIEW_KEY = 'projects_view_preference';
 
+const normalizeKindParam = (value: string | null): 'all' | ProjectKind =>
+  value === 'construction' || value === 'consulting' ? value : 'all';
+
 function getInitialView(): ViewMode {
   try {
     const stored = localStorage.getItem(LS_VIEW_KEY);
@@ -94,6 +97,7 @@ export default function ProjectsDashboard() {
   const [searchParams, setSearchParams] = useSearchParams();
   const propertyFilterId = searchParams.get('propertyId');
   const clientFilterId = searchParams.get('clientId');
+  const kindFilterFromUrl = normalizeKindParam(searchParams.get('kind'));
 
   // --- UI state ---
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -102,7 +106,7 @@ export default function ProjectsDashboard() {
   const [closeTarget, setCloseTarget] = useState<Project | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(getInitialView);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
-  const [kindFilter, setKindFilter] = useState<'all' | ProjectKind>('all');
+  const [kindFilter, setKindFilter] = useState<'all' | ProjectKind>(kindFilterFromUrl);
   const [healthFilter, setHealthFilter] = useState<HealthFilter>('all');
   const [sectorFilter, setSectorFilter] = useState<SectorFilter>('all');
   const [search, setSearch] = useState('');
@@ -141,6 +145,13 @@ export default function ProjectsDashboard() {
     next.delete('clientId');
     setSearchParams(next, { replace: true });
   };
+  const handleKindFilterChange = (nextKind: 'all' | ProjectKind) => {
+    setKindFilter(nextKind);
+    const next = new URLSearchParams(searchParams);
+    if (nextKind === 'all') next.delete('kind');
+    else next.set('kind', nextKind);
+    setSearchParams(next, { replace: true });
+  };
 
   // Persist view preference
   const handleViewChange = (v: string) => {
@@ -149,6 +160,10 @@ export default function ProjectsDashboard() {
     setViewMode(mode);
     try { localStorage.setItem(LS_VIEW_KEY, mode); } catch {}
   };
+
+  useEffect(() => {
+    setKindFilter(kindFilterFromUrl);
+  }, [kindFilterFromUrl]);
 
   // --- Computed health counts ---
   const healthCounts = useMemo(() => {
@@ -713,7 +728,12 @@ export default function ProjectsDashboard() {
           </Select>
 
           {/* Kind: construction vs consulting */}
-          <ToggleGroup type="single" value={kindFilter} onValueChange={(v) => setKindFilter((v as 'all' | ProjectKind) || 'all')} className="border rounded-lg p-0.5 bg-muted/30 h-9">
+          <ToggleGroup
+            type="single"
+            value={kindFilter}
+            onValueChange={(v) => handleKindFilterChange((v as 'all' | ProjectKind) || 'all')}
+            className="border rounded-lg p-0.5 bg-muted/30 h-9"
+          >
             <ToggleGroupItem value="all" className="h-7 px-2.5 text-xs">All</ToggleGroupItem>
             <ToggleGroupItem value="construction" className="h-7 px-2.5 text-xs">Construction</ToggleGroupItem>
             <ToggleGroupItem value="consulting" className="h-7 px-2.5 text-xs">Consulting</ToggleGroupItem>
