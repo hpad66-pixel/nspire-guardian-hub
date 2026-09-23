@@ -41,6 +41,16 @@ const intakeLensCopy: Record<VoiceIntakeMetric, { title: string; detail: string 
   },
 };
 
+const statusFilterCopy: Record<string, string> = {
+  all: 'All',
+  new: 'New',
+  reviewed: 'Reviewed',
+  assigned: 'Assigned',
+  in_progress: 'In progress',
+  completed: 'Completed',
+  closed: 'Closed',
+};
+
 function isTodayDate(value: string | null | undefined) {
   if (!value) return false;
   const date = new Date(value);
@@ -124,6 +134,36 @@ export default function VoiceAgentDashboard() {
     return { total, newCount, emergencyCount, woCount };
   }, [requests]);
 
+  const statusCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      all: requests?.length || 0,
+      new: 0,
+      reviewed: 0,
+      assigned: 0,
+      in_progress: 0,
+      completed: 0,
+      closed: 0,
+    };
+    (requests ?? []).forEach((request) => {
+      counts[request.status] = (counts[request.status] || 0) + 1;
+    });
+    return counts;
+  }, [requests]);
+
+  const frequentCategories = useMemo(() => (
+    Object.entries(
+      (requests ?? []).reduce(
+        (acc, request) => {
+          acc[request.issue_category] = (acc[request.issue_category] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      ),
+    )
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 6)
+  ), [requests]);
+
   const focusedRequests = useMemo(() => {
     const list = requests ?? [];
     switch (activeMetric) {
@@ -160,6 +200,13 @@ export default function VoiceAgentDashboard() {
     }
 
     setPropertySelectOpen(true);
+  };
+
+  const handleMetricSelect = (metric: VoiceIntakeMetric) => {
+    setActiveMetric(metric);
+    window.requestAnimationFrame(() => {
+      document.getElementById('voice-intake-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
   };
 
   const handleContinueFromPropertySelect = () => {
@@ -221,7 +268,7 @@ export default function VoiceAgentDashboard() {
                 </span>
               </div>
             </div>
-            <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-xl shadow-slate-900/5 backdrop-blur">
+            <div className="rounded-3xl border border-white/80 bg-white/85 p-4 shadow-xl shadow-slate-900/5 backdrop-blur">
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#d6f5ea] text-[#0f766e]">
                   <ShieldCheck className="h-5 w-5" />
@@ -241,22 +288,26 @@ export default function VoiceAgentDashboard() {
                   <strong className="text-xl text-[#10263f]">{requestCounts.woCount}</strong>
                 </button>
               </div>
-              <div className="mt-4 flex flex-col gap-2 sm:flex-row lg:flex-col">
-                <Button variant="outline" size="sm" onClick={() => refetch()} className="border-slate-300 bg-white">
-                <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-                <Button onClick={handleStartCall} className="bg-[#10263f] text-white hover:bg-[#183a5c]">
-                <Mic className="mr-2 h-4 w-4" />
-                Start Call
-              </Button>
+              <div className="mt-4 rounded-2xl border border-[#0f766e]/20 bg-[#10263f] p-3 text-white shadow-lg shadow-slate-900/10">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#d6f5ea]">Start here</p>
+                <p className="mt-1 text-sm text-white/80">Launch a guided resident call and watch it turn into a ticket.</p>
+                <Button onClick={handleStartCall} className="mt-3 h-12 w-full bg-[#d6f5ea] text-base font-semibold text-[#10263f] hover:bg-[#c2eadc]">
+                  <Phone className="mr-2 h-5 w-5" />
+                  Start a voice intake call
+                </Button>
+              </div>
+              <div className="mt-3">
+                <Button variant="outline" size="sm" onClick={() => refetch()} className="w-full border-slate-300 bg-white">
+                  <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+                  Refresh queue
+                </Button>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <VoiceAgentStats live={liveMode} activeMetric={activeMetric} onMetricSelect={setActiveMetric} />
+      <VoiceAgentStats live={liveMode} activeMetric={activeMetric} onMetricSelect={handleMetricSelect} />
 
       <VoiceResidentEducation />
 
@@ -283,7 +334,7 @@ export default function VoiceAgentDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <Card className="overflow-hidden border-slate-200 shadow-sm">
+          <Card id="voice-intake-section" className="scroll-mt-6 overflow-hidden border-slate-200 shadow-sm">
             <CardHeader className="flex flex-col gap-3 border-b bg-gradient-to-r from-slate-50 to-white sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -297,7 +348,7 @@ export default function VoiceAgentDashboard() {
                 </p>
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[160px]">
+                <SelectTrigger className="w-full bg-white sm:w-[170px]">
                   <Filter className="mr-2 h-4 w-4" />
                   <SelectValue placeholder="Filter" />
                 </SelectTrigger>
@@ -311,7 +362,41 @@ export default function VoiceAgentDashboard() {
                 </SelectContent>
               </Select>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="space-y-4 pt-4">
+              <div className="rounded-2xl border border-slate-200 bg-slate-50/70 p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {Object.entries(statusFilterCopy).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setStatusFilter(value)}
+                      className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                        statusFilter === value
+                          ? 'border-[#0f766e] bg-[#10263f] text-white shadow-sm'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-[#0f766e]/40'
+                      }`}
+                    >
+                      <span className={`h-2 w-2 rounded-full ${statusFilter === value ? 'bg-[#d6f5ea]' : 'bg-slate-300'}`} />
+                      {label}
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] ${statusFilter === value ? 'bg-white/15 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                        {statusCounts[value] ?? 0}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                {frequentCategories.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3">
+                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Frequent markers</span>
+                    {frequentCategories.map(([category, count]) => (
+                      <span key={category} className="inline-flex items-center gap-2 rounded-full border border-[#badbcc] bg-white px-3 py-1 text-xs font-semibold capitalize text-[#0f5132]">
+                        <span className="h-2 w-2 rounded-full bg-[#0f766e]" />
+                        {category}
+                        <span className="rounded-full bg-[#d6f5ea] px-1.5 py-0.5 text-[10px] text-[#0f5132]">{count}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
               {isLoading ? (
                 <div className="space-y-3">
                   {[1, 2, 3].map((i) => (
@@ -352,14 +437,24 @@ export default function VoiceAgentDashboard() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button className="w-full gap-2 bg-[#10263f] text-white hover:bg-[#183a5c]" onClick={handleStartCall}>
-                <Mic className="h-4 w-4" />
-                Start Call
+              <Button className="h-12 w-full gap-2 bg-[#10263f] text-white hover:bg-[#183a5c]" onClick={handleStartCall}>
+                <Phone className="h-5 w-5" />
+                Start voice intake
               </Button>
               <Button variant="outline" className="w-full justify-between border-slate-300 bg-white" onClick={() => navigate('/work-orders')}>
                 Open work-order board
                 <ArrowUpRight className="h-4 w-4" />
               </Button>
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => handleMetricSelect('processed')} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:border-emerald-300 hover:bg-white">
+                  Processed
+                  <span className="block text-lg text-[#10263f]">{statusCounts.assigned + statusCounts.in_progress + statusCounts.completed}</span>
+                </button>
+                <button type="button" onClick={() => handleMetricSelect('emergency')} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-left text-xs font-semibold text-rose-800 hover:bg-white">
+                  Emergency
+                  <span className="block text-lg text-[#10263f]">{requestCounts.emergencyCount}</span>
+                </button>
+              </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
                 <div className="flex items-center justify-between">
                   <span>Selected property</span>
