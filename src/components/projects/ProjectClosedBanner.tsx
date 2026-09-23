@@ -14,7 +14,6 @@ import {
 import { Label } from '@/components/ui/label';
 import { VoiceDictationTextareaWithAI } from '@/components/ui/voice-dictation-textarea-ai';
 import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
-import { useUserPermissions } from '@/hooks/usePermissions';
 import { type Project, useReopenProject } from '@/hooks/useProjects';
 import { cn } from '@/lib/utils';
 
@@ -34,7 +33,6 @@ const money = (value: number) => new Intl.NumberFormat('en-US', {
 }).format(value);
 
 export function ProjectClosedBanner({ project }: { project: Project }) {
-  const { isAdmin } = useUserPermissions();
   const { isSuperAdmin } = usePlatformSuperAdmin();
   const reopenProject = useReopenProject();
   const [reopenOpen, setReopenOpen] = useState(false);
@@ -53,7 +51,7 @@ export function ProjectClosedBanner({ project }: { project: Project }) {
   const financial = snapshot?.financial_position;
   const netResult = financial ? Number(financial.net_profit ?? 0) : null;
   const isLoss = netResult != null && netResult < 0;
-  const canReopen = isAdmin || isSuperAdmin;
+  const canReopen = isSuperAdmin;
   const closedDate = project.closed_at
     ? format(new Date(project.closed_at), "MMMM d, yyyy 'at' h:mm a")
     : 'Date recorded in the audit trail';
@@ -78,7 +76,7 @@ export function ProjectClosedBanner({ project }: { project: Project }) {
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h2 className="font-display text-xl font-bold tracking-tight md:text-2xl">Project closed &amp; locked</h2>
+                <h2 className="font-display text-xl font-bold tracking-tight md:text-2xl">Project completed &amp; locked down</h2>
                 <Badge className="border border-white/20 bg-white/10 text-white hover:bg-white/10">
                   <LockKeyhole className="mr-1 h-3 w-3" /> Read-only
                 </Badge>
@@ -90,7 +88,13 @@ export function ProjectClosedBanner({ project }: { project: Project }) {
               </div>
               <p className="mt-1 text-sm text-white/75">{closedDate}</p>
               <p className="mt-2 max-w-3xl text-sm leading-relaxed text-white/90">
-                {project.close_reason || 'Closed by an authorized administrator.'}
+                {project.close_reason || 'This project has been completed and locked for record preservation.'}
+              </p>
+              <p className="mt-1 max-w-3xl text-xs leading-relaxed text-white/70">
+                This project is view-only. To request any change, contact the administrator at{' '}
+                <a className="font-bold text-amber-100 underline-offset-2 hover:underline" href="mailto:hardeep@apas.ai">
+                  hardeep@apas.ai
+                </a>.
               </p>
             </div>
           </div>
@@ -132,7 +136,7 @@ export function ProjectClosedBanner({ project }: { project: Project }) {
             </div>
             <DialogTitle>Administrator reopen</DialogTitle>
             <DialogDescription>
-              Reopening restores authorized editing. The original closure certificate remains in the lifecycle audit trail.
+              Super-admin only. Reopening restores authorized editing. The original closure certificate remains in the lifecycle audit trail.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-2">

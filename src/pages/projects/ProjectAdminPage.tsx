@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Building2, Briefcase, ChevronRight, Lightbulb, Mail, Settings2, Users, Wallet,
+  Archive, ArrowLeft, Building2, Briefcase, ChevronRight, Lightbulb, LockKeyhole, Mail, Settings2, ShieldCheck, Users, Wallet,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,6 +23,8 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { AgentPilotAdminCard } from '@/components/agent/AgentPilotAdminCard';
 import { AGENT_FOUNDATION_ENABLED } from '@/lib/agent/runtime';
+import { ProjectCloseDialog } from '@/components/projects/ProjectCloseDialog';
+import { usePlatformSuperAdmin } from '@/hooks/usePlatformAdmin';
 
 /**
  * Per-project administration: module on/off, project type, and cross-links
@@ -37,6 +39,8 @@ export default function ProjectAdminPage() {
   const { tree } = useProjectTree();
   const updateProject = useUpdateProject();
   const [typeOpen, setTypeOpen] = useState(false);
+  const [closeOpen, setCloseOpen] = useState(false);
+  const { isSuperAdmin } = usePlatformSuperAdmin();
 
   const parent = project?.parent_project_id
     ? tree.byId.get(project.parent_project_id) ?? null
@@ -120,6 +124,45 @@ export default function ProjectAdminPage() {
       </div>
 
       <ProjectTypeMissingAlert project={project} />
+
+      {/* Super-admin lifecycle lockdown */}
+      <Card className={project.status === 'closed' ? 'border-emerald-300 bg-emerald-50/70' : 'border-slate-200'}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            {project.status === 'closed' ? <ShieldCheck className="h-4 w-4 text-emerald-700" /> : <LockKeyhole className="h-4 w-4" />}
+            Project lifecycle lockdown
+          </CardTitle>
+          <CardDescription>
+            Completed projects become view-only records. Nobody can add, delete, upload, or modify project-owned records unless the platform super administrator reopens the project.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm">
+            {project.status === 'closed' ? (
+              <>
+                <p className="font-semibold text-emerald-950">This project is completed and locked down.</p>
+                <p className="mt-1 text-emerald-900/75">
+                  Users can view the project, but edits are blocked. Change requests should go to{' '}
+                  <a href="mailto:hardeep@apas.ai" className="font-semibold underline-offset-2 hover:underline">hardeep@apas.ai</a>.
+                </p>
+              </>
+            ) : (
+              <>
+                <p className="font-semibold">Close and lock the project when the work is final.</p>
+                <p className="mt-1 text-muted-foreground">
+                  This creates an audit event, freezes the project, and preserves it as the official completed record.
+                </p>
+              </>
+            )}
+          </div>
+          {isSuperAdmin && project.status !== 'closed' && (
+            <Button className="shrink-0 bg-slate-950 text-white hover:bg-slate-800" onClick={() => setCloseOpen(true)}>
+              <Archive className="mr-2 h-4 w-4" />
+              Close and lock
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Billing workflow + inheritance summary */}
       <div className="grid gap-4 md:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
@@ -351,6 +394,13 @@ export default function ProjectAdminPage() {
         open={typeOpen}
         onOpenChange={setTypeOpen}
         project={project as never}
+      />
+      <ProjectCloseDialog
+        open={closeOpen}
+        onOpenChange={setCloseOpen}
+        projectId={project.id}
+        projectName={project.name}
+        consulting={kind === 'consulting'}
       />
     </div>
   );

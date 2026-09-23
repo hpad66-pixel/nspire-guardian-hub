@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   FileText, Upload, X, AlertCircle, CheckCircle2, Loader2,
   Download, RefreshCw, Gavel, Sparkles, Info, FileSearch,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -313,21 +314,57 @@ export default function CaseReviewPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <Gavel className="h-7 w-7 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">CaseIQ</h1>
-            <Badge variant="secondary" className="gap-1 text-xs">
-              <Sparkles className="h-3 w-3" /> AI-Powered
-            </Badge>
+      <div className="overflow-hidden rounded-2xl border bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950 text-white shadow-sm">
+        <div className="relative p-5 md:p-6">
+          <div className="pointer-events-none absolute right-[-70px] top-[-90px] h-56 w-56 rounded-full border border-emerald-200/20 bg-emerald-300/10 blur-sm" />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-2xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/15 bg-white/10">
+                  <Gavel className="h-6 w-6 text-amber-200" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-2xl font-bold tracking-tight md:text-3xl">CaseIQ</h1>
+                    <Badge className="gap-1 border border-amber-200/30 bg-amber-200/15 text-amber-100 hover:bg-amber-200/15">
+                      <Sparkles className="h-3 w-3" /> Evidence review
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-[0.18em] text-emerald-100/75">
+                    Compliance files in. Source-grounded case package out.
+                  </p>
+                </div>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-white/80">
+                Use CaseIQ when you have a messy regulatory, permit, inspection, code, safety, environmental, or claims file and need a clean case narrative. Upload the record set, tell it what question you need answered, and it prepares a review package that separates source facts, gaps, risks, and recommended next steps.
+              </p>
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {[
+                  ['1', 'Upload the evidence', 'PDFs, emails, photos, Word files, CSVs, and notes.'],
+                  ['2', 'Explain the question', 'Add the facility, case name, dispute, agency, or decision you need.'],
+                  ['3', 'Review before use', 'Download the report, check the cited basis, then decide what to send.'],
+                ].map(([step, title, body]) => (
+                  <div key={step} className="rounded-xl border border-white/15 bg-white/10 p-3">
+                    <div className="mb-2 flex h-7 w-7 items-center justify-center rounded-lg bg-amber-200 text-xs font-black text-slate-950">{step}</div>
+                    <h3 className="text-sm font-bold">{title}</h3>
+                    <p className="mt-1 text-xs leading-5 text-white/70">{body}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="relative shrink-0 rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur md:w-72">
+              <div className="flex items-center gap-2 text-sm font-bold text-emerald-100">
+                <ShieldCheck className="h-4 w-4" />
+                Human review required
+              </div>
+              <p className="mt-2 text-xs leading-5 text-white/72">
+                CaseIQ is a drafting and analysis assistant. It does not replace legal, engineering, regulatory, or administrator approval. Treat every report as a review draft until a qualified person approves it.
+              </p>
+            </div>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Upload any regulatory case file — receive a professional compliance white paper in minutes
-          </p>
         </div>
         {stage === "complete" && (
-          <Button variant="outline" size="sm" onClick={resetAll} className="gap-1.5">
+          <Button variant="outline" size="sm" onClick={resetAll} className="gap-1.5 bg-white text-slate-950 hover:bg-white/90">
             <RefreshCw className="h-3.5 w-3.5" /> New Review
           </Button>
         )}

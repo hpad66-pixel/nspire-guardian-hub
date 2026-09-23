@@ -37,7 +37,7 @@ export function ProjectClosureBoundary({ children }: { children: ReactNode }) {
     event.stopPropagation();
     const now = Date.now();
     if (now - lastNoticeAt.current > 1800) {
-      toast.info('This project is closed and read-only. An administrator must reopen it before changes can be made.');
+      toast.info('This project is completed, locked down, and read-only. Contact hardeep@apas.ai to request a change.');
       lastNoticeAt.current = now;
     }
   };

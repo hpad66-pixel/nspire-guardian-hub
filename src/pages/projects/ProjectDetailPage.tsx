@@ -190,7 +190,7 @@ export default function ProjectDetailPage() {
       : '0 members';
   const { isAdmin, currentRole } = useUserPermissions();
   const { isSuperAdmin: canDeleteProject } = usePlatformSuperAdmin();
-  const canCloseProject = canDeleteProject || isAdmin || currentRole === 'owner' || currentRole === 'administrator';
+  const canCloseProject = canDeleteProject;
   const updateProject = useUpdateProject();
 
   // Routed modules (financials, directory, admin, …) leave the detail page.
