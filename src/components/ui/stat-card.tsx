@@ -37,12 +37,19 @@ export function StatCard({
   return (
     <div
       onClick={onClick}
+      onKeyDown={(event) => {
+        if (!onClick) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick();
+        }
+      }}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       className={cn(
         'stat-card rounded-lg border bg-card p-6',
         variantStyles[variant],
-        onClick && 'cursor-pointer transition-colors hover:border-primary/40 hover:bg-accent/30',
+        onClick && 'cursor-pointer transition-colors hover:border-primary/40 hover:bg-accent/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         className
       )}
     >

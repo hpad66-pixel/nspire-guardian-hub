@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Phone, Filter, RefreshCw, Mic, Sparkles, Radio } from 'lucide-react';
+import { Activity, ArrowUpRight, Filter, Headphones, Mic, Phone, Radio, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { VoiceAgentStats } from '@/components/voice-agent/VoiceAgentStats';
+import { VoiceAgentStats, type VoiceIntakeMetric } from '@/components/voice-agent/VoiceAgentStats';
 import { VoiceAgentWidget } from '@/components/voice-agent/VoiceAgentWidget';
 import { VoiceLiveFeed } from '@/components/voice-agent/VoiceLiveFeed';
 import { VoiceResidentEducation } from '@/components/voice-agent/VoiceResidentEducation';
@@ -17,7 +18,40 @@ import { subscribeVoiceLive } from '@/lib/voice/liveBus';
 import { nextPipelineStage, type VoicePipelineStage } from '@/lib/voice/liveStats';
 import { toast } from 'sonner';
 
+const intakeLensCopy: Record<VoiceIntakeMetric, { title: string; detail: string }> = {
+  today: {
+    title: "Today's call-created tickets",
+    detail: 'Every request captured today from the voice hotline, newest first.',
+  },
+  processed: {
+    title: 'Processed intake',
+    detail: 'Calls that have already moved into assignment, active work, or completion.',
+  },
+  backlog: {
+    title: 'Backlog needing action',
+    detail: 'New, reviewed, and assigned requests that still need movement.',
+  },
+  work_orders: {
+    title: 'Tickets with work orders',
+    detail: 'Voice requests already wired into the work-order workflow.',
+  },
+  emergency: {
+    title: 'Emergency queue',
+    detail: 'Open emergency requests that should stay visible until closed.',
+  },
+};
+
+function isTodayDate(value: string | null | undefined) {
+  if (!value) return false;
+  const date = new Date(value);
+  const now = new Date();
+  return date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+}
+
 export default function VoiceAgentDashboard() {
+  const navigate = useNavigate();
   const [selectedRequest, setSelectedRequest] = useState<MaintenanceRequest | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const [callDialogOpen, setCallDialogOpen] = useState(false);
@@ -38,6 +72,7 @@ export default function VoiceAgentDashboard() {
     live: liveMode,
   });
   const { data: properties = [] } = useProperties();
+  const [activeMetric, setActiveMetric] = useState<VoiceIntakeMetric>('today');
 
   useEffect(() => {
     if (!properties.length) return;
@@ -89,6 +124,24 @@ export default function VoiceAgentDashboard() {
     return { total, newCount, emergencyCount, woCount };
   }, [requests]);
 
+  const focusedRequests = useMemo(() => {
+    const list = requests ?? [];
+    switch (activeMetric) {
+      case 'today':
+        return list.filter((request) => isTodayDate(request.created_at));
+      case 'processed':
+        return list.filter((request) => ['assigned', 'in_progress', 'completed'].includes(request.status));
+      case 'backlog':
+        return list.filter((request) => ['new', 'reviewed', 'assigned'].includes(request.status));
+      case 'work_orders':
+        return list.filter((request) => Boolean(request.work_order_id));
+      case 'emergency':
+        return list.filter((request) => request.is_emergency && request.status !== 'closed');
+      default:
+        return list;
+    }
+  }, [activeMetric, requests]);
+
   const handleSelectRequest = (request: MaintenanceRequest) => {
     setSelectedRequest(request);
     setDetailOpen(true);
@@ -120,66 +173,90 @@ export default function VoiceAgentDashboard() {
 
   return (
     <div className="space-y-6">
-      <Card className="border-primary/20 bg-gradient-to-r from-primary/5 via-background to-background">
-        <CardContent className="p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <Card className="overflow-hidden border-slate-200 bg-[#f8f5ee] shadow-sm">
+        <CardContent className="relative p-0">
+          <div className="absolute inset-y-0 right-0 hidden w-1/2 bg-[radial-gradient(circle_at_top_right,rgba(15,118,110,0.18),transparent_38%),linear-gradient(135deg,rgba(16,24,40,0.04),transparent)] lg:block" />
+          <div className="relative grid gap-6 p-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:p-7">
             <div>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
-                  <Phone className="h-5 w-5 text-primary" />
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#10263f] shadow-lg shadow-slate-900/10">
+                  <Headphones className="h-6 w-6 text-[#d6f5ea]" />
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold tracking-tight">Voice Complaints</h1>
-                  <p className="mt-1 text-muted-foreground">
-                    Live ElevenLabs hotline — tickets and work orders update the moment a call ends
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#0f766e]">Resident voice operations</p>
+                  <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#10263f] md:text-4xl">Voice Complaints</h1>
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 md:text-base">
+                    Calls become structured tickets, emergency flags, assignments, and work orders without losing the caller&apos;s words.
                   </p>
                 </div>
               </div>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full border border-sky-300 bg-sky-50 px-2 py-1 text-xs font-medium text-sky-900">
-                  Powered by ElevenLabs
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-[#badbcc] bg-white/80 px-3 py-1.5 text-xs font-semibold text-[#0f5132] shadow-sm">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  ElevenLabs intake
                 </span>
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium ${
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold shadow-sm ${
                     liveMode
                       ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
-                      : 'border-border text-muted-foreground'
+                      : 'border-slate-200 bg-white/80 text-slate-600'
                   }`}
                 >
                   <Radio className={`h-3 w-3 ${liveMode ? 'text-emerald-600' : ''}`} />
                   {liveMode ? 'Live' : 'Standby'}
                   {isFetching && liveMode ? ' · syncing' : ''}
                 </span>
-                <span className="rounded-full border px-2 py-1 text-xs text-muted-foreground">
+                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs text-slate-600 shadow-sm">
                   Total: <span className="font-medium text-foreground">{requestCounts.total}</span>
                 </span>
-                <span className="rounded-full border px-2 py-1 text-xs text-muted-foreground">
+                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs text-slate-600 shadow-sm">
                   New: <span className="font-medium text-foreground">{requestCounts.newCount}</span>
                 </span>
-                <span className="rounded-full border px-2 py-1 text-xs text-muted-foreground">
+                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs text-slate-600 shadow-sm">
                   WOs: <span className="font-medium text-foreground">{requestCounts.woCount}</span>
                 </span>
-                <span className="rounded-full border px-2 py-1 text-xs text-muted-foreground">
+                <span className="rounded-full border border-slate-200 bg-white/80 px-3 py-1.5 text-xs text-slate-600 shadow-sm">
                   Emergency:{' '}
                   <span className="font-medium text-foreground">{requestCounts.emergencyCount}</span>
                 </span>
               </div>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <div className="rounded-2xl border border-white/70 bg-white/80 p-4 shadow-xl shadow-slate-900/5 backdrop-blur">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#d6f5ea] text-[#0f766e]">
+                  <ShieldCheck className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[#10263f]">Today&apos;s command center</p>
+                  <p className="text-xs text-slate-500">Click any intake number to focus the queue.</p>
+                </div>
+              </div>
+              <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
+                <button className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-[#0f766e]/40 hover:bg-white" onClick={() => setActiveMetric('backlog')}>
+                  <span className="block text-xs text-slate-500">Needs action</span>
+                  <strong className="text-xl text-[#10263f]">{requestCounts.newCount}</strong>
+                </button>
+                <button className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-left transition hover:border-[#0f766e]/40 hover:bg-white" onClick={() => setActiveMetric('work_orders')}>
+                  <span className="block text-xs text-slate-500">Wired WOs</span>
+                  <strong className="text-xl text-[#10263f]">{requestCounts.woCount}</strong>
+                </button>
+              </div>
+              <div className="mt-4 flex flex-col gap-2 sm:flex-row lg:flex-col">
+                <Button variant="outline" size="sm" onClick={() => refetch()} className="border-slate-300 bg-white">
                 <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
                 Refresh
               </Button>
-              <Button onClick={handleStartCall}>
+                <Button onClick={handleStartCall} className="bg-[#10263f] text-white hover:bg-[#183a5c]">
                 <Mic className="mr-2 h-4 w-4" />
                 Start Call
               </Button>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <VoiceAgentStats live={liveMode} />
+      <VoiceAgentStats live={liveMode} activeMetric={activeMetric} onMetricSelect={setActiveMetric} />
 
       <VoiceResidentEducation />
 
@@ -206,12 +283,17 @@ export default function VoiceAgentDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
-          <Card>
-            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Card className="overflow-hidden border-slate-200 shadow-sm">
+            <CardHeader className="flex flex-col gap-3 border-b bg-gradient-to-r from-slate-50 to-white sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <CardTitle className="text-lg">Maintenance Requests</CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Review, prioritize, and assign incoming issues — updates live.
+                <div className="flex flex-wrap items-center gap-2">
+                  <CardTitle className="text-lg text-[#10263f]">{intakeLensCopy[activeMetric].title}</CardTitle>
+                  <span className="rounded-full bg-[#d6f5ea] px-2.5 py-1 text-xs font-semibold text-[#0f766e]">
+                    {focusedRequests.length} shown
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {intakeLensCopy[activeMetric].detail}
                 </p>
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -236,20 +318,20 @@ export default function VoiceAgentDashboard() {
                     <div key={i} className="h-24 animate-pulse rounded-lg bg-muted" />
                   ))}
                 </div>
-              ) : requests && requests.length > 0 ? (
+              ) : focusedRequests.length > 0 ? (
                 <RequestQueue
-                  requests={requests || []}
+                  requests={focusedRequests}
                   onSelect={handleSelectRequest}
                   selectedId={selectedRequest?.id}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-                    <Sparkles className="h-5 w-5 text-primary" />
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#d6f5ea]">
+                    <Sparkles className="h-5 w-5 text-[#0f766e]" />
                   </div>
-                  <h3 className="mt-4 font-medium">No requests yet</h3>
+                  <h3 className="mt-4 font-medium">Nothing in this view</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Start a voice call to capture the first maintenance request.
+                    Choose another intake number or start a call to capture a new request.
                   </p>
                   <Button className="mt-4" onClick={handleStartCall}>
                     <Mic className="mr-2 h-4 w-4" />
@@ -262,19 +344,26 @@ export default function VoiceAgentDashboard() {
         </div>
 
         <div className="space-y-4">
-          <Card>
+          <Card className="border-slate-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Quick Actions</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-lg text-[#10263f]">
+                <Activity className="h-5 w-5 text-[#0f766e]" />
+                Quick Actions
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button className="w-full gap-2" onClick={handleStartCall}>
+              <Button className="w-full gap-2 bg-[#10263f] text-white hover:bg-[#183a5c]" onClick={handleStartCall}>
                 <Mic className="h-4 w-4" />
                 Start Call
               </Button>
-              <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground">
+              <Button variant="outline" className="w-full justify-between border-slate-300 bg-white" onClick={() => navigate('/work-orders')}>
+                Open work-order board
+                <ArrowUpRight className="h-4 w-4" />
+              </Button>
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600">
                 <div className="flex items-center justify-between">
                   <span>Selected property</span>
-                  <span className="font-medium text-foreground">
+                  <span className="font-semibold text-[#10263f]">
                     {selectedProperty?.name || 'Not set'}
                   </span>
                 </div>
@@ -285,9 +374,9 @@ export default function VoiceAgentDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-slate-200 shadow-sm">
             <CardHeader>
-              <CardTitle className="text-lg">Issue Categories</CardTitle>
+              <CardTitle className="text-lg text-[#10263f]">Issue Categories</CardTitle>
             </CardHeader>
             <CardContent>
               {requests && requests.length > 0 ? (
@@ -304,9 +393,9 @@ export default function VoiceAgentDashboard() {
                     .sort(([, a], [, b]) => b - a)
                     .slice(0, 5)
                     .map(([category, count]) => (
-                      <div key={category} className="flex items-center justify-between">
-                        <span className="text-sm capitalize">{category}</span>
-                        <span className="text-sm font-medium">{count}</span>
+                      <div key={category} className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50 px-3 py-2">
+                        <span className="text-sm capitalize text-slate-700">{category}</span>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-sm font-semibold text-[#10263f]">{count}</span>
                       </div>
                     ))}
                 </div>
@@ -316,10 +405,10 @@ export default function VoiceAgentDashboard() {
             </CardContent>
           </Card>
 
-          <Card className="border-primary/20 bg-primary/5">
+          <Card className="border-[#badbcc] bg-[#f2fbf7] shadow-sm">
             <CardContent className="p-4">
-              <h4 className="mb-2 font-medium">Pro Tip</h4>
-              <p className="text-sm text-muted-foreground">
+              <h4 className="mb-2 font-semibold text-[#10263f]">Pro Tip</h4>
+              <p className="text-sm text-slate-600">
                 After you hang up, watch the Live pipeline — ticket creation and work-order wiring
                 should appear within a few seconds without hitting Refresh.
               </p>
