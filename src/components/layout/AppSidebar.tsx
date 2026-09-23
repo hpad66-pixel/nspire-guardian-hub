@@ -88,7 +88,7 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
         'hover:bg-sidebar-nav-hover-bg hover:text-sidebar-foreground',
         collapsed && 'justify-center px-0 py-2.5',
       )}
-      activeClassName="!bg-sidebar-nav-active-bg !text-sidebar-accent-foreground !font-semibold shadow-sm [&_svg]:!text-sidebar-accent-foreground"
+      activeClassName="!bg-[#f8f5ee] !text-[#10263f] !font-semibold shadow-sm ring-1 ring-white/20 [&_svg]:!text-[#0f766e]"
     >
       <Icon className={cn('h-[18px] w-[18px] shrink-0 stroke-[1.85] text-sidebar-foreground/82 group-hover:text-sidebar-foreground', collapsed && 'h-5 w-5')} />
       {!collapsed && (
