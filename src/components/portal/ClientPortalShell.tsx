@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useModules } from "@/contexts/ModuleContext";
 import { useClientPortalContext, useHasMainPortalMembership, useMyPortalKind, useOwnerPortalData } from "@/hooks/usePortals";
 import {
   ClientPortalProjectProvider,
@@ -161,6 +162,8 @@ export function ClientPortalShell() {
   const [accountOpen, setAccountOpen] = useState(false);
   const { data: ownerData, isLoading: ownerLoading } = useOwnerPortalData();
   const { data: portalKind } = useMyPortalKind();
+  const { isModuleEnabled } = useModules();
+  const siteAccountabilityEnabled = isModuleEnabled("siteAccountabilityEnabled");
   const { data: hasMainPortalMembership } = useHasMainPortalMembership(user?.id);
   const isInternalProjectUser = userRole === "admin" || userRole === "administrator" || userRole === "project_manager";
   const isOwnerWorkbench = portalKind === "main" || Boolean(hasMainPortalMembership) || isInternalProjectUser || isPlatformSuperAdmin(user);
@@ -207,14 +210,21 @@ export function ClientPortalShell() {
     () => portalModulesForProject(activeMeta, parentMeta),
     [activeMeta, parentMeta],
   );
+  const effectivePortalModules = useMemo(() => {
+    if (siteAccountabilityEnabled) return enabledPortalModules;
+    const next = new Set(enabledPortalModules);
+    next.delete('accountability');
+    return next;
+  }, [enabledPortalModules, siteAccountabilityEnabled]);
   const siteAccountabilityProjectId = useMemo(() => {
+    if (!siteAccountabilityEnabled) return null;
     const dedicated = selectSiteAccountabilityProject(availableProjectMeta, selectedProject?.client_id ?? null);
     if (dedicated) return dedicated.id;
-    return enabledPortalModules.has('accountability') ? activeProjectId : null;
-  }, [activeProjectId, availableProjectMeta, enabledPortalModules, selectedProject?.client_id]);
+    return effectivePortalModules.has('accountability') ? activeProjectId : null;
+  }, [activeProjectId, availableProjectMeta, effectivePortalModules, selectedProject?.client_id, siteAccountabilityEnabled]);
   const { primary: primaryNavigation, secondary: secondaryNavigation } = portalNav(
     activeProjectId,
-    enabledPortalModules,
+    effectivePortalModules,
     Boolean(siteAccountabilityProjectId),
   );
   const meetingsClientId = portfolioClientId ?? selectedProject?.client_id;

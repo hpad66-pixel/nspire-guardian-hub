@@ -11,6 +11,7 @@ export interface ModuleConfig {
   aiEnabled: boolean;               // Cross-cutting AI (assistant, drafting, analysis, briefings)
   contractorReadinessEnabled: boolean; // Contractor qualification, document controls, expiry and work/payment gates
   apasCrmIntegrationEnabled: boolean; // Project-scoped card intake into the canonical APAS CRM
+  siteAccountabilityEnabled: boolean; // Owner walk-throughs, photo evidence, before/after accountability
   // ── nSpire / field-ops modules ──
   nspireEnabled: boolean;           // Inside unit inspections (NSPIRE compliance)
   dailyGroundsEnabled: boolean;     // Outside/grounds/asset inspections

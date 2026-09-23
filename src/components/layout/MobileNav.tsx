@@ -294,9 +294,10 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
   const canViewDailyReports = isModuleEnabled('reportsEnabled') && (canView('reports') || isAdminOrOwner);
   const { data: hasEnabledWaterIntel = false } = useWaterIntelAvailability(showPropertyOps);
   const showWaterIntelligence = showPropertyOps && (isAdminOrOwner || hasEnabledWaterIntel);
+  const effectiveHasSiteAccountability = isModuleEnabled('siteAccountabilityEnabled') && hasSiteAccountability;
   const showOperationsSection =
     (showPropertyOps && (canView('issues') || canView('work_orders'))) ||
-    hasSiteAccountability ||
+    effectiveHasSiteAccountability ||
     canViewDailyReports;
 
   const go = (path: string) => {
@@ -383,7 +384,7 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
               onClick={() => go('/projects')}
             />
           )}
-          {hasSiteAccountability && (
+          {effectiveHasSiteAccountability && (
             <DrawerTile
               icon={<ScanEye className={iconClass} />}
               iconBg={goldIconBg}
@@ -423,7 +424,7 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
                   onClick={() => go('/permits')}
                 />
               )}
-              {hasSiteAccountability && (
+              {effectiveHasSiteAccountability && (
                 <DrawerTile
                   icon={<ScanEye className={iconClass} />}
                   iconBg={goldIconBg}
@@ -643,7 +644,7 @@ export function MobileNav() {
   const { data: unreadCount = 0 } = useUnreadThreadCount();
   const { data: projects = [] } = useProjects();
   const siteAccountabilityProject = selectSiteAccountabilityProject(projects);
-  const hasSiteAccountability = projects.some(isDedicatedSiteAccountabilityProject);
+  const hasSiteAccountability = isModuleEnabled('siteAccountabilityEnabled') && projects.some(isDedicatedSiteAccountabilityProject);
   const siteAccountabilityPath = siteAccountabilityProject
     ? staffSiteAccountabilityPath(siteAccountabilityProject.id)
     : '/site-accountability';

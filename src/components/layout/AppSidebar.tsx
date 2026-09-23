@@ -134,7 +134,7 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { state } = useSidebar();
   const { data: projects = [] } = useProjects();
-  const hasSiteAccountability = projects.some(isDedicatedSiteAccountabilityProject);
+  const hasSiteAccountability = isModuleEnabled('siteAccountabilityEnabled') && projects.some(isDedicatedSiteAccountabilityProject);
   const collapsed = state === 'collapsed';
   const { data: myProfile } = useMyProfile();
   const { canView, currentRole } = useUserPermissions();

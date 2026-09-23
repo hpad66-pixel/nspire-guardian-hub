@@ -26,6 +26,7 @@ export interface WorkspaceModuleRow {
   ai_enabled: boolean;
   contractor_readiness_enabled: boolean;
   apas_crm_integration_enabled: boolean;
+  site_accountability_enabled: boolean;
   // workspace-admin flags
   credential_wallet_enabled: boolean;
   training_hub_enabled: boolean;
@@ -45,6 +46,7 @@ export interface WorkspaceModuleRow {
   platform_ai: boolean;
   platform_contractor_readiness: boolean;
   platform_apas_crm_integration: boolean;
+  platform_site_accountability: boolean;
   platform_credential_wallet: boolean;
   platform_training_hub: boolean;
   platform_safety_module: boolean;

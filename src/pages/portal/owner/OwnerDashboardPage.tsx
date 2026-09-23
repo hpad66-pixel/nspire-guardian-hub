@@ -33,6 +33,7 @@ import { useProject } from "@/hooks/useProjects";
 import { GLORIETA_SITE_LAYOUT } from "@/lib/site-map/glorietaSiteLayout";
 import { useFieldAccountability } from "@/hooks/useFieldAccountability";
 import { selectSiteAccountabilityProject } from "@/lib/accountability/accountabilityNavigation";
+import { useModules } from "@/contexts/ModuleContext";
 
 function fmt(value: number | null | undefined) {
   return `$${(Number(value) || 0).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
@@ -198,10 +199,14 @@ const resources = [
 export default function OwnerDashboardPage() {
   const { user } = useAuth();
   const href = useOwnerPortalHref();
+  const { isModuleEnabled } = useModules();
+  const siteAccountabilityEnabled = isModuleEnabled("siteAccountabilityEnabled");
   const { data, isLoading } = useOwnerPortalData();
   const { selectedProjectId: projectId, selectedContract } = useClientPortalProject();
   const selectedPortalProject = data?.projects.find((item) => item.id === projectId) ?? null;
-  const accountabilityProject = selectSiteAccountabilityProject(data?.projects ?? [], selectedPortalProject?.client_id ?? null);
+  const accountabilityProject = siteAccountabilityEnabled
+    ? selectSiteAccountabilityProject(data?.projects ?? [], selectedPortalProject?.client_id ?? null)
+    : null;
   const pendingOcos = (data?.pendingOcos ?? [])
     .filter((item) => item.prime_contract_id === selectedContract?.id);
   const pendingPayApps = (data?.pendingPayApps ?? [])

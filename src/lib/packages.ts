@@ -29,6 +29,7 @@ export const MODULE_CATALOG: ModuleCategory[] = [
     { key: 'projectsEnabled', label: 'Projects (legacy)', description: 'Capital improvements, daily reports, change orders, and closeout' },
   ] },
   { key: 'field', label: 'Field ops', modules: [
+    { key: 'siteAccountabilityEnabled', label: 'Site Accountability', description: 'Owner walkthroughs, photo evidence, before/after closeout, and client-visible proof' },
     { key: 'equipmentTrackerEnabled', label: 'Equipment & fleet', description: 'Equipment and fleet tracking' },
     { key: 'qrScanningEnabled', label: 'QR scanning', description: 'QR asset scanning' },
     { key: 'credentialWalletEnabled', label: 'Credential wallet', description: 'Credentials & licenses' },
@@ -76,6 +77,7 @@ export const MODULE_WS_COLUMN: Partial<Record<ModuleKey, string>> = {
   equipmentTrackerEnabled: 'equipment_tracker_enabled', clientPortalEnabled: 'client_portal_enabled',
   contractorReadinessEnabled: 'contractor_readiness_enabled',
   apasCrmIntegrationEnabled: 'apas_crm_integration_enabled',
+  siteAccountabilityEnabled: 'site_accountability_enabled',
 };
 
 /** Module key → matching platform gate column (`platform_*`). */

@@ -279,12 +279,14 @@ function MobileDailyCommand({
   openIssues,
   unreadMessages,
   hasClientPortal,
+  hasSiteAccountability,
   onNavigate,
 }: {
   activeProjects: number;
   openIssues: number;
   unreadMessages: number;
   hasClientPortal: boolean;
+  hasSiteAccountability: boolean;
   onNavigate: (path: string) => void;
 }) {
   const actions = [
@@ -312,14 +314,14 @@ function MobileDailyCommand({
       path: '/projects',
       count: null,
     },
-    {
+    ...(hasSiteAccountability ? [{
       label: 'Field proof',
       detail: 'Photos, walks, reports',
       icon: Camera,
       tone: 'bg-[var(--apas-rose)]/10 text-[var(--apas-rose)]',
       path: '/site-accountability',
       count: null,
-    },
+    }] : []),
     {
       label: 'Messages',
       detail: 'Team updates',
@@ -394,7 +396,7 @@ function MobileDailyCommand({
   );
 }
 
-function ProductValueMoments({ onNavigate }: { onNavigate: (path: string) => void }) {
+function ProductValueMoments({ hasSiteAccountability, onNavigate }: { hasSiteAccountability: boolean; onNavigate: (path: string) => void }) {
   const moments = [
     {
       eyebrow: 'Voice intake',
@@ -405,7 +407,7 @@ function ProductValueMoments({ onNavigate }: { onNavigate: (path: string) => voi
       path: '/voice-agent',
       tone: 'border-[var(--apas-sapphire)]/25 bg-[var(--apas-sapphire)]/5 text-[var(--apas-sapphire)]',
     },
-    {
+    ...(hasSiteAccountability ? [{
       eyebrow: 'Field proof',
       from: 'Site photo or walkthrough note',
       to: 'Before/after record tied to the project',
@@ -413,7 +415,7 @@ function ProductValueMoments({ onNavigate }: { onNavigate: (path: string) => voi
       icon: Camera,
       path: '/site-accountability',
       tone: 'border-[var(--apas-emerald)]/25 bg-[var(--apas-emerald)]/5 text-[var(--apas-emerald)]',
-    },
+    }] : []),
     {
       eyebrow: 'Money control',
       from: 'Approved proposal value',
@@ -506,6 +508,7 @@ export default function Dashboard() {
   const openWOs = useMemo(() => workOrders.filter(w => !['completed', 'verified', 'closed', 'rejected'].includes(w.status)).length, [workOrders]);
   const totalAlerts = counts.critical + counts.warnings;
   const hasClientPortal = isModuleEnabled('clientPortalEnabled');
+  const hasSiteAccountability = isModuleEnabled('siteAccountabilityEnabled');
 
   const today = format(new Date(), 'EEEE, MMMM d');
   const workspaceName = branding?.company_name ?? 'Your Workspace';
@@ -772,12 +775,13 @@ export default function Dashboard() {
           openIssues={openIssues}
           unreadMessages={unreadMessages}
           hasClientPortal={hasClientPortal}
+          hasSiteAccountability={hasSiteAccountability}
           onNavigate={navigate}
         />
 
         <ClientPortfolioSection projects={activeProjectsList} />
 
-        <ProductValueMoments onNavigate={navigate} />
+        <ProductValueMoments hasSiteAccountability={hasSiteAccountability} onNavigate={navigate} />
 
         {/* Pulse metrics */}
         {isVisible('kpi-strip') && (

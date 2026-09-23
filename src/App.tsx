@@ -1,18 +1,21 @@
 import { lazy, Suspense, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { ModuleProvider } from "@/contexts/ModuleContext";
+import { ModuleProvider, useModules } from "@/contexts/ModuleContext";
 import { AuthProvider } from "@/hooks/useAuth";
 import { WorkspaceProvider } from "@/contexts/WorkspaceContext";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { PortalProtectedRoute } from "@/components/portal/PortalProtectedRoute";
 import { FinancialKindGuard } from "@/components/financial/FinancialKindGuard";
+import { UpgradeRequired } from "@/components/portal/UpgradeRequired";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { flushOfflineQueue } from '@/lib/flushOfflineQueue';
+import type { ModuleConfig } from "@/types/modules";
 
 // Pages — lazy loaded for code splitting
 const LandingPageAlt = lazy(() => import('./pages/LandingPageAlt'));
@@ -86,6 +89,24 @@ const PortalManagePage = lazy(() => import('./pages/portals/PortalManagePage'));
 const PortalLoginPage = lazy(() => import('./pages/portal/PortalLoginPage'));
 const LegacyPortalRedirect = lazy(() => import('./pages/portal/LegacyPortalRedirect'));
 const CaseReviewPage = lazy(() => import('./pages/case-review/CaseReviewPage'));
+
+function ModuleRouteGate({
+  module,
+  feature,
+  featureLabel,
+  children,
+}: {
+  module: keyof ModuleConfig;
+  feature: string;
+  featureLabel: string;
+  children: ReactNode;
+}) {
+  const { isModuleEnabled } = useModules();
+  if (!isModuleEnabled(module)) {
+    return <UpgradeRequired feature={feature} featureLabel={featureLabel} />;
+  }
+  return <>{children}</>;
+}
 
 // ───────── Procore Lite · Phase 1 (A1–A5) ─────────
 const PermissionTemplatesPage = lazy(() => import('./pages/admin/PermissionTemplatesPage'));
@@ -344,7 +365,7 @@ const App = () => (
                         <Route path="/owner-portal/projects/:projectId/permits" element={<OwnerPermitsPage />} />
                         <Route path="/owner-portal/projects/:projectId/site-map" element={<OwnerSiteMapPage />} />
                         <Route path="/owner-portal/projects/:projectId/operations" element={<OwnerOperationsPage />} />
-                        <Route path="/owner-portal/projects/:projectId/accountability" element={<OwnerAccountabilityPage />} />
+                        <Route path="/owner-portal/projects/:projectId/accountability" element={<ModuleRouteGate module="siteAccountabilityEnabled" feature="site_accountability" featureLabel="Site Accountability"><OwnerAccountabilityPage /></ModuleRouteGate>} />
                       </Route>
                     </Route>
 
@@ -421,12 +442,12 @@ const App = () => (
                               <Route path="/inspections/units" element={<UnitInspections />} />
                               
                               {/* Projects Module */}
-                              <Route path="/site-accountability" element={<SiteAccountabilityHomePage />} />
+                              <Route path="/site-accountability" element={<ModuleRouteGate module="siteAccountabilityEnabled" feature="site_accountability" featureLabel="Site Accountability"><SiteAccountabilityHomePage /></ModuleRouteGate>} />
                               <Route path="/projects" element={<ProjectsDashboard />} />
                               {/* Legacy flat proposals hub — proposals live inside each project */}
                               <Route path="/projects/proposals" element={<Navigate to="/projects" replace />} />
                               <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                              <Route path="/projects/:projectId/accountability" element={<FieldAccountabilityPage />} />
+                              <Route path="/projects/:projectId/accountability" element={<ModuleRouteGate module="siteAccountabilityEnabled" feature="site_accountability" featureLabel="Site Accountability"><FieldAccountabilityPage /></ModuleRouteGate>} />
                               <Route path="/projects/:projectId/admin" element={<ProjectAdminPage />} />
                               
                               {/* Compliance Permits (property-level) — project Permits live under /projects/:id */}
