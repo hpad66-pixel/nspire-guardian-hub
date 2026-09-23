@@ -91,12 +91,30 @@ export function NoticeToProceed({ item }: { item: ContractorCase }) {
   const ready=checks.every(c=>c.ready) && draft.prerequisites_confirmed && !!draft.recipient_email;
   const patch=<K extends keyof NoticeDraft>(key:K,value:NoticeDraft[K])=>setDraft(current=>({...current,[key]:value}));
   const preview:NoticeRecord=issued ? record : {...draft,id:record?.id ?? 'DRAFT',case_id:item.id,status:'draft',snapshot:{company_name:item.organization?.name,project_name:item.project?.name,client_name:item.client?.name,branding:branding.data as unknown as Record<string,string>}};
+  const deliverNotice=async(noticeId?: string | null)=>{
+    if(!noticeId) throw new Error('Save the issued notice before sending.');
+    const r=await supabase.functions.invoke('contractor-ntp',{body:{noticeId}});
+    if(r.error || !r.data?.ok) throw new Error(r.data?.error || r.error?.message || 'Delivery failed');
+    return r.data as {ok:true;emailId?:string;alreadySent?:boolean};
+  };
   const save=async(issue:boolean)=>{
     setBusy(true);
     try {
       const result=await (supabase.rpc as any)('save_contractor_ntp',{p_case_id:item.id,p_draft:draft,p_issue:issue}); if(result.error) throw result.error;
       await qc.invalidateQueries({queryKey:['contractor-readiness']});
-      if(issue) { setCelebrate(true); toast.success('Notice issued. Your team is ready to begin.'); }
+      await query.refetch();
+      if(issue) {
+        const issuedNotice = result.data as NoticeRecord | null;
+        try {
+          await deliverNotice(issuedNotice?.id);
+          toast.success('Notice issued and emailed with the branded PDF.');
+        } catch(emailError) {
+          const message=emailError instanceof Error?emailError.message:'Email delivery failed';
+          toast.error(`Notice issued, but email did not send: ${message}`);
+        }
+        await query.refetch();
+        setCelebrate(true);
+      }
       else toast.success('Notice draft saved');
     } catch(e) { toast.error(e instanceof Error?e.message:(e as {message?:string})?.message || 'Could not save notice'); }
     finally {setBusy(false);}
@@ -118,7 +136,7 @@ export function NoticeToProceed({ item }: { item: ContractorCase }) {
     toast.success('Notice draft filled from the approved proposal. Review dates before issuing.');
     setDrafting(false);
   };
-  const send=async()=>{setBusy(true);try{const r=await supabase.functions.invoke('contractor-ntp',{body:{noticeId:record?.id}}); if(r.error || !r.data?.ok) throw new Error(r.data?.error || r.error?.message || 'Delivery failed'); toast.success('Notice emailed as a branded letter with PDF'); await query.refetch();}catch(e){toast.error(e instanceof Error?e.message:'Delivery failed');}finally{setBusy(false);}};
+  const send=async()=>{setBusy(true);try{await deliverNotice(record?.id); toast.success('Notice emailed as a branded letter with PDF'); await query.refetch();}catch(e){toast.error(e instanceof Error?e.message:'Delivery failed');}finally{setBusy(false);}};
   const print=()=>{const w=window.open('','_blank'); if(w){w.opener=null;w.document.write(`<!doctype html><html><head><title>Notice to Proceed</title><style>@page{size:letter;margin:14mm}body{margin:0}section,table{break-inside:avoid}</style></head><body>${noticeLetter(preview)}</body></html>`);w.document.close();w.print();}};
   return <section className={`relative overflow-hidden rounded-2xl border p-5 ${issued?'border-emerald-300 bg-emerald-50/60':'bg-card'}`}>
     {celebrate && <ReadinessCelebration />}

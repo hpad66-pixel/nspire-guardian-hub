@@ -6,6 +6,10 @@ import { noticeLetter, noticeMoney, type NoticeRecord } from '../_shared/noticeT
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization,content-type,apikey,x-client-info' };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json' } });
 const textValue = (value: unknown, fallback = '') => String(value ?? '').trim() || fallback;
+const emailFrom = () => {
+  const configured = Deno.env.get('NTP_FROM_EMAIL') || Deno.env.get('DEFAULT_FROM_EMAIL') || 'hardeep@apas.ai';
+  return configured.includes('<') ? configured : `Hardeep Anand, PE <${configured}>`;
+};
 const hexRgb = (value: unknown, fallback: [number, number, number]) => {
   const match = /^#?([0-9a-f]{6})$/i.exec(String(value ?? ''));
   if (!match) return rgb(fallback[0], fallback[1], fallback[2]);
@@ -90,7 +94,7 @@ serve(async req => {
     if(claim.error || !claim.data) return json({error:'Delivery is already in progress. Refresh to check its status.'},409);
     claimedId=n.id;
     const response=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:`Bearer ${Deno.env.get('RESEND_API_KEY')}`,'Content-Type':'application/json','Idempotency-Key':`ntp-${n.id}`},body:JSON.stringify({
-      from:'Hardeep Anand, PE <hardeep@apas.ai>',to:[n.recipient_email],cc:n.cc_emails.length?n.cc_emails:undefined,bcc:n.bcc_emails.length?n.bcc_emails:undefined,
+      from:emailFrom(),to:[n.recipient_email],cc:n.cc_emails.length?n.cc_emails:undefined,bcc:n.bcc_emails.length?n.bcc_emails:undefined,
       subject:`Notice to Proceed | ${n.snapshot.project_name}`,html:noticeLetter(n),attachments:[{filename:`Notice-to-Proceed-${n.id.slice(0,8)}.pdf`,content:await pdfAttachment(n)}],
     })});
     const result=await response.json(); if(!response.ok) throw new Error(result.message || 'Email delivery failed');
