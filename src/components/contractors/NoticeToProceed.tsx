@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Circle, FileCheck2, Loader2, Send, Printer, PartyPopper, Sparkles } from 'lucide-react';
+import { AlertTriangle, Check, Circle, FileCheck2, Loader2, Send, Printer, PartyPopper, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { type ContractorCase } from '@/hooks/useContractorReadiness';
@@ -69,7 +69,7 @@ export function NoticeToProceed({ item }: { item: ContractorCase }) {
   const qc = useQueryClient(); const [open,setOpen] = useState(false); const [busy,setBusy] = useState(false); const [celebrate,setCelebrate] = useState(false);
   const [drafting,setDrafting] = useState(false);
   const [selectedProposalId,setSelectedProposalId] = useState('');
-  const [draft,setDraft] = useState<NoticeDraft>({agreement_reference:'',agreement_approved_on:'',agreement_confirmed:false,scope_of_work:'',start_date:'',completion_date:'',budget_cents:null,prerequisites_confirmed:false,instructions:'',recipient_email:item.organization?.email ?? '',cc_emails:[],bcc_emails:[]});
+  const [draft,setDraft] = useState<NoticeDraft>({agreement_reference:'',agreement_approved_on:'',agreement_confirmed:false,scope_of_work:'',start_date:'',completion_date:'',budget_cents:null,prerequisites_confirmed:false,instructions:'',recipient_email:item.organization?.email ?? '',cc_emails:[],bcc_emails:[],readiness_waived:false,readiness_waiver_reason:''});
   const query = useQuery({queryKey:['contractor-readiness','ntp',item.id],queryFn:async () => {
     const r=await supabase.from('contractor_notices_to_proceed' as any).select('*').eq('case_id',item.id).maybeSingle(); if(r.error) throw r.error; return r.data as unknown as NoticeRecord | null;
   }});
@@ -87,8 +87,10 @@ export function NoticeToProceed({ item }: { item: ContractorCase }) {
   const selectedProposal=useMemo(()=>proposals.data?.find(p=>p.id===selectedProposalId) ?? null,[proposals.data,selectedProposalId]);
   const selectedLines=useMemo(()=>selectedProposal ? relevantProposalLines(selectedProposal) : [],[selectedProposal]);
   const selectedBudget=useMemo(()=>selectedLines.reduce((total,line)=>total+lineAmount(line),0),[selectedLines]);
-  const checks=noticeChecks(draft,item.status==='qualified' && item.work_ready && item.contract_ready);
-  const ready=checks.every(c=>c.ready) && draft.prerequisites_confirmed && !!draft.recipient_email;
+  const readinessQualified = item.status === 'qualified' && item.work_ready && item.contract_ready;
+  const checks=noticeChecks(draft,readinessQualified,draft.readiness_waived === true);
+  const waiverReady = !draft.readiness_waived || Boolean(draft.readiness_waiver_reason?.trim() && draft.readiness_waiver_reason.trim().length >= 12);
+  const ready=checks.every(c=>c.ready) && draft.prerequisites_confirmed && !!draft.recipient_email && waiverReady;
   const patch=<K extends keyof NoticeDraft>(key:K,value:NoticeDraft[K])=>setDraft(current=>({...current,[key]:value}));
   const preview:NoticeRecord=issued ? record : {...draft,id:record?.id ?? 'DRAFT',case_id:item.id,status:'draft',snapshot:{company_name:item.organization?.name,project_name:item.project?.name,client_name:item.client?.name,branding:branding.data as unknown as Record<string,string>}};
   const deliverNotice=async(noticeId?: string | null)=>{
@@ -179,10 +181,21 @@ export function NoticeToProceed({ item }: { item: ContractorCase }) {
         <Field label="Authorized budget ($)"><Input type="number" min="0" step="0.01" value={draft.budget_cents===null?'':draft.budget_cents/100} onChange={e=>patch('budget_cents',e.target.value===''?null:Math.round(Number(e.target.value)*100))} /></Field>
         <Field label="Site access, permits, coordination, and conditions"><Textarea value={draft.instructions} onChange={e=>patch('instructions',e.target.value)} placeholder="Include any prerequisites or special instructions that apply." /></Field>
         <label className="flex items-start gap-2 text-sm"><Checkbox checked={draft.prerequisites_confirmed} onCheckedChange={v=>patch('prerequisites_confirmed',v===true)} />Site access, permits, and other applicable start conditions are confirmed.</label>
+        {!readinessQualified && <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-4 text-amber-950">
+          <div className="flex items-start gap-3">
+            <div className="rounded-xl bg-amber-600 p-2 text-white"><AlertTriangle className="h-4 w-4" /></div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold">Management waiver for this Notice to Proceed</p>
+              <p className="mt-1 text-sm text-amber-900">Use this only when you intentionally want to issue the NTP before the full contractor readiness package is complete. The waiver is audited and does not mark the contractor payment or qualification file complete.</p>
+            </div>
+          </div>
+          <label className="mt-3 flex items-start gap-2 text-sm font-semibold"><Checkbox checked={draft.readiness_waived === true} onCheckedChange={v=>patch('readiness_waived',v===true)} />Waive readiness checklist for this NTP only</label>
+          {draft.readiness_waived && <Field label="Waiver reason *"><Textarea value={draft.readiness_waiver_reason ?? ''} onChange={e=>patch('readiness_waiver_reason',e.target.value)} placeholder="Example: Owner directed immediate mobilization while W-9 and updated COI are being collected. PM accepts responsibility and will close missing items before payment." /></Field>}
+        </div>}
         <Field label="Send to"><Input type="email" value={draft.recipient_email} onChange={e=>patch('recipient_email',e.target.value)} /></Field>
         <div className="grid grid-cols-2 gap-3">{(['cc_emails','bcc_emails'] as const).map(key=><Field key={key} label={key==='cc_emails'?'CC':'BCC'}><Input defaultValue={draft[key].join(', ')} onBlur={e=>patch(key,e.target.value.split(/[,;]+/).map(s=>s.trim()).filter(Boolean))} placeholder="Emails, separated by commas" /></Field>)}</div>
         <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={()=>save(false)} disabled={busy}>Save draft</Button><Button onClick={()=>save(true)} disabled={busy || !ready}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Issue Notice to Proceed</Button></div>
-        {!ready && <p className="text-xs text-muted-foreground">Complete the five release checks and confirm applicable start conditions to issue. You can save a draft at any time.</p>}
+        {!ready && <p className="text-xs text-muted-foreground">Complete the release checks, or record a management waiver for readiness, then confirm applicable start conditions to issue. You can save a draft at any time.</p>}
       </div>}
       <div className={issued?'lg:col-span-2':''}><iframe title="Notice to Proceed letter preview" sandbox="" srcDoc={noticeLetter(preview)} className="h-[650px] w-full rounded-xl border bg-white" />{issued && <div className="mt-4 flex flex-wrap gap-2"><Button onClick={send} disabled={busy || record.delivery_status==='sent'}><Send className="mr-2 h-4 w-4" />{record.delivery_status==='sent'?'Email sent':'Email letter + PDF'}</Button><Button variant="outline" onClick={print}><Printer className="mr-2 h-4 w-4" />Print / Save PDF</Button></div>}</div></div>
     </DialogContent></Dialog>

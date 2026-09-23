@@ -91,6 +91,7 @@ export interface ContractorCase {
   requirements?: ContractorRequirement[];
   documents?: ContractorDocument[];
   profile?: Record<string, any> | null;
+  paymentProfile?: Record<string, any> | null;
   comments?: Array<{ id: string; requirement_id: string; author_type: string; author_name: string | null; body: string; created_at: string }>;
   activity?: Array<{ id: string; actor_type: string; actor_name: string | null; action: string; details: Record<string, unknown>; created_at: string }>;
   exceptions?: Array<{ id: string; requirement_id: string; reason: string; expires_at: string; revoked_at: string | null; created_at: string }>;
@@ -201,14 +202,15 @@ export function useContractorCase(caseId?: string | null) {
       if (error) throw error;
       if (!caseRow) return null;
       const row = caseRow as any;
-      const [requirements, documents, profile, activity, exceptions] = await Promise.all([
+      const [requirements, documents, profile, paymentProfile, activity, exceptions] = await Promise.all([
         supabase.from('contractor_case_requirements' as any).select('*').eq('case_id', caseId!).order('sort_order'),
         supabase.from('contractor_documents' as any).select('*').eq('case_id', caseId!).order('created_at', { ascending: false }),
         supabase.from('contractor_profiles' as any).select('*').eq('organization_id', row.organization_id).maybeSingle(),
+        supabase.from('contractor_payment_profiles' as any).select('*').eq('organization_id', row.organization_id).maybeSingle(),
         supabase.from('contractor_activity_log' as any).select('id,actor_type,actor_name,action,details,created_at').eq('case_id', caseId!).order('created_at', { ascending: false }).limit(100),
         supabase.from('contractor_exceptions' as any).select('id,requirement_id,reason,expires_at,revoked_at,created_at').eq('case_id', caseId!).is('revoked_at', null).order('expires_at'),
       ]);
-      for (const result of [requirements, documents, profile, activity, exceptions]) if (result.error) throw result.error;
+      for (const result of [requirements, documents, profile, paymentProfile, activity, exceptions]) if (result.error) throw result.error;
       const requirementIds = (requirements.data ?? []).map((requirement: any) => requirement.id);
       const comments = requirementIds.length
         ? await supabase.from('contractor_requirement_comments' as any)
@@ -219,7 +221,7 @@ export function useContractorCase(caseId?: string | null) {
       return {
         ...row,
         requirements: requirements.data ?? [], documents: documents.data ?? [],
-        profile: profile.data ?? null, comments: comments.data ?? [], activity: activity.data ?? [],
+        profile: profile.data ?? null, paymentProfile: paymentProfile.data ?? null, comments: comments.data ?? [], activity: activity.data ?? [],
         exceptions: exceptions.data ?? [],
       } as ContractorCase;
     },
@@ -500,7 +502,19 @@ export function useContractorReviewActions(caseId: string) {
     onSuccess: refresh,
   });
 
-  return { reviewRequirement, updateCase, addComment, configureRequirement, analyzeDocument, invite, createException };
+  const savePaymentProfile = useMutation({
+    mutationFn: async (profile: Record<string, unknown>) => {
+      const { data, error } = await (supabase.rpc as any)('save_contractor_payment_profile', {
+        p_case_id: caseId,
+        p_profile: profile,
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: refresh,
+  });
+
+  return { reviewRequirement, updateCase, addComment, configureRequirement, analyzeDocument, invite, createException, savePaymentProfile };
 }
 
 export async function getContractorDocumentUrl(path: string) {

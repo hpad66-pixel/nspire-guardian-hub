@@ -2,6 +2,7 @@ export interface NoticeDraft {
   agreement_reference: string; agreement_approved_on: string; agreement_confirmed: boolean; commitment_id?: string;
   scope_of_work: string; start_date: string; completion_date: string; budget_cents: number | null;
   prerequisites_confirmed: boolean; instructions: string; recipient_email: string; cc_emails: string[]; bcc_emails: string[];
+  readiness_waived?: boolean; readiness_waiver_reason?: string;
 }
 export interface NoticeRecord extends NoticeDraft {
   id: string; case_id: string; status: 'draft' | 'issued'; issued_at?: string; delivery_status?: string;
@@ -14,9 +15,9 @@ const brandValue = (b: Record<string, string | null>, key: string, fallback: str
   return value || fallback;
 };
 const safeColor = (value: string | null | undefined, fallback: string) => /^#[0-9a-f]{6}$/i.test(value ?? '') ? value! : fallback;
-export function noticeChecks(n: NoticeDraft, qualified: boolean) {
+export function noticeChecks(n: NoticeDraft, qualified: boolean, waived = false) {
   return [
-    { label: 'Onboarding', ready: qualified, detail: 'Selected requirements and existing evidence approved' },
+    { label: waived ? 'Readiness waived' : 'Onboarding', ready: qualified || waived, detail: waived ? 'Management waiver recorded for this notice only' : 'Selected requirements and existing evidence approved' },
     { label: 'Agreement', ready: n.agreement_confirmed && !!n.agreement_reference.trim() && !!n.agreement_approved_on && n.agreement_approved_on <= new Date().toISOString().slice(0,10), detail: 'Approved contract or proposal on file' },
     { label: 'Scope', ready: !!n.scope_of_work.trim(), detail: 'Work and deliverables clearly defined' },
     { label: 'Schedule', ready: !!n.start_date && !!n.completion_date && n.completion_date >= n.start_date, detail: 'Start and completion dates confirmed' },

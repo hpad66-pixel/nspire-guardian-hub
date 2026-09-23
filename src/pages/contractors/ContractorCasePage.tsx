@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   AlertCircle, ArrowLeft, Bot, Building2, Check, CheckCircle2, Clock3, Copy,
-  BellRing, ExternalLink, Eye, FileCheck2, FileUp, Loader2, LockKeyhole, Mail, MessageSquare,
+  BadgeDollarSign, BellRing, CreditCard, ExternalLink, Eye, FileCheck2, FileUp, Loader2, LockKeyhole, Mail, MessageSquare,
   RefreshCcw, Save, Send, Settings2, ShieldAlert, ShieldCheck, Sparkles, X,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -44,6 +44,7 @@ export default function ContractorCasePage() {
   const [notes, setNotes] = useState('');
   const [selection,setSelection] = useState<RequestSelection | null>(null);
   const [savingRequest,setSavingRequest] = useState(false);
+  const [paymentOpen,setPaymentOpen] = useState(false);
   const docs = useMemo(() => new Map((item?.documents ?? []).map((d) => [d.id, d])), [item?.documents]);
   const latestPortal = automation.data?.links[0];
   useEffect(() => { setNotes(item?.internal_notes ?? ''); }, [item?.id, item?.internal_notes]);
@@ -102,6 +103,22 @@ export default function ContractorCasePage() {
 
         <div className="space-y-4">
           <Card><CardHeader><CardTitle className="text-base">Company record</CardTitle></CardHeader><CardContent className="space-y-2 text-sm"><Row label="Relationship" value={companyType} /><Row label="Legal name" value={item.organization?.legal_name || item.organization?.name} /><Row label="Email" value={item.organization?.email} /><Row label="Phone" value={item.organization?.phone} /><Row label="Website" value={item.organization?.website} link /><Row label={companyType === 'Consultant' ? 'Disciplines' : 'Trades'} value={(item.profile?.trade_categories ?? []).join(', ') || 'Not provided'} /><Row label="Service area" value={(item.profile?.service_areas ?? []).join(', ') || 'Not provided'} /></CardContent></Card>
+          <Card className="border-[#d9c177]/60">
+            <CardHeader className="space-y-1">
+              <div className="flex items-center justify-between gap-3">
+                <CardTitle className="flex items-center gap-2 text-base"><BadgeDollarSign className="h-4 w-4 text-[#9b7b24]" />Tax and payment profile</CardTitle>
+                <Button size="sm" variant="outline" onClick={() => setPaymentOpen(true)}>{item.paymentProfile ? 'Edit' : 'Set up'}</Button>
+              </div>
+              <CardDescription>For W-9 tracking, tax reporting, remittance, and future Wells Fargo payment connection.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <Row label="W-9 status" value={String(item.paymentProfile?.w9_status ?? 'Not collected').replace(/_/g, ' ')} />
+              <Row label="Tax ID" value={item.paymentProfile?.tax_id_last4 ? `Ending ${item.paymentProfile.tax_id_last4}` : 'Not provided'} />
+              <Row label="Payment method" value={String(item.paymentProfile?.payment_method ?? 'Manual check').replace(/_/g, ' ')} />
+              <Row label="Bank" value={item.paymentProfile?.bank_name ? `${item.paymentProfile.bank_name}${item.paymentProfile.bank_account_last4 ? ` · acct ${item.paymentProfile.bank_account_last4}` : ''}` : 'Not connected'} />
+              <p className="rounded-lg bg-[#fbfaf4] p-2 text-[11px] leading-5 text-[#5f5639]">Full account numbers are not stored here. Use last four digits now; connect a provider token later for Wells Fargo or ACH workflows.</p>
+            </CardContent>
+          </Card>
           {(item.certificate_holder_name || item.additional_insured_name || item.insurance_instructions) && <Card className="border-blue-200"><CardHeader><CardTitle className="text-base">Insurance instructions</CardTitle><CardDescription>Shown to the company in its secure portal.</CardDescription></CardHeader><CardContent className="space-y-2 text-sm"><Row label="Certificate holder" value={item.certificate_holder_name} /><Row label="Holder address" value={item.certificate_holder_address} /><Row label="Additional insured" value={item.additional_insured_name} /><Row label="Special instructions" value={item.insurance_instructions} /></CardContent></Card>}
           <Card><CardHeader><CardTitle className="text-base">Portal automation</CardTitle><CardDescription>Invitation delivery, company activity, and automated follow-up.</CardDescription></CardHeader><CardContent className="space-y-3">{latestPortal ? <><div className="flex items-center justify-between gap-3"><div className="flex items-center gap-2"><Mail className="h-4 w-4 text-emerald-700" /><span className="text-sm font-semibold">{latestPortal.delivery_status === 'sent' ? 'Email delivered' : latestPortal.delivery_status === 'failed' ? 'Email failed' : 'Secure link ready'}</span></div><span className={`rounded-full px-2 py-1 text-[10px] font-bold uppercase ${latestPortal.delivery_status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>{latestPortal.delivery_status.replace('_', ' ')}</span></div><div className="grid grid-cols-2 gap-2"><PortalFact icon={Eye} label="Portal activity" value={latestPortal.last_used_at ? `Opened ${formatDistanceToNow(new Date(latestPortal.last_used_at), { addSuffix: true })}` : 'Not opened yet'} /><PortalFact icon={BellRing} label="Reminders sent" value={String(automation.data?.reminders.filter((event) => event.status === 'sent').length ?? 0)} /></div><p className="text-[11px] text-muted-foreground">Sent to {latestPortal.email} · link expires {format(new Date(latestPortal.expires_at), 'MMM d, yyyy')}</p></> : <div className="rounded-lg border border-dashed p-4 text-center"><Mail className="mx-auto h-5 w-5 text-muted-foreground" /><p className="mt-2 text-sm font-semibold">No secure portal issued</p><p className="mt-1 text-xs text-muted-foreground">Use “Send secure link” to start automated onboarding.</p></div>}</CardContent></Card>
           <Card><CardHeader><CardTitle className="text-base">Internal notes</CardTitle><CardDescription>Never shown in the external portal.</CardDescription></CardHeader><CardContent><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Risk, capacity, reference calls, conditions…" rows={5} /><Button className="mt-3 w-full" variant="outline" disabled={actions.updateCase.isPending} onClick={async () => { try { await actions.updateCase.mutateAsync({ internal_notes: notes }); toast.success('Notes saved'); } catch (e) { toast.error(e instanceof Error ? e.message : 'Save failed'); } }}>Save notes</Button></CardContent></Card>
@@ -112,8 +129,73 @@ export default function ContractorCasePage() {
       <Dialog open={inviteOpen} onOpenChange={(open) => { setInviteOpen(open); if (!open) {setInviteResult(null);setSelection(null);} }}>
         <DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Send qualification request</DialogTitle><DialogDescription>The recipient gets a branded, mobile-ready checklist with no password. The secure link expires in 30 days.</DialogDescription></DialogHeader>{!inviteResult && <RequestChecklist items={item.requirements ?? []} value={selection ?? {codes:(item.requirements ?? []).filter(r=>r.portal_requested!==false).map(r=>r.requirement_code),companyProfile:item.request_company_profile!==false,portfolio:item.request_portfolio!==false}} onChange={setSelection} />}{inviteResult ? <div className="space-y-3"><div className={`rounded-lg p-3 text-sm ${inviteResult.emailSent ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-900'}`}>{inviteResult.emailSent ? 'Invitation email sent successfully.' : 'Email is not configured, but the secure link is ready to copy.'}</div><div className="flex gap-2"><Input readOnly value={inviteResult.link} /><Button size="icon" onClick={() => { navigator.clipboard.writeText(inviteResult.link); toast.success('Link copied'); }}><Copy className="h-4 w-4" /></Button></div></div> : <div className="space-y-3"><div><Label>Recipient type</Label><Select value={inviteRole} onValueChange={(value: 'contractor' | 'broker') => setInviteRole(value)}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="contractor">{companyType} representative</SelectItem><SelectItem value="broker">Insurance broker</SelectItem></SelectContent></Select></div><div><Label>Contact name</Label><Input className="mt-1" value={inviteName} onChange={(e) => setInviteName(e.target.value)} /></div><div><Label>Email *</Label><Input className="mt-1" type="email" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} /></div></div>}<DialogFooter>{!inviteResult && <Button onClick={sendInvite} disabled={actions.invite.isPending || savingRequest}>{actions.invite.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Send request</Button>}</DialogFooter></DialogContent>
       </Dialog>
+      <PaymentProfileDialog open={paymentOpen} onOpenChange={setPaymentOpen} item={item} action={actions.savePaymentProfile} />
     </div>
   );
+}
+
+function PaymentProfileDialog({ open, onOpenChange, item, action }: { open: boolean; onOpenChange: (open: boolean) => void; item: any; action: ReturnType<typeof useContractorReviewActions>['savePaymentProfile'] }) {
+  const profile = item.paymentProfile ?? {};
+  const [form, setForm] = useState({
+    legal_name: '', dba_name: '', tax_classification: '', tax_id_last4: '', w9_status: 'not_collected',
+    remittance_email: '', remittance_phone: '', remittance_address: '', bank_name: '', bank_account_type: '',
+    bank_routing_last4: '', bank_account_last4: '', payment_method: 'manual_check', provider_name: '', provider_connection_id: '', notes: '',
+  });
+  useEffect(() => {
+    if (!open) return;
+    setForm({
+      legal_name: profile.legal_name ?? item.organization?.legal_name ?? item.organization?.name ?? '',
+      dba_name: profile.dba_name ?? item.profile?.dba_name ?? '',
+      tax_classification: profile.tax_classification ?? '',
+      tax_id_last4: profile.tax_id_last4 ?? '',
+      w9_status: profile.w9_status ?? 'not_collected',
+      remittance_email: profile.remittance_email ?? item.organization?.email ?? '',
+      remittance_phone: profile.remittance_phone ?? item.organization?.phone ?? '',
+      remittance_address: profile.remittance_address ?? '',
+      bank_name: profile.bank_name ?? '',
+      bank_account_type: profile.bank_account_type ?? '',
+      bank_routing_last4: profile.bank_routing_last4 ?? '',
+      bank_account_last4: profile.bank_account_last4 ?? '',
+      payment_method: profile.payment_method ?? 'manual_check',
+      provider_name: profile.provider_name ?? '',
+      provider_connection_id: profile.provider_connection_id ?? '',
+      notes: profile.notes ?? '',
+    });
+  }, [open, item.organization?.email, item.organization?.legal_name, item.organization?.name, item.organization?.phone, item.profile?.dba_name, profile]);
+  const patch = (key: keyof typeof form, value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const save = async () => {
+    try {
+      await action.mutateAsync(form);
+      toast.success('Contractor tax and payment profile saved');
+      onOpenChange(false);
+    } catch (error) { toast.error(error instanceof Error ? error.message : 'Could not save payment profile'); }
+  };
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>Tax and payment profile</DialogTitle><DialogDescription>Capture the contractor information APAS needs for W-9 tracking, remittance, tax reporting, and future bank-provider connection. Store only masked bank values here.</DialogDescription></DialogHeader>
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div><Label>Legal payee name</Label><Input className="mt-1" value={form.legal_name} onChange={(e) => patch('legal_name', e.target.value)} /></div>
+      <div><Label>DBA / trade name</Label><Input className="mt-1" value={form.dba_name} onChange={(e) => patch('dba_name', e.target.value)} /></div>
+      <div><Label>Tax classification</Label><Select value={form.tax_classification || 'blank'} onValueChange={(value) => patch('tax_classification', value === 'blank' ? '' : value)}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="blank">Not selected</SelectItem><SelectItem value="individual">Individual / sole proprietor</SelectItem><SelectItem value="c_corp">C corporation</SelectItem><SelectItem value="s_corp">S corporation</SelectItem><SelectItem value="partnership">Partnership</SelectItem><SelectItem value="llc">LLC</SelectItem><SelectItem value="trust_estate">Trust / estate</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select></div>
+      <div><Label>Tax ID last 4 only</Label><Input className="mt-1" inputMode="numeric" maxLength={4} value={form.tax_id_last4} onChange={(e) => patch('tax_id_last4', e.target.value.replace(/\D/g, '').slice(0, 4))} /></div>
+      <div><Label>W-9 status</Label><Select value={form.w9_status} onValueChange={(value) => patch('w9_status', value)}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="not_collected">Not collected</SelectItem><SelectItem value="requested">Requested</SelectItem><SelectItem value="received">Received</SelectItem><SelectItem value="verified">Verified</SelectItem><SelectItem value="needs_update">Needs update</SelectItem></SelectContent></Select></div>
+      <div><Label>Payment method</Label><Select value={form.payment_method} onValueChange={(value) => patch('payment_method', value)}><SelectTrigger className="mt-1"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="manual_check">Manual check</SelectItem><SelectItem value="ach_pending">ACH pending</SelectItem><SelectItem value="ach_verified">ACH verified</SelectItem><SelectItem value="wire_pending">Wire pending</SelectItem><SelectItem value="wire_verified">Wire verified</SelectItem><SelectItem value="external_provider">External provider</SelectItem></SelectContent></Select></div>
+      <div><Label>Remittance email</Label><Input className="mt-1" type="email" value={form.remittance_email} onChange={(e) => patch('remittance_email', e.target.value)} /></div>
+      <div><Label>Remittance phone</Label><Input className="mt-1" value={form.remittance_phone} onChange={(e) => patch('remittance_phone', e.target.value)} /></div>
+      <div className="sm:col-span-2"><Label>Remittance address</Label><Textarea className="mt-1" value={form.remittance_address} onChange={(e) => patch('remittance_address', e.target.value)} /></div>
+      <div className="sm:col-span-2 rounded-2xl border bg-[#fbfaf4] p-4">
+        <div className="flex items-start gap-3"><CreditCard className="mt-0.5 h-5 w-5 text-[#9b7b24]" /><div><p className="font-semibold">Bank information, masked only</p><p className="mt-1 text-sm text-muted-foreground">For now, enter the bank name and last four digits only. Full Wells Fargo or ACH wiring should be handled later by a tokenized banking provider, not by storing full account numbers here.</p></div></div>
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div><Label>Bank name</Label><Input className="mt-1 bg-white" value={form.bank_name} onChange={(e) => patch('bank_name', e.target.value)} /></div>
+          <div><Label>Account type</Label><Select value={form.bank_account_type || 'blank'} onValueChange={(value) => patch('bank_account_type', value === 'blank' ? '' : value)}><SelectTrigger className="mt-1 bg-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="blank">Not selected</SelectItem><SelectItem value="checking">Checking</SelectItem><SelectItem value="savings">Savings</SelectItem><SelectItem value="other">Other</SelectItem></SelectContent></Select></div>
+          <div><Label>Routing last 4</Label><Input className="mt-1 bg-white" inputMode="numeric" maxLength={4} value={form.bank_routing_last4} onChange={(e) => patch('bank_routing_last4', e.target.value.replace(/\D/g, '').slice(0, 4))} /></div>
+          <div><Label>Account last 4</Label><Input className="mt-1 bg-white" inputMode="numeric" maxLength={4} value={form.bank_account_last4} onChange={(e) => patch('bank_account_last4', e.target.value.replace(/\D/g, '').slice(0, 4))} /></div>
+        </div>
+      </div>
+      <div><Label>Future provider</Label><Input className="mt-1" value={form.provider_name} onChange={(e) => patch('provider_name', e.target.value)} placeholder="Example: Wells Fargo, Plaid, Stripe Treasury" /></div>
+      <div><Label>Provider connection ID</Label><Input className="mt-1" value={form.provider_connection_id} onChange={(e) => patch('provider_connection_id', e.target.value)} placeholder="Token or reference later" /></div>
+      <div className="sm:col-span-2"><Label>Internal notes</Label><Textarea className="mt-1" value={form.notes} onChange={(e) => patch('notes', e.target.value)} placeholder="Payment instructions, W-9 follow-up, tax notes, or accounting controls." /></div>
+    </div>
+    <DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button><Button onClick={save} disabled={action.isPending}>{action.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Save profile</Button></DialogFooter>
+  </DialogContent></Dialog>;
 }
 
 function RequirementReview({ requirement, document, comments, activeException, caseItem, onRefresh, actions }: {
