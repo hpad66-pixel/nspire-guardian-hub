@@ -51,12 +51,12 @@ describe('usePWAInstall', () => {
     expect(result.current.isInstallable).toBe(true);
   });
 
-  it('persists dismiss so the banner stays hidden', () => {
+  it('persists dismiss for a cooldown window so the banner stays hidden for now', () => {
     const { result } = renderHook(() => usePWAInstall());
     act(() => {
       result.current.dismiss();
     });
-    expect(localStorage.getItem('apas-os-install-dismissed')).toBe('true');
+    expect(Number(localStorage.getItem('apas-os-install-dismissed-until'))).toBeGreaterThan(Date.now());
     expect(result.current.showBanner).toBe(false);
   });
 });

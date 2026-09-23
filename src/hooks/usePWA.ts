@@ -5,6 +5,14 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
+const INSTALL_DISMISSED_UNTIL_KEY = 'apas-os-install-dismissed-until';
+const INSTALL_DISMISS_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
+function installPromptDismissedNow() {
+  const dismissedUntil = Number(localStorage.getItem(INSTALL_DISMISSED_UNTIL_KEY) || '0');
+  return Number.isFinite(dismissedUntil) && dismissedUntil > Date.now();
+}
+
 export function usePWAInstall() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
@@ -33,6 +41,9 @@ export function usePWAInstall() {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
+      if (!standalone && !installPromptDismissedNow()) {
+        setShowBanner(true);
+      }
     };
 
     const onInstalled = () => {
@@ -45,11 +56,11 @@ export function usePWAInstall() {
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', onInstalled);
 
-    // Show banner after 12s if not installed and not previously dismissed
-    const dismissed = localStorage.getItem('apas-os-install-dismissed');
+    // Keep the install offer visible in normal use, but respect a temporary
+    // dismissal so it feels helpful instead of noisy.
     let timer: ReturnType<typeof setTimeout> | undefined;
-    if (!standalone && !dismissed) {
-      timer = setTimeout(() => setShowBanner(true), 12000);
+    if (!standalone && !installPromptDismissedNow()) {
+      timer = setTimeout(() => setShowBanner(true), 2500);
     }
 
     return () => {
@@ -71,14 +82,16 @@ export function usePWAInstall() {
       return;
     }
     // iOS / browsers without beforeinstallprompt — send them to the guide.
-    if (isIOS) {
-      window.location.assign('/install');
-    }
+    window.location.assign('/install');
   };
 
   const dismiss = () => {
     setShowBanner(false);
-    localStorage.setItem('apas-os-install-dismissed', 'true');
+    localStorage.setItem(
+      INSTALL_DISMISSED_UNTIL_KEY,
+      String(Date.now() + INSTALL_DISMISS_COOLDOWN_MS),
+    );
+    localStorage.removeItem('apas-os-install-dismissed');
   };
 
   return { isInstallable, isIOS, isInstalled, showBanner, install, dismiss };
