@@ -84,18 +84,18 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
       end={end}
       className={cn(
         'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-semibold leading-5',
-        'text-sidebar-foreground/70 transition-all duration-150',
+        'text-sidebar-foreground/92 transition-all duration-150',
         'hover:bg-sidebar-nav-hover-bg hover:text-sidebar-foreground',
         collapsed && 'justify-center px-0 py-2.5',
       )}
       activeClassName="!bg-sidebar-nav-active-bg !text-[var(--ow-ink)] !font-semibold shadow-sm"
     >
-      <Icon className={cn('h-[18px] w-[18px] shrink-0 stroke-[1.6]', collapsed && 'h-5 w-5')} />
+      <Icon className={cn('h-[18px] w-[18px] shrink-0 stroke-[1.85] text-sidebar-foreground/82 group-hover:text-sidebar-foreground', collapsed && 'h-5 w-5')} />
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{label}</span>
           {hasBadge && (
-            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/15 px-1.5 text-[11px] font-semibold tabular-nums text-accent">
+            <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-[rgba(237,206,121,0.2)] px-1.5 text-[11px] font-bold tabular-nums text-[#f1d889]">
               {(badge ?? 0) > 99 ? '99+' : badge}
             </span>
           )}
@@ -122,7 +122,7 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
 function SectionLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
   if (collapsed) return <div className="mx-auto my-3 h-px w-5 bg-sidebar-border" />;
   return (
-    <p className="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-label/90">
+    <p className="px-3 pt-5 pb-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-sidebar-label">
       {label}
     </p>
   );
@@ -404,7 +404,7 @@ export function AppSidebar() {
               </button>
               <button
                 onClick={signOut}
-                className="shrink-0 rounded-md p-1.5 text-sidebar-foreground/30 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                className="shrink-0 rounded-md p-1.5 text-sidebar-foreground/62 transition-colors hover:bg-destructive/10 hover:text-destructive"
                 title="Log out"
               >
                 <LogOut className="h-4 w-4" />

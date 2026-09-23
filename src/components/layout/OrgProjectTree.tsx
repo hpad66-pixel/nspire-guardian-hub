@@ -46,8 +46,8 @@ export function OrgProjectTree({ collapsed }: { collapsed: boolean }) {
           <div key={org.id}>
             <div
               className={cn(
-                'group flex w-full items-center rounded-lg pr-2 text-[14px] font-medium leading-5',
-                'text-sidebar-foreground/60 transition-all duration-150',
+                'group flex w-full items-center rounded-lg pr-2 text-[14px] font-semibold leading-5',
+                'text-sidebar-foreground/88 transition-all duration-150',
                 'hover:bg-sidebar-nav-hover-bg hover:text-sidebar-foreground',
               )}
             >
@@ -55,7 +55,7 @@ export function OrgProjectTree({ collapsed }: { collapsed: boolean }) {
                 type="button"
                 aria-label={isOpen ? 'Collapse projects' : 'Expand projects'}
                 onClick={() => setExpanded((s) => ({ ...s, [org.id]: !isOpen }))}
-                className="flex shrink-0 items-center py-[7px] pl-2 pr-1 text-sidebar-foreground/50 hover:text-sidebar-foreground"
+                className="flex shrink-0 items-center py-[7px] pl-2 pr-1 text-sidebar-foreground/72 hover:text-sidebar-foreground"
               >
                 <ChevronRight className={cn('h-3.5 w-3.5 transition-transform', isOpen && 'rotate-90')} />
               </button>
@@ -64,10 +64,10 @@ export function OrgProjectTree({ collapsed }: { collapsed: boolean }) {
                 onClick={() => navigate(`/organizations/${org.id}`)}
                 className="flex min-w-0 flex-1 items-center gap-2 py-[7px] text-left"
               >
-                <Briefcase className="h-[15px] w-[15px] shrink-0 stroke-[1.6]" />
+                <Briefcase className="h-[15px] w-[15px] shrink-0 stroke-[1.85] text-sidebar-foreground/78 group-hover:text-sidebar-foreground" />
                 <span className="flex-1 truncate">{org.name}</span>
               </button>
-              <span className="text-[11px] font-semibold tabular-nums text-sidebar-foreground/40">
+              <span className="text-[11px] font-bold tabular-nums text-sidebar-foreground/70">
                 {orgProjects.length}
               </span>
             </div>
@@ -79,13 +79,13 @@ export function OrgProjectTree({ collapsed }: { collapsed: boolean }) {
                     key={p.id}
                     to={`/projects/${p.id}`}
                     className={cn(
-                      'group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[14px] leading-5',
-                      'text-sidebar-foreground/55 transition-all duration-150',
+                      'group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[14px] font-medium leading-5',
+                      'text-sidebar-foreground/82 transition-all duration-150',
                       'hover:bg-sidebar-nav-hover-bg hover:text-sidebar-foreground',
                     )}
                     activeClassName="!bg-sidebar-nav-active-bg !text-sidebar-foreground !font-semibold"
                   >
-                    <FolderKanban className="h-[14px] w-[14px] shrink-0 stroke-[1.6]" />
+                    <FolderKanban className="h-[14px] w-[14px] shrink-0 stroke-[1.8] text-sidebar-foreground/74 group-hover:text-sidebar-foreground" />
                     <span className="flex-1 truncate">{p.name}</span>
                   </NavLink>
                 ))}

@@ -94,19 +94,19 @@
 
     /* Sidebar — Utility Signal graphite rail */
     --sidebar-background: 223 19% 21%;
-    --sidebar-foreground: 42 31% 94%;
+    --sidebar-foreground: 42 42% 97%;
     --sidebar-primary: 42 31% 94%;
     --sidebar-primary-foreground: 223 19% 21%;
     --sidebar-accent: 39 45% 58%;
     --sidebar-accent-foreground: 225 14% 15%;
     --sidebar-border: 220 13% 34%;
     --sidebar-ring: 39 45% 58%;
-    --sidebar-muted: 41 17% 77%;
-    --sidebar-label: 41 17% 77%;
+    --sidebar-muted: 42 30% 88%;
+    --sidebar-label: 42 34% 90%;
 
     --sidebar-nav-active-bg: 40 24% 89%;
-    --sidebar-nav-hover-bg: 222 17% 27%;
-    --sidebar-zone-label: 41 17% 77%;
+    --sidebar-nav-hover-bg: 222 18% 30%;
+    --sidebar-zone-label: 42 34% 90%;
   }
 
   /* .dark reserved for future dark-mode toggle */
