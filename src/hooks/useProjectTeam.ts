@@ -17,6 +17,7 @@ export interface ProjectTeamMember {
     email: string | null;
     phone: string | null;
     avatar_url: string | null;
+    status: string | null;
   } | null;
 }
 
@@ -54,15 +55,17 @@ export function useProjectTeamMembers(projectId: string | null) {
       const userIds = members.map(m => m.user_id);
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, full_name, email, phone, avatar_url')
+        .select('user_id, full_name, email, phone, avatar_url, status')
         .in('user_id', userIds);
 
       const profileMap = new Map((profiles ?? []).map(p => [p.user_id, p]));
 
-      return members.map(m => ({
-        ...m,
-        profile: profileMap.get(m.user_id) ?? null,
-      })) as ProjectTeamMember[];
+      return members
+        .map(m => ({
+          ...m,
+          profile: profileMap.get(m.user_id) ?? null,
+        }))
+        .filter((member) => member.profile?.status !== 'deactivated') as ProjectTeamMember[];
     },
     enabled: !!projectId,
   });

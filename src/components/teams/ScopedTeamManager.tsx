@@ -42,6 +42,10 @@ function initials(name: string | null, email: string | null) {
   return email?.slice(0, 2).toUpperCase() ?? 'U';
 }
 
+function displayName(member: { name: string | null; email: string | null }) {
+  return member.name?.trim() || 'Full name not set';
+}
+
 interface ScopedTeamManagerProps {
   scopeLabel: string;
   members: ScopedTeamMember[];
@@ -133,14 +137,14 @@ export function ScopedTeamManager({
                 <Avatar className="h-10 w-10 shrink-0"><AvatarImage src={member.avatarUrl ?? undefined} /><AvatarFallback>{initials(member.name, member.email)}</AvatarFallback></Avatar>
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="truncate text-sm font-semibold">{member.name || member.email || 'Unnamed user'}</p>
+                    <p className="truncate text-sm font-semibold">{displayName(member)}</p>
                     {inheritedLabels.get(member.userId) && <Badge variant="secondary" className="text-[10px]">{inheritedLabels.get(member.userId)}</Badge>}
                   </div>
-                  <p className="truncate text-xs text-muted-foreground">{member.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">{member.email || 'No email on profile'}</p>
                 </div>
               </div>
               <div className="flex items-center gap-2 pl-[52px] sm:pl-0">
-                {member.email && <Button asChild variant="ghost" size="icon" className="h-8 w-8"><a href={`mailto:${member.email}`} aria-label={`Email ${member.name || member.email}`}><Mail className="h-4 w-4" /></a></Button>}
+                {member.email && <Button asChild variant="ghost" size="icon" className="h-8 w-8"><a href={`mailto:${member.email}`} aria-label={`Email ${displayName(member)}`}><Mail className="h-4 w-4" /></a></Button>}
                 {inheritedLabels.has(member.userId) ? (
                   <Badge variant="outline" className="h-8 px-3 text-xs"><ShieldCheck className="mr-1.5 h-3.5 w-3.5" />{roleLabel(member.role)}</Badge>
                 ) : (
@@ -151,9 +155,9 @@ export function ScopedTeamManager({
                 )}
                 {canManage && !inheritedLabels.has(member.userId) && (
                   <AlertDialog>
-                    <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label={`Remove ${member.name || member.email}`}><UserMinus className="h-4 w-4" /></Button></AlertDialogTrigger>
+                    <AlertDialogTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" aria-label={`Remove ${displayName(member)}`}><UserMinus className="h-4 w-4" /></Button></AlertDialogTrigger>
                     <AlertDialogContent>
-                      <AlertDialogHeader><AlertDialogTitle>Remove from {scopeLabel.toLowerCase()}?</AlertDialogTitle><AlertDialogDescription>{member.name || member.email} will lose this assignment. Their account and other client/project assignments remain intact.</AlertDialogDescription></AlertDialogHeader>
+                      <AlertDialogHeader><AlertDialogTitle>Remove from {scopeLabel.toLowerCase()}?</AlertDialogTitle><AlertDialogDescription>{displayName(member)} will lose this assignment. Their account and other client/project assignments remain intact.</AlertDialogDescription></AlertDialogHeader>
                       <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={() => void onRemove(member)}>Remove assignment</AlertDialogAction></AlertDialogFooter>
                     </AlertDialogContent>
                   </AlertDialog>

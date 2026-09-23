@@ -48,6 +48,7 @@ export interface ClientTeamMember {
     email: string | null;
     phone: string | null;
     avatar_url: string | null;
+    status: string | null;
   } | null;
 }
 
@@ -152,14 +153,16 @@ export function useClientMembers(clientId: string | undefined) {
       if (!memberships?.length) return [] as ClientTeamMember[];
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
-        .select('user_id, full_name, email, phone, avatar_url')
+        .select('user_id, full_name, email, phone, avatar_url, status')
         .in('user_id', memberships.map((member) => member.user_id));
       if (profileError) throw profileError;
       const profileMap = new Map((profiles ?? []).map((profile) => [profile.user_id, profile]));
-      return memberships.map((membership) => ({
-        ...membership,
-        profile: profileMap.get(membership.user_id) ?? null,
-      })) as ClientTeamMember[];
+      return memberships
+        .map((membership) => ({
+          ...membership,
+          profile: profileMap.get(membership.user_id) ?? null,
+        }))
+        .filter((member) => member.profile?.status !== 'deactivated') as ClientTeamMember[];
     },
     enabled: !!clientId,
   });

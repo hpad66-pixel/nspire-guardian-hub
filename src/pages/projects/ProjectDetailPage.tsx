@@ -1167,7 +1167,7 @@ export default function ProjectDetailPage() {
                         {teamMembers.slice(0, 8).map(m => (
                           <div key={m.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border text-xs">
                             <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{(m.profile?.full_name || m.profile?.email || '?').charAt(0).toUpperCase()}</div>
-                            <span className="font-medium truncate max-w-[80px]">{m.profile?.full_name || m.profile?.email || 'Unknown'}</span>
+                            <span className="font-medium truncate max-w-[110px]">{m.profile?.full_name || 'Full name not set'}</span>
                           </div>
                         ))}
                         {teamMembers.length > 8 && (<div className="flex items-center px-2 py-1 rounded-lg bg-muted/50 border text-xs text-muted-foreground">+{teamMembers.length - 8} more</div>)}
@@ -1556,7 +1556,7 @@ export default function ProjectDetailPage() {
                   </div>
                   {teamMembers.length > 0 ? (
                     <div className="flex flex-wrap gap-2 pt-1">
-                      {teamMembers.slice(0, 8).map(m => (<div key={m.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border text-xs"><div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{(m.profile?.full_name || m.profile?.email || '?').charAt(0).toUpperCase()}</div><span className="font-medium truncate max-w-[80px]">{m.profile?.full_name || m.profile?.email || 'Unknown'}</span></div>))}
+                      {teamMembers.slice(0, 8).map(m => (<div key={m.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-muted/50 border text-xs"><div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">{(m.profile?.full_name || m.profile?.email || '?').charAt(0).toUpperCase()}</div><span className="font-medium truncate max-w-[110px]">{m.profile?.full_name || 'Full name not set'}</span></div>))}
                       {teamMembers.length > 8 && (<div className="flex items-center px-2 py-1 rounded-lg bg-muted/50 border text-xs text-muted-foreground">+{teamMembers.length - 8} more</div>)}
                     </div>
                   ) : (<p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — open People & Team to add them formally.` : 'No team members yet — open People & Team to add internal users or CRM contacts.'}</p>)}

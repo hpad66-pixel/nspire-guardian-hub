@@ -41,7 +41,7 @@ export function AgentPilotAdminCard({ projectId }: { projectId: string }) {
               return (
                 <li key={member.user_id} className="flex flex-wrap items-center justify-between gap-3 py-3">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{member.profile?.full_name || member.profile?.email || "Project team member"}</p>
+                    <p className="truncate text-sm font-medium">{member.profile?.full_name || "Full name not set"}</p>
                     {member.profile?.email && member.profile.full_name && <p className="truncate text-xs text-muted-foreground">{member.profile.email}</p>}
                   </div>
                   <div className="flex items-center gap-2">
