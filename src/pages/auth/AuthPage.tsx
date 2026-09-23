@@ -12,12 +12,12 @@ const emailSchema = z.string().email('Please enter a valid email address');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
 
 const features = [
-  { icon: Landmark,   color: '#E2BD76', label: 'Money control',       desc: 'Proposals, pay apps, invoices, subcontractor caps, approvals, and reports' },
-  { icon: Siren,      color: '#F18C6A', label: 'Risk visibility',      desc: 'Open issues, deadlines, escalation, responsibility, and proof in one record' },
-  { icon: FileCheck2, color: '#7EC8BE', label: 'Decision history',     desc: 'Permits, signoffs, correspondence, client comments, and closeout trail' },
-  { icon: Headphones, color: '#8CA9FF', label: 'Voice to workflow',    desc: 'Calls become transcripts, tickets, assignments, and accountable action' },
-  { icon: FileSearch, color: '#F4D58D', label: 'Defensible evidence',  desc: 'Photos, reports, source files, letter packages, and audit history' },
-  { icon: ShieldCheck, color: '#9AE6B4', label: 'Private access',      desc: 'Workspace identity, client portals, tenant boundaries, and role based views' },
+  { icon: Landmark, color: '#c7a35f', label: 'Money control', desc: 'Proposals, pay apps, invoices, subcontractor caps, approvals, and reports' },
+  { icon: Siren, color: '#d07a63', label: 'Risk visibility', desc: 'Open issues, deadlines, escalation, responsibility, and proof in one record' },
+  { icon: FileCheck2, color: '#7aa79c', label: 'Decision history', desc: 'Permits, signoffs, correspondence, client comments, and closeout trail' },
+  { icon: Headphones, color: '#90a0bf', label: 'Voice to workflow', desc: 'Calls become transcripts, tickets, assignments, and accountable action' },
+  { icon: FileSearch, color: '#d8bf82', label: 'Defensible evidence', desc: 'Photos, reports, source files, letter packages, and audit history' },
+  { icon: ShieldCheck, color: '#8fb09c', label: 'Private access', desc: 'Workspace identity, client portals, tenant boundaries, and role based views' },
 ];
 
 const signalRows = [
@@ -135,19 +135,19 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex bg-[#f3f0e8]">
+    <div className="ow-app-surface min-h-screen flex bg-[var(--ow-ivory)]">
 
       {/* ── LEFT: Proj OS brand panel ── */}
-      <div className="hidden lg:flex lg:w-[58%] relative overflow-hidden flex-col justify-between p-12 xl:p-16 bg-[#061f1a]">
+      <div className="hidden lg:flex lg:w-[58%] relative overflow-hidden flex-col justify-between p-12 xl:p-16 bg-[var(--ow-graphite)]">
         <div
           className="absolute inset-0 pointer-events-none opacity-25"
           style={{
             backgroundImage:
-              'linear-gradient(rgba(226,189,118,.16) 1px, transparent 1px), linear-gradient(90deg, rgba(226,189,118,.12) 1px, transparent 1px)',
+              'linear-gradient(rgba(199,163,95,.14) 1px, transparent 1px), linear-gradient(90deg, rgba(199,163,95,.1) 1px, transparent 1px)',
             backgroundSize: '54px 54px',
           }}
         />
-        <div className="absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(90deg,rgba(6,31,26,0),rgba(15,96,121,.18))] pointer-events-none" />
+        <div className="absolute inset-y-0 right-0 w-1/2 bg-[linear-gradient(90deg,rgba(41,49,64,0),rgba(36,63,104,.2))] pointer-events-none" />
 
         <motion.div
           initial={{ opacity: 0, y: -18 }}
@@ -155,27 +155,25 @@ export default function AuthPage() {
           transition={{ duration: 0.6 }}
           className="relative z-10"
         >
-          <div className="mb-8 inline-flex items-center gap-3 text-[#f8f4e8]">
-            <div className="grid h-12 w-12 place-items-center border border-[#e2bd76]/45 bg-[#e2bd76]/10 text-[11px] font-black tracking-[0.14em] text-[#e2bd76]">
-              POS
-            </div>
+          <div className="mb-8 inline-flex items-center gap-3 text-[var(--ow-ivory-card)]">
+            <div className="ow-signal-mark flex h-12 w-12 items-center justify-center border border-[rgba(199,163,95,0.25)] bg-[var(--ow-graphite)]" aria-hidden="true" />
             <div>
               <div className="font-display text-4xl font-medium leading-none tracking-normal">Proj OS</div>
-              <div className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-[#c8d8d1]">
-                Project intelligence workspace
+              <div className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-[var(--ow-taupe-2)]">
+                By OneWater.ai
               </div>
             </div>
           </div>
 
-          <p className="mb-5 inline-flex items-center gap-2 border border-[#e2bd76]/35 bg-[#e2bd76]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[#e2bd76]">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#77e0b3]" />
+          <p className="mb-5 inline-flex items-center gap-2 border border-[rgba(199,163,95,0.35)] bg-[rgba(199,163,95,0.1)] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--ow-gold)]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[var(--ow-gold)]" />
             Secure operating record
           </p>
 
-          <h2 className="max-w-xl font-display text-6xl font-medium leading-[0.95] tracking-normal text-[#fffaf0] xl:text-7xl">
+          <h2 className="max-w-xl font-display text-6xl font-medium leading-[0.95] tracking-normal text-[var(--ow-ivory-card)] xl:text-7xl">
             Sign in where project truth becomes usable.
           </h2>
-          <p className="mt-6 max-w-lg text-base leading-7 text-[#c8d8d1]">
+          <p className="mt-6 max-w-lg text-base leading-7 text-[var(--ow-taupe-2)]">
             Proj OS connects consulting work, construction controls, voice intake, field proof,
             financial packages, and client portals inside one private project record.
           </p>
@@ -189,31 +187,31 @@ export default function AuthPage() {
         >
           <div className="border border-white/12 bg-white/[0.06] p-5 shadow-2xl shadow-black/20">
             <div className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
-              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[#e2bd76]">Executive cockpit</span>
-              <span className="text-xs font-bold text-[#9ae6b4]">Live</span>
+              <span className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--ow-gold)]">Executive cockpit</span>
+              <span className="text-xs font-bold text-[var(--ow-taupe)]">Live</span>
             </div>
             <div className="grid gap-3">
               {signalRows.map(([label, value, detail]) => (
-                <div key={label} className="grid grid-cols-[84px_1fr] gap-3 border border-white/10 bg-[#061f1a]/65 p-3">
-                  <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[#8fb4aa]">{label}</span>
+                <div key={label} className="grid grid-cols-[84px_1fr] gap-3 border border-white/10 bg-[#252c39]/70 p-3">
+                  <span className="text-[10px] font-black uppercase tracking-[0.12em] text-[var(--ow-taupe-2)]">{label}</span>
                   <div>
-                    <strong className="block text-lg font-semibold text-[#fffaf0]">{value}</strong>
-                    <small className="text-xs text-[#c8d8d1]/75">{detail}</small>
+                    <strong className="block text-lg font-semibold text-[var(--ow-ivory-card)]">{value}</strong>
+                    <small className="text-xs text-[rgba(212,203,187,0.75)]">{detail}</small>
                   </div>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="grid content-between border border-[#e2bd76]/25 bg-[#e2bd76]/10 p-5">
+          <div className="grid content-between border border-[rgba(199,163,95,0.25)] bg-[rgba(199,163,95,0.1)] p-5">
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[#e2bd76]">Private portal</p>
-              <h3 className="mt-5 font-display text-4xl font-medium leading-none text-[#fffaf0]">Right role. Right record. Right next step.</h3>
-              <p className="mt-4 text-sm leading-6 text-[#d8e3de]/75">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em] text-[var(--ow-gold)]">Private portal</p>
+              <h3 className="mt-5 font-display text-4xl font-medium leading-none text-[var(--ow-ivory-card)]">Right role. Right record. Right next step.</h3>
+              <p className="mt-4 text-sm leading-6 text-[rgba(212,203,187,0.8)]">
                 Owners, consultants, construction teams, vendors, and executives see the work they are allowed to see.
               </p>
             </div>
-            <div className="mt-8 flex items-center gap-2 text-sm font-bold text-[#9ae6b4]">
+            <div className="mt-8 flex items-center gap-2 text-sm font-bold text-[var(--ow-taupe)]">
               <ShieldCheck className="h-4 w-4" />
               Role based access active
             </div>
@@ -241,14 +239,14 @@ export default function AuthPage() {
                 <f.icon style={{ color: f.color, width: 15, height: 15 }} />
               </div>
               <div>
-                <p className="mb-0.5 text-sm font-semibold text-[#fffaf0]">{f.label}</p>
-                <p className="text-xs leading-relaxed text-[#c8d8d1]/60">{f.desc}</p>
+                <p className="mb-0.5 text-sm font-semibold text-[var(--ow-ivory-card)]">{f.label}</p>
+                <p className="text-xs leading-relaxed text-[rgba(212,203,187,0.7)]">{f.desc}</p>
               </div>
             </motion.div>
           ))}
         </motion.div>
 
-        <div className="relative z-10 mt-8 flex items-center justify-between text-xs text-[#c8d8d1]/45">
+        <div className="relative z-10 mt-8 flex items-center justify-between text-xs text-[rgba(212,203,187,0.55)]">
           <span>© 2026 APAS · Proj OS</span>
           <span className="inline-flex items-center gap-2">
             Project intelligence <ArrowRight className="h-3.5 w-3.5" />
@@ -257,7 +255,7 @@ export default function AuthPage() {
       </div>
 
       {/* ── RIGHT: Sign-in form ── */}
-      <div className="flex-1 flex items-center justify-center bg-[#f8f6ef] p-4 sm:p-6 md:p-12 border-l border-[#d8d4c7]">
+      <div className="flex-1 flex items-center justify-center bg-[var(--ow-ivory-card)] p-4 sm:p-6 md:p-12 border-l border-[var(--ow-taupe-2)]">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -266,18 +264,16 @@ export default function AuthPage() {
         >
           {/* Mobile wordmark */}
           <div className="lg:hidden flex flex-col items-center mb-8 sm:mb-10">
-            <div className="mb-3 grid h-12 w-12 place-items-center border border-[#c89443]/45 bg-[#c89443]/10 text-[11px] font-black tracking-[0.14em] text-[#8a6427]">
-              POS
-            </div>
-            <div className="font-display text-5xl font-medium leading-none tracking-normal text-[#08233b]">Proj OS</div>
-            <p className="mt-2 text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">Project intelligence workspace</p>
+            <div className="ow-signal-mark mb-3 flex h-12 w-12 items-center justify-center" aria-hidden="true" />
+            <div className="font-display text-5xl font-medium leading-none tracking-normal text-[var(--ow-ink)]">Proj OS</div>
+            <p className="mt-2 text-xs font-bold tracking-[0.22em] uppercase text-muted-foreground mb-1">By OneWater.ai</p>
             <p className="text-xs text-muted-foreground text-center">Private project-control workspace</p>
           </div>
 
           {/* Card */}
-          <div className="bg-card border border-[#d8d4c7] p-5 shadow-sm sm:p-8">
+          <div className="ow-shell-card p-5 sm:p-8">
             <div className="mb-7">
-              <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-[#8a6427]">Secure sign in</p>
+              <p className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-[var(--ow-gold)]">Secure sign in</p>
               <h1 className="font-display text-4xl font-medium tracking-normal text-foreground mb-2">
                 {isClientPortal ? 'Secure client access' : isPartnerPortal ? 'Secure partner access' : 'Welcome back'}
               </h1>
@@ -292,7 +288,7 @@ export default function AuthPage() {
               </p>
             </div>
 
-            <div className="mb-6 rounded-2xl border border-[#d8d4c7] bg-[#f8f6ef] p-1.5 sm:p-2">
+            <div className="mb-6 rounded-2xl border border-[var(--ow-taupe-2)] bg-[var(--ow-ivory)] p-1.5 sm:p-2">
               <p className="px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
                 What are you opening?
               </p>
@@ -310,8 +306,8 @@ export default function AuthPage() {
                       className={cn(
                         'flex min-h-[74px] items-start gap-2.5 rounded-xl border p-2.5 text-left transition-all sm:gap-3 sm:p-3',
                         active
-                          ? 'border-[#c89443] bg-white shadow-sm'
-                          : 'border-transparent bg-transparent hover:border-[#d8d4c7] hover:bg-white/60',
+                          ? 'border-[var(--ow-gold)] bg-[var(--ow-ivory-card)] shadow-sm'
+                          : 'border-transparent bg-transparent hover:border-[var(--ow-taupe-2)] hover:bg-[rgba(251,250,245,0.7)]',
                       )}
                       aria-pressed={active}
                     >
@@ -319,7 +315,7 @@ export default function AuthPage() {
                         className={cn(
                           'grid h-10 w-10 shrink-0 place-items-center rounded-xl border',
                           active
-                            ? 'border-[#c89443]/35 bg-[#c89443]/12 text-[#8a6427]'
+                            ? 'border-[rgba(199,163,95,0.35)] bg-[rgba(199,163,95,0.15)] text-[var(--ow-navy)]'
                             : 'border-border bg-background text-muted-foreground',
                         )}
                       >
@@ -333,7 +329,7 @@ export default function AuthPage() {
                         <span className="mt-1 block text-xs leading-snug text-muted-foreground">{option.description}</span>
                       </span>
                       {active && (
-                        <span className="mt-1 hidden rounded-full bg-[#0b3a30] px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white sm:inline-flex">
+                        <span className="mt-1 hidden rounded-full bg-[var(--ow-navy)] px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white sm:inline-flex">
                           Selected
                         </span>
                       )}

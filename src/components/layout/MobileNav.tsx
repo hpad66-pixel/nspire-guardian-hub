@@ -66,9 +66,9 @@ function getActiveSection(pathname: string): ActiveSection {
 
 // Module accent colors
 const MODULE_COLORS: Record<string, string> = {
-  daily: '#D5AA52',       // APAS decision gold
-  compliance: '#71A8CF',  // infrastructure blue
-  projects: '#D5AA52',    // decision gold
+  daily: '#c7a35f',
+  compliance: '#243f68',
+  projects: '#293140',
 };
 
 // ─── Primary bar item ─────────────────────────────────────────────────────────
@@ -83,10 +83,10 @@ interface PrimaryItemProps {
 }
 
 function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: PrimaryItemProps) {
-  const pillColor = isActive && accentColor ? accentColor : '#D5AA52';
+  const pillColor = isActive && accentColor ? accentColor : '#243f68';
   const textColor = isActive
-    ? accentColor ?? '#D5AA52'
-    : '#756F64';
+    ? accentColor ?? '#243f68'
+    : '#60615d';
 
   return (
     <button
@@ -111,7 +111,7 @@ function PrimaryItem({ icon, label, isActive, onClick, badge, accentColor }: Pri
           {icon}
         </span>
         {badge && (
-          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#E36B64] ring-[1.5px] ring-[#FBF8F1]" />
+          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-[#E36B64] ring-[1.5px] ring-[var(--ow-ivory-card)]" />
         )}
       </div>
       {/* Label */}
@@ -147,8 +147,8 @@ function SecondaryBarItem({
       className={cn(
         'whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium transition-colors duration-150',
         isActive
-          ? 'bg-[var(--apas-amber)]/15'
-          : 'bg-transparent text-[#756F64] hover:bg-[var(--apas-amber)]/10'
+          ? 'bg-[var(--ow-taupe)]'
+          : 'bg-transparent text-[var(--ow-muted)] hover:bg-[rgba(230,224,210,0.6)]'
       )}
       style={isActive ? { color: accentColor } : undefined}
     >
@@ -197,7 +197,7 @@ function SecondaryBar({ activeSection, hasSiteAccountability }: { activeSection:
 
   return (
     <div
-      className="fixed left-0 right-0 z-50 flex h-10 items-center gap-1 overflow-x-auto border-t border-[var(--kind-construction-border)] bg-[#FBF8F1] px-3 no-scrollbar shadow-[0_-10px_24px_rgba(26,23,20,0.06)]"
+      className="fixed left-0 right-0 z-50 flex h-10 items-center gap-1 overflow-x-auto border-t border-[var(--ow-taupe-2)] bg-[var(--ow-ivory-card)] px-3 no-scrollbar shadow-[0_-10px_24px_rgba(37,44,57,0.08)]"
       style={{
         bottom: 'calc(4rem + env(safe-area-inset-bottom, 0px))',
         borderLeft: `3px solid ${borderColor}`,
@@ -236,21 +236,21 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
   return (
     <button
       onClick={onClick}
-      className="flex flex-col items-start gap-2.5 rounded-xl border border-[var(--kind-construction-border)] bg-white/70 p-3.5 text-left shadow-sm transition-colors duration-150 active:bg-[var(--apas-amber)]/10"
+      className="flex flex-col items-start gap-2.5 rounded-xl border border-[var(--ow-taupe-2)] bg-[rgba(251,250,245,0.9)] p-3.5 text-left shadow-sm transition-colors duration-150 active:bg-[var(--ow-taupe)]"
     >
       <div className={cn('relative flex h-9 w-9 items-center justify-center rounded-lg', iconBg)}>
         {icon}
         {badge !== undefined && badge > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-md bg-[#D5AA52] px-1 text-[10px] font-bold text-[#041914] tabular-nums">
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-md bg-[var(--ow-gold)] px-1 text-[10px] font-bold text-[var(--ow-ink)] tabular-nums">
             {badge > 99 ? '99+' : badge}
           </span>
         )}
       </div>
       <div className="min-w-0">
-        <p className="text-[15px] font-semibold text-[#08271F]" style={{ letterSpacing: 0 }}>
+        <p className="text-[15px] font-semibold text-[var(--ow-ink)]" style={{ letterSpacing: 0 }}>
           {title}
         </p>
-        <p className="mt-0.5 text-[12px] font-medium leading-snug text-[#756F64]">{subtitle}</p>
+        <p className="mt-0.5 text-[12px] font-medium leading-snug text-[var(--ow-muted)]">{subtitle}</p>
       </div>
     </button>
   );
@@ -260,7 +260,7 @@ function DrawerTile({ icon, iconBg, title, subtitle, badge, onClick }: DrawerTil
 
 function DrawerSectionLabel({ label }: { label: string }) {
   return (
-    <p className="col-span-2 mb-0.5 mt-3 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#756F64]">
+    <p className="col-span-2 mb-0.5 mt-3 px-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--ow-muted)]">
       {label}
     </p>
   );
@@ -304,35 +304,35 @@ function MoreDrawer({ open, onClose, unreadCount, hasSiteAccountability, siteAcc
     navigate(path);
   };
 
-  const portfolioIconBg = 'bg-[var(--apas-sapphire)]/15';
-  const commIconBg = 'bg-[#D5AA52]/15';
-  const orgIconBg = 'bg-[hsl(262,83%,58%)]/15';
-  const toolsIconBg = 'bg-[var(--apas-sapphire)]/15';
-  const goldIconBg = 'bg-[#D5AA52]/15';
+  const portfolioIconBg = 'bg-[rgba(36,63,104,0.1)]';
+  const commIconBg = 'bg-[rgba(199,163,95,0.18)]';
+  const orgIconBg = 'bg-[rgba(36,63,104,0.1)]';
+  const toolsIconBg = 'bg-[rgba(36,63,104,0.1)]';
+  const goldIconBg = 'bg-[rgba(199,163,95,0.18)]';
   const operationsRedBg = 'bg-[hsl(0,84%,60%)]/15';
   const operationsAmberBg = 'bg-[hsl(30,100%,50%)]/15';
   const adminIconBg = 'bg-[hsl(215,70%,45%)]/20';
 
-  const iconClass = 'h-5 w-5 text-[#0D3B30]';
+  const iconClass = 'h-5 w-5 text-[var(--ow-navy)]';
 
   const showToolsSection = isModuleEnabled('qrScanningEnabled') || canView('settings');
 
   return (
     <Drawer open={open} onOpenChange={(v) => !v && onClose()}>
       <DrawerContent
-        className="h-[72vh] border-t border-[var(--kind-construction-border)] bg-[#FBF8F1] text-[#08271F] outline-none"
+        className="h-[72vh] border-t border-[var(--ow-taupe-2)] bg-[var(--ow-ivory)] text-[var(--ow-ink)] outline-none"
       >
         {/* Drag handle */}
-        <div className="mx-auto mt-3 mb-4 h-1 w-9 rounded-full bg-[#D5AA52]/45" />
+        <div className="mx-auto mt-3 mb-4 h-1 w-9 rounded-full bg-[rgba(199,163,95,0.55)]" />
 
         {/* Header */}
         <div className="flex items-center justify-between px-4 pb-3">
-          <span className="text-[17px] font-semibold text-[#08271F]" style={{ letterSpacing: 0 }}>
+          <span className="text-[17px] font-semibold text-[var(--ow-ink)]" style={{ letterSpacing: 0 }}>
             More
           </span>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFE9DC] text-[#756F64] transition-colors hover:text-[#08271F]"
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--ow-taupe)] text-[var(--ow-muted)] transition-colors hover:text-[var(--ow-ink)]"
           >
             <X className="h-4 w-4" />
           </button>
@@ -669,11 +669,11 @@ export function MobileNav() {
 
       {/* Primary bar — 4rem tap row + home-indicator safe area */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-50 flex items-stretch border-t border-[var(--kind-construction-border)] bg-[#FBF8F1]/95 backdrop-blur-xl shadow-[0_-10px_24px_rgba(26,23,20,0.08)]"
+        className="ow-mobile-bar fixed bottom-0 left-0 right-0 z-50 flex items-stretch border-t backdrop-blur-xl"
         style={{
           minHeight: '4rem',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          backgroundColor: 'rgba(251, 248, 241, 0.95)',
+          backgroundColor: 'rgba(251, 250, 245, 0.96)',
         }}
         data-testid="mobile-bottom-nav"
       >

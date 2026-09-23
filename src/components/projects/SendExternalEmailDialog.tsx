@@ -75,6 +75,8 @@ export interface SendExternalEmailDialogProps {
   projectId?: string;
   defaultSubject?: string;
   contentHtml?: string;
+  contentText?: string;
+  deliveryMode?: 'branded' | 'attachment_only';
   onSent?: () => void;
   /** Optional PDF (or other) attachment — used by consulting invoices. */
   pdfAttachment?: SendExternalEmailAttachment;
@@ -185,52 +187,52 @@ function SaveContactPopover({ email }: { email: string }) {
           <UserPlus className="h-3 w-3" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-72 p-4" side="top" align="start">
-        <p className="text-sm font-semibold mb-0.5">Save to Contacts</p>
-        <p className="text-xs text-muted-foreground mb-3">{email}</p>
+      <PopoverContent className="w-72 border border-[#d9d4c9] bg-white p-4 text-[#1A1714] shadow-xl" side="top" align="start">
+        <p className="text-sm font-semibold mb-0.5 text-[#1A1714]">Save to Contacts</p>
+        <p className="text-xs text-[#60615d] mb-3">{email}</p>
 
         <div className="space-y-2.5">
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
-              <Label className="text-xs">First name *</Label>
+              <Label className="text-xs text-[#1A1714]">First name *</Label>
               <Input
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
                 placeholder="Jane"
-                className="h-8 text-sm"
+                className="h-8 bg-white text-sm text-[#1A1714] placeholder:text-[#8a857c]"
                 onKeyDown={(e) => e.key === 'Enter' && handleSave()}
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Last name</Label>
+              <Label className="text-xs text-[#1A1714]">Last name</Label>
               <Input
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
                 placeholder="Smith"
-                className="h-8 text-sm"
+                className="h-8 bg-white text-sm text-[#1A1714] placeholder:text-[#8a857c]"
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs">Company</Label>
+            <Label className="text-xs text-[#1A1714]">Company</Label>
             <Input
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder="Acme Corp"
-              className="h-8 text-sm"
+              className="h-8 bg-white text-sm text-[#1A1714] placeholder:text-[#8a857c]"
             />
           </div>
 
           <div className="space-y-1">
-            <Label className="text-xs">Contact type</Label>
+            <Label className="text-xs text-[#1A1714]">Contact type</Label>
             <Select value={contactType} onValueChange={(v) => setContactType(v as ContactType)}>
-              <SelectTrigger className="h-8 text-sm">
+              <SelectTrigger className="h-8 bg-white text-sm text-[#1A1714]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-white text-[#1A1714]">
                 {(Object.keys(CONTACT_TYPE_LABELS) as ContactType[]).map((t) => (
-                  <SelectItem key={t} value={t} className="text-sm">
+                  <SelectItem key={t} value={t} className="text-sm text-[#1A1714]">
                     {CONTACT_TYPE_LABELS[t]}
                   </SelectItem>
                 ))}
@@ -337,6 +339,8 @@ export function SendExternalEmailDialog({
   projectId,
   defaultSubject,
   contentHtml,
+  contentText,
+  deliveryMode = 'branded',
   onSent,
   pdfAttachment,
   attachments,
@@ -363,6 +367,7 @@ export function SendExternalEmailDialog({
   const outboundAttachments = attachments?.length ? attachments : pdfAttachment ? [pdfAttachment] : [];
   const firstAttachment = outboundAttachments[0];
   const activePreview = previewAttachments[activePreviewIndex] ?? previewAttachments[0];
+  const attachmentOnly = deliveryMode === 'attachment_only';
 
   const handleOpenChange = (v: boolean) => {
     if (!v) {
@@ -375,7 +380,37 @@ export function SendExternalEmailDialog({
     onOpenChange(v);
   };
 
+  const buildPlainBodyText = () =>
+    [
+      message.trim(),
+      contentText?.trim() ||
+        (outboundAttachments.length
+          ? `Attached: ${outboundAttachments.map((attachment) => attachment.filename).join(', ')}`
+          : `Attached: ${documentTitle}`),
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+  const buildSimpleAttachmentBody = () => {
+    const bodyText = buildPlainBodyText();
+    const paragraphs = bodyText
+      .split(/\n{2,}/)
+      .map((paragraph) => paragraph.trim())
+      .filter(Boolean)
+      .map(
+        (paragraph) =>
+          `<p style="margin:0 0 14px; font-size:15px; line-height:1.55; color:#111827;">${escapeEmailHtml(paragraph).replace(/\n/g, '<br/>')}</p>`,
+      )
+      .join('');
+    return `
+<div style="font-family:Arial,sans-serif; color:#111827; max-width:620px;">
+  ${paragraphs}
+</div>`;
+  };
+
   const buildEmailBody = () => {
+    if (attachmentOnly) return buildSimpleAttachmentBody();
+
     const greeting = message
       ? `<p style="margin:0 0 20px; font-size:15px; line-height:1.65; color:#374151;">${escapeEmailHtml(message).replace(/\n/g, '<br/>')}</p>`
       : '';
@@ -408,12 +443,17 @@ export function SendExternalEmailDialog({
       toast.error('Please add at least one recipient');
       return;
     }
+    if (attachmentOnly && outboundAttachments.length === 0) {
+      toast.error('Attach the invoice PDF before sending');
+      return;
+    }
     await sendEmail.mutateAsync({
       recipients: toEmails,
       ccRecipients: ccEmails.length > 0 ? ccEmails : undefined,
       bccRecipients: bccEmails.length > 0 ? bccEmails : undefined,
       subject,
       bodyHtml: buildEmailBody(),
+      bodyText: attachmentOnly ? buildPlainBodyText() : undefined,
       fromName,
       fromEmail,
       attachments: outboundAttachments.length
@@ -436,7 +476,7 @@ export function SendExternalEmailDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-5xl gap-0 overflow-hidden p-0">
+      <DialogContent className="flex max-h-[92vh] max-w-5xl flex-col gap-0 overflow-hidden p-0">
         {/* Header */}
         <DialogHeader className="border-b bg-[#f7faf8] px-6 pb-4 pt-5">
           <div className="flex items-center gap-3">
@@ -457,19 +497,26 @@ export function SendExternalEmailDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[70vh]">
+        <ScrollArea className="min-h-0 flex-1">
           <div className="grid gap-5 px-6 py-5 lg:grid-cols-[minmax(0,1fr)_340px]">
             <div className="space-y-5">
             {/* Document preview */}
             <div className="grid gap-3 rounded-2xl border border-emerald-100 bg-emerald-50/60 p-3 sm:grid-cols-2">
               <div className="flex items-start gap-2.5 rounded-xl bg-white p-3">
                 <DocIcon className="mt-0.5 h-4 w-4 text-emerald-700" />
-                <div><p className="text-sm font-semibold text-[#082b23]">Branded HTML email</p><p className="text-xs text-muted-foreground">The document summary is readable in the message.</p></div>
+                <div>
+                  <p className="text-sm font-semibold text-[#082b23]">
+                    {attachmentOnly ? 'Simple email cover note' : 'Branded email body'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {attachmentOnly ? 'The client deliverable is the attached PDF.' : 'The document summary is readable in the message.'}
+                  </p>
+                </div>
                 <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-600" />
               </div>
               <div className="flex items-start gap-2.5 rounded-xl bg-white p-3">
                 <Paperclip className="mt-0.5 h-4 w-4 text-emerald-700" />
-                <div className="min-w-0"><p className="text-sm font-semibold text-[#082b23]">{outboundAttachments.length ? 'Client file package attached' : 'Project document included'}</p><p className="truncate text-xs text-muted-foreground">{outboundAttachments.length ? outboundAttachments.map((a) => a.filename).join(', ') : documentTitle}</p></div>
+                <div className="min-w-0"><p className="text-sm font-semibold text-[#082b23]">{outboundAttachments.length ? 'PDF attached' : 'Project document included'}</p><p className="truncate text-xs text-muted-foreground">{outboundAttachments.length ? outboundAttachments.map((a) => a.filename).join(', ') : documentTitle}</p></div>
                 <CheckCircle2 className="ml-auto h-4 w-4 shrink-0 text-emerald-600" />
               </div>
             </div>
@@ -604,7 +651,7 @@ export function SendExternalEmailDialog({
                 </div>
                 <div className="border-t bg-slate-50 px-4 py-3 text-xs text-slate-500">
                   {outboundAttachments.length
-                    ? `Attachment${outboundAttachments.length === 1 ? '' : 's'}: ${outboundAttachments.map((a) => a.filename).join(', ')}`
+                    ? `PDF attachment${outboundAttachments.length === 1 ? '' : 's'}: ${outboundAttachments.map((a) => a.filename).join(', ')}`
                     : 'No PDF attachment is currently bundled.'}
                 </div>
               </div>
@@ -639,7 +686,7 @@ export function SendExternalEmailDialog({
         </ScrollArea>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t bg-muted/20 flex items-center justify-between gap-3">
+        <div className="shrink-0 border-t bg-[#fbfaf5] px-6 py-4 shadow-[0_-12px_28px_rgba(37,44,57,0.08)] flex flex-wrap items-center justify-between gap-3">
           <p className="text-xs text-muted-foreground">
             {toEmails.length === 0
               ? 'Add at least one client or recipient to send'
@@ -658,7 +705,7 @@ export function SendExternalEmailDialog({
             <Button
               size="sm"
               onClick={handleSend}
-              disabled={toEmails.length === 0 || sendEmail.isPending}
+              disabled={toEmails.length === 0 || sendEmail.isPending || (attachmentOnly && outboundAttachments.length === 0)}
               className="gap-2 bg-[#082b23] text-white hover:bg-[#0d493c]"
             >
               {sendEmail.isPending ? (
@@ -666,7 +713,7 @@ export function SendExternalEmailDialog({
               ) : (
                 <>
                   <Send className="h-3.5 w-3.5" />
-                  {outboundAttachments.length ? 'Send HTML + attachment' : 'Send branded email'}
+                  {attachmentOnly ? 'Send PDF invoice' : outboundAttachments.length ? 'Send email with attachment' : 'Send branded email'}
                 </>
               )}
             </Button>

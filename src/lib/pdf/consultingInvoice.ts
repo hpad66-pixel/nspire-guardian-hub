@@ -59,14 +59,22 @@ export interface ConsultingInvoicePdfInput {
   accountSummaries?: ProposalAccountSummary[];
   priorPayments?: ConsultingInvoicePdfPriorPayment[];
   branding?: ConsultingInvoicePdfBranding | null;
+  senderSignedName?: string | null;
+  senderSignedAt?: string | null;
+  senderSignaturePath?: string | null;
+  clientSignedName?: string | null;
+  clientSignedAt?: string | null;
+  clientSignaturePath?: string | null;
+  clientSignatureMethod?: string | null;
+  clientComments?: string | null;
 }
 
 const GOLD: [number, number, number] = [196, 163, 90];
 const INK: [number, number, number] = [26, 23, 20];
 const MUTE: [number, number, number] = [107, 107, 107];
-const LIGHT: [number, number, number] = [243, 239, 230];
-const SAPPHIRE: [number, number, number] = [29, 111, 232];
-const CREAM: [number, number, number] = [250, 248, 244];
+const LIGHT: [number, number, number] = [246, 245, 241];
+const RULE: [number, number, number] = [218, 214, 204];
+const PANEL: [number, number, number] = [252, 251, 248];
 
 const usd = (n: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 }).format(n || 0);
@@ -115,8 +123,8 @@ export function generateConsultingInvoicePdf(input: ConsultingInvoicePdfInput): 
     }
   };
 
-  // Brand header band
-  doc.setFillColor(LIGHT[0], LIGHT[1], LIGHT[2]);
+  // Brand header band. Keep the invoice businesslike and high contrast.
+  doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, W, 78, 'F');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(16);
@@ -139,7 +147,7 @@ export function generateConsultingInvoicePdf(input: ConsultingInvoicePdfInput): 
   // Invoice badge (right)
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(20);
-  setColor(SAPPHIRE);
+  setColor(INK);
   doc.text('INVOICE', W - M, 34, { align: 'right' });
   doc.setFontSize(12);
   setColor(INK);
@@ -231,7 +239,7 @@ export function generateConsultingInvoicePdf(input: ConsultingInvoicePdfInput): 
   const summaries = input.accountSummaries ?? [];
   if (summaries.length > 0) {
     ensure(70 + summaries.length * 14);
-    doc.setFillColor(CREAM[0], CREAM[1], CREAM[2]);
+    doc.setFillColor(PANEL[0], PANEL[1], PANEL[2]);
     const boxH = 28 + summaries.length * 14 + (summaries.some((s) => s.previously_billed > 0) ? 36 : 0);
     doc.roundedRect(M, y, cw, boxH, 4, 4, 'F');
     doc.setFont('helvetica', 'bold');
@@ -320,7 +328,7 @@ export function generateConsultingInvoicePdf(input: ConsultingInvoicePdfInput): 
     const rowH = Math.max(26, descLines.length * 12 + 10);
     ensure(rowH + 4);
     if (idx % 2 === 0) {
-      doc.setFillColor(CREAM[0], CREAM[1], CREAM[2]);
+      doc.setFillColor(PANEL[0], PANEL[1], PANEL[2]);
       doc.rect(M, y, cw, rowH, 'F');
     }
     doc.setFont('helvetica', 'normal');
@@ -359,24 +367,27 @@ export function generateConsultingInvoicePdf(input: ConsultingInvoicePdfInput): 
   for (const [label, value, bold] of rows) {
     doc.setFont('helvetica', bold ? 'bold' : 'normal');
     doc.setFontSize(bold ? 12 : 10);
-    setColor(bold ? SAPPHIRE : MUTE);
+    setColor(bold ? INK : MUTE);
     doc.text(label, boxX, y);
     setColor(bold ? INK : MUTE);
     doc.text(value, W - M, y, { align: 'right' });
     y += bold ? 18 : 15;
   }
 
-  // Amount due highlight
+  // Amount due highlight: black amount on clean paper, never low-contrast color.
   y += 6;
-  doc.setFillColor(SAPPHIRE[0], SAPPHIRE[1], SAPPHIRE[2]);
-  doc.roundedRect(boxX, y, boxW, 28, 3, 3, 'F');
+  doc.setFillColor(LIGHT[0], LIGHT[1], LIGHT[2]);
+  doc.roundedRect(boxX, y, boxW, 34, 3, 3, 'F');
+  doc.setDrawColor(INK[0], INK[1], INK[2]);
+  doc.setLineWidth(0.8);
+  doc.roundedRect(boxX, y, boxW, 34, 3, 3, 'S');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.setTextColor(255, 255, 255);
-  doc.text('PLEASE REMIT', boxX + 10, y + 18);
-  doc.setFontSize(12);
-  doc.text(usd(balanceDue), W - M - 10, y + 18, { align: 'right' });
-  y += 40;
+  setColor(INK);
+  doc.text('AMOUNT DUE', boxX + 10, y + 21);
+  doc.setFontSize(14);
+  doc.text(usd(balanceDue), W - M - 10, y + 21, { align: 'right' });
+  y += 46;
 
   // Payment terms + notes
   if (input.paymentTerms) {
@@ -409,26 +420,48 @@ export function generateConsultingInvoicePdf(input: ConsultingInvoicePdfInput): 
     y += noteLines.length * 12 + 14;
   }
 
-  // Client approval / sign-off block
-  ensure(120);
-  doc.setDrawColor(GOLD[0], GOLD[1], GOLD[2]);
+  // Internal signature and client approval / sign-off block.
+  ensure(150);
+  doc.setDrawColor(RULE[0], RULE[1], RULE[2]);
   doc.setLineWidth(1);
-  doc.roundedRect(M, y, cw, 100, 4, 4, 'S');
+  doc.roundedRect(M, y, cw, 128, 4, 4, 'S');
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
   setColor(GOLD);
-  doc.text('CLIENT APPROVAL & SIGN-OFF', M + 12, y + 16);
+  doc.text('SIGNATURES AND CLIENT ACTION', M + 12, y + 16);
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8.5);
   setColor(MUTE);
   doc.text(
-    'By signing below, the Client acknowledges receipt of this invoice, approves the amounts shown, and authorizes payment per the stated terms.',
+    'This invoice can be processed electronically, or downloaded, printed, signed, scanned, and returned by email.',
     M + 12,
     y + 30,
     { maxWidth: cw - 24 },
   );
 
-  const sigY = y + 62;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  setColor(INK);
+  doc.text('Issued by', M + 12, y + 52);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  setColor(MUTE);
+  doc.text(input.senderSignedName ? `${input.senderSignedName}${input.senderSignedAt ? ` · ${fmtDate(input.senderSignedAt)}` : ''}` : 'Pending electronic signature', M + 72, y + 52);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  setColor(INK);
+  doc.text('Client', M + 12, y + 68);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  setColor(MUTE);
+  doc.text(input.clientSignedName ? `${input.clientSignedName}${input.clientSignedAt ? ` · ${fmtDate(input.clientSignedAt)}` : ''}` : 'Pending client approval', M + 72, y + 68);
+  if (input.clientComments) {
+    const commentLines = doc.splitTextToSize(`Client comments: ${input.clientComments}`, cw - 24);
+    doc.text(commentLines.slice(0, 2), M + 12, y + 84);
+  }
+
+  const sigY = y + 106;
   doc.setDrawColor(MUTE[0], MUTE[1], MUTE[2]);
   doc.setLineWidth(0.6);
   // Signature
@@ -443,8 +476,8 @@ export function generateConsultingInvoicePdf(input: ConsultingInvoicePdfInput): 
   doc.text('Date', M + 400, sigY + 11);
 
   // Approval checkbox line
-  doc.rect(M + 12, y + 78, 8, 8, 'S');
-  doc.text('Approved for payment — please process and remit the Amount Due above.', M + 26, y + 85);
+  doc.rect(M + 12, y + 114, 8, 8, 'S');
+  doc.text('Approved for payment. Please process and remit the Amount Due above.', M + 26, y + 121);
 
   // Footer on every page
   const pageCount = doc.getNumberOfPages();

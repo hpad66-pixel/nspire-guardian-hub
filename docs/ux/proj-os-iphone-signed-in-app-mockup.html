@@ -1,0 +1,786 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Proj OS Signed In iPhone App Mockup</title>
+  <style>
+    :root {
+      --ink: #2e3441;
+      --muted: #6e6d68;
+      --line: #d8d0bf;
+      --paper: #f8f5ed;
+      --panel: #fffdf7;
+      --wash: #eee8dc;
+      --deep: #2e3441;
+      --navy: #233f69;
+      --graphite: #343c49;
+      --gold: #8d6b2f;
+      --gold-soft: #b49456;
+      --blue: #2e4770;
+      --danger: #a23d3d;
+      --shadow: 0 24px 60px rgba(46, 52, 65, 0.16);
+      color-scheme: light;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(46, 52, 65, 0.10), transparent 34rem),
+        linear-gradient(135deg, #f3efe5 0%, #eee8dc 52%, #f8f5ed 100%);
+    }
+
+    .stage {
+      width: min(1440px, 100%);
+      margin: 0 auto;
+      padding: clamp(20px, 4vw, 56px);
+      display: grid;
+      grid-template-columns: minmax(320px, 0.9fr) minmax(340px, 430px) minmax(300px, 0.9fr);
+      gap: clamp(18px, 3vw, 42px);
+      align-items: center;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+    }
+
+    .eyebrow::before {
+      content: "";
+      width: 34px;
+      height: 2px;
+      background: var(--gold);
+    }
+
+    h1 {
+      margin: 0;
+      max-width: 720px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: clamp(42px, 6vw, 78px);
+      line-height: .94;
+      letter-spacing: 0;
+      color: var(--ink);
+    }
+
+    .lead {
+      margin: 22px 0 0;
+      max-width: 620px;
+      color: var(--muted);
+      font-size: clamp(16px, 1.4vw, 19px);
+      line-height: 1.65;
+    }
+
+    .principles {
+      display: grid;
+      gap: 12px;
+      margin-top: 28px;
+      max-width: 640px;
+    }
+
+    .principle {
+      display: grid;
+      grid-template-columns: 40px 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid rgba(46, 52, 65, .12);
+      background: rgba(255,253,247,.82);
+      border-radius: 8px;
+      box-shadow: 0 10px 30px rgba(19, 35, 31, .06);
+    }
+
+    .num {
+      height: 34px;
+      width: 34px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      color: #fff;
+      background: var(--deep);
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .principle strong {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .principle span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .phone-shell {
+      justify-self: center;
+      width: min(100%, 394px);
+      border-radius: 46px;
+      padding: 12px;
+      background:
+        linear-gradient(145deg, #202733, #343c49);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(255,255,255,.35);
+    }
+
+    .phone {
+      position: relative;
+      overflow: hidden;
+      min-height: 812px;
+      border-radius: 36px;
+      background: var(--paper);
+      border: 1px solid rgba(255,255,255,.24);
+    }
+
+    .notch {
+      position: absolute;
+      z-index: 10;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 116px;
+      height: 28px;
+      border-radius: 999px;
+      background: #202733;
+    }
+
+    .app {
+      min-height: 812px;
+      padding: 48px 16px 96px;
+      background:
+        radial-gradient(circle at 18% 10%, rgba(141,107,47,.10), transparent 16rem),
+        linear-gradient(180deg, rgba(46,52,65,.08) 0, rgba(46,52,65,0) 190px),
+        var(--paper);
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+      padding: 8px 4px;
+    }
+
+    .icon-button {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255,253,247,.78);
+      color: var(--graphite);
+      display: grid;
+      place-items: center;
+      font-size: 17px;
+      font-weight: 900;
+      box-shadow: 0 10px 22px rgba(46,52,65,.07);
+      flex: 0 0 auto;
+    }
+
+    .brandmark {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .drop {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background:
+        radial-gradient(circle at 70% 20%, rgba(180,148,86,.55), transparent 18px),
+        linear-gradient(160deg, #232936, var(--graphite));
+      display: grid;
+      place-items: center;
+      color: #efe3c9;
+      font-weight: 900;
+      box-shadow: 0 12px 22px rgba(46,52,65,.24);
+    }
+
+    .brandmark small,
+    .project small,
+    .metric small,
+    .rail-card small {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+
+    .brandmark b {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 15px;
+      color: var(--ink);
+    }
+
+    .avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+      background: #e8dcc4;
+      color: #2e3441;
+      display: grid;
+      place-items: center;
+      font-weight: 900;
+      box-shadow: 0 10px 24px rgba(19, 35, 31, .12);
+      flex: 0 0 auto;
+    }
+
+    .today {
+      overflow: hidden;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: rgba(255,253,247,.96);
+      color: var(--ink);
+      box-shadow: 0 18px 36px rgba(46,52,65,.12);
+    }
+
+    .today-art {
+      height: 152px;
+      border-bottom: 1px solid rgba(46,52,65,.12);
+      background:
+        linear-gradient(135deg, rgba(32,39,51,.94), rgba(35,63,105,.88)),
+        radial-gradient(circle at 22% 25%, rgba(255,255,255,.34), transparent 64px),
+        repeating-linear-gradient(135deg, rgba(255,255,255,.14) 0 1px, transparent 1px 15px);
+      position: relative;
+    }
+
+    .today-art::before,
+    .today-art::after {
+      content: "";
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      height: 34px;
+      border: 1px solid rgba(238,232,220,.32);
+      border-left: 0;
+      border-right: 0;
+      border-radius: 50%;
+      transform: rotate(-5deg);
+    }
+
+    .today-art::before {
+      top: 42px;
+    }
+
+    .today-art::after {
+      top: 75px;
+      opacity: .62;
+    }
+
+    .today-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: start;
+      padding: 16px 16px 0;
+    }
+
+    .today h2 {
+      margin: 6px 0 0;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 27px;
+      line-height: 1.02;
+      letter-spacing: 0;
+      color: var(--ink);
+    }
+
+    .badge {
+      border: 1px solid #d9d0bc;
+      background: #eee8dc;
+      color: #4a3f27;
+      border-radius: 8px;
+      padding: 7px 10px;
+      font-size: 11px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .today p {
+      margin: 12px 16px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .primary-action {
+      width: calc(100% - 32px);
+      margin: 16px;
+      border: 0;
+      border-radius: 9px;
+      padding: 14px 16px;
+      color: #f8f5ed;
+      background: linear-gradient(135deg, #263044, var(--navy));
+      font-weight: 900;
+      text-align: left;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 18px 2px 10px;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .section-title a {
+      color: var(--navy);
+      font-size: 12px;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .project {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,253,247,.9);
+      box-shadow: 0 10px 24px rgba(46,52,65,.06);
+    }
+
+    .project-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: start;
+    }
+
+    .project h3 {
+      margin: 4px 0 0;
+      font-size: 16px;
+      line-height: 1.15;
+    }
+
+    .status {
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: #eee8dc;
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 10px;
+      border-radius: 8px;
+      background: #f8f5ed;
+      border: 1px solid #ddd5c5;
+    }
+
+    .metric b {
+      display: block;
+      margin-top: 4px;
+      font-size: 14px;
+    }
+
+    .action-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .action {
+      min-height: 72px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,253,247,.9);
+      display: grid;
+      place-items: center;
+      gap: 5px;
+      padding: 10px 4px;
+      text-align: center;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 850;
+    }
+
+    .action i {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background: var(--deep);
+      font-style: normal;
+      font-size: 14px;
+    }
+
+    .queue {
+      display: grid;
+      gap: 8px;
+    }
+
+    .queue-item {
+      display: grid;
+      grid-template-columns: 8px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,253,247,.88);
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .dot {
+      width: 8px;
+      height: 30px;
+      border-radius: 8px;
+      background: var(--gold);
+    }
+
+    .queue-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .queue-item em {
+      font-style: normal;
+      color: var(--navy);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .tabbar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 2px;
+      padding: 9px 12px 18px;
+      background: rgba(248,245,237,.96);
+      backdrop-filter: blur(16px);
+      border-top: 1px solid rgba(46,52,65,.12);
+    }
+
+    .tab {
+      display: grid;
+      justify-items: center;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 850;
+    }
+
+    .tab b {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      display: grid;
+      place-items: center;
+      color: inherit;
+      background: transparent;
+      font-size: 13px;
+    }
+
+    .tab.active {
+      color: var(--navy);
+    }
+
+    .tab.active b {
+      color: var(--navy);
+      background: #e8e1d2;
+    }
+
+    .side-panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .rail-card {
+      padding: 18px;
+      border: 1px solid rgba(46,52,65,.12);
+      border-radius: 10px;
+      background: rgba(255,253,247,.78);
+      box-shadow: 0 14px 36px rgba(46,52,65,.08);
+    }
+
+    .rail-card h2,
+    .rail-card h3 {
+      margin: 5px 0 8px;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 24px;
+      letter-spacing: 0;
+    }
+
+    .rail-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 14px;
+    }
+
+    .flow {
+      display: grid;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .flow div {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      border-radius: 8px;
+      background: #f8f5ed;
+      border: 1px solid #ddd5c5;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .flow span {
+      width: 26px;
+      height: 26px;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--deep);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
+
+    .capture-sheet {
+      margin-top: 14px;
+      padding: 12px;
+      border-radius: 10px;
+      background: #2e3441;
+      color: #fff;
+    }
+
+    .capture-sheet h4 {
+      margin: 0 0 10px;
+      font-size: 13px;
+    }
+
+    .capture-options {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+    }
+
+    .capture-options div {
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(255,255,255,.1);
+      border: 1px solid rgba(255,255,255,.14);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    @media (max-width: 1080px) {
+      .stage {
+        grid-template-columns: 1fr;
+      }
+      .phone-shell {
+        order: 2;
+      }
+      .side-panel:last-child {
+        order: 3;
+      }
+    }
+
+    @media (max-width: 520px) {
+      body {
+        background: var(--paper);
+      }
+      .stage {
+        padding: 0;
+        display: block;
+      }
+      .intro,
+      .side-panel {
+        display: none;
+      }
+      .phone-shell {
+        width: 100%;
+        min-height: 100vh;
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        background: transparent;
+      }
+      .phone {
+        min-height: 100vh;
+        border: 0;
+        border-radius: 0;
+      }
+      .notch {
+        display: none;
+      }
+      .app {
+        min-height: 100vh;
+        padding-top: calc(18px + env(safe-area-inset-top));
+      }
+      .tabbar {
+        padding-bottom: calc(14px + env(safe-area-inset-bottom));
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <section class="intro" aria-label="Design direction">
+      <div class="eyebrow">Signed in mobile app</div>
+      <h1>Project command, not desktop pages squeezed onto a phone.</h1>
+      <p class="lead">
+        This mockup applies the approved mobile first direction to the actual backend app experience:
+        one daily command view, one project cockpit, one capture action model, and clean role aware navigation.
+      </p>
+      <div class="principles">
+        <div class="principle"><div class="num">1</div><div><strong>One primary action</strong><span>The first screen tells the user what to do next instead of presenting every module at once.</span></div></div>
+        <div class="principle"><div class="num">2</div><div><strong>Capture is global</strong><span>Photos, field notes, permit scans, punch items, and documents live under the center Capture tab.</span></div></div>
+        <div class="principle"><div class="num">3</div><div><strong>Money is grouped</strong><span>Proposals, invoices, pay apps, change orders, vendor bills, and approvals are one money surface.</span></div></div>
+      </div>
+    </section>
+
+    <section class="phone-shell" aria-label="iPhone mockup">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="app">
+          <header class="topbar">
+            <button class="icon-button" aria-label="Open menu">☰</button>
+            <div class="brandmark">
+              <div class="drop">≋</div>
+              <div>
+                <small>Proj OS</small>
+                <b>Project Signal</b>
+              </div>
+            </div>
+            <button class="icon-button" aria-label="Search">⌕</button>
+          </header>
+
+          <section class="today">
+            <div class="today-art" aria-hidden="true"></div>
+            <div class="today-row">
+              <div>
+                <small>Tuesday command view</small>
+                <h2>3 project decisions need a clean answer.</h2>
+              </div>
+              <div class="badge">Owner ready</div>
+            </div>
+            <p>R4 has a pay app checkpoint, Stucco Repairs has a proposal value lock pending, and a Notion meeting note is ready to publish.</p>
+            <button class="primary-action">Review highest priority <span>Open</span></button>
+          </section>
+
+          <div class="section-title"><span>Continue work</span><a href="#">All projects</a></div>
+          <section class="project">
+            <div class="project-header">
+              <div>
+                <small>R4 Capital LLC</small>
+                <h3>Glorieta Gardens Sewer Extension</h3>
+              </div>
+              <span class="status">Active</span>
+            </div>
+            <div class="metrics">
+              <div class="metric"><small>Type</small><b>Build</b></div>
+              <div class="metric"><small>Money</small><b>Pay app</b></div>
+              <div class="metric"><small>Next</small><b>Approve</b></div>
+            </div>
+          </section>
+
+          <div class="section-title"><span>Project cockpit</span><a href="#">Switch</a></div>
+          <div class="action-grid" aria-label="Mobile project actions">
+            <div class="action"><i>U</i>Update</div>
+            <div class="action"><i>M</i>Money</div>
+            <div class="action"><i>F</i>Field</div>
+            <div class="action"><i>P</i>Plan</div>
+          </div>
+
+          <div class="section-title"><span>My queue</span><a href="#">Sort</a></div>
+          <div class="queue">
+            <div class="queue-item"><div class="dot"></div><div>Lock approved proposal values<span>Stucco Repairs, invoice guard</span></div><em>Now</em></div>
+            <div class="queue-item"><div class="dot" style="background:var(--gold)"></div><div>Draft NTP from proposal facts<span>Contractor readiness</span></div><em>Today</em></div>
+            <div class="queue-item"><div class="dot" style="background:var(--blue)"></div><div>Sync Notion meeting notes<span>R4 client updates</span></div><em>Review</em></div>
+          </div>
+
+          <nav class="tabbar" aria-label="Mobile bottom navigation">
+            <div class="tab active"><b>⌂</b>Today</div>
+            <div class="tab"><b>P</b>Projects</div>
+            <div class="tab"><b>＋</b>Capture</div>
+            <div class="tab"><b>$</b>Money</div>
+            <div class="tab"><b>⋯</b>More</div>
+          </nav>
+        </div>
+      </div>
+    </section>
+
+    <aside class="side-panel" aria-label="Workflow notes">
+      <div class="rail-card">
+        <small>Mobile navigation model</small>
+        <h2>Home, Projects, Capture, Money, More.</h2>
+        <p>That is the working app shell. The desktop sidebar can stay richer, but the phone should keep the user in five predictable places.</p>
+      </div>
+      <div class="rail-card">
+        <small>Proposal to invoice</small>
+        <h3>Clean business lifecycle</h3>
+        <div class="flow">
+          <div><span>1</span>Build or upload executed proposal</div>
+          <div><span>2</span>Enter approved value lines manually</div>
+          <div><span>3</span>Lock values and explain unlock reasons</div>
+          <div><span>4</span>Bill client and pay vendors against caps</div>
+        </div>
+      </div>
+      <div class="rail-card">
+        <small>Capture action sheet</small>
+        <h3>Permit scanning is no longer a giant block.</h3>
+        <p>Routine capture lives in one compact action model, so the dashboard and project screens do not waste vertical space.</p>
+        <div class="capture-sheet">
+          <h4>Capture</h4>
+          <div class="capture-options">
+            <div>Site photo</div>
+            <div>Field note</div>
+            <div>Permit scan</div>
+            <div>Punch item</div>
+            <div>Voice note</div>
+            <div>Document</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </main>
+</body>
+</html>

@@ -12,7 +12,7 @@ import {
 export { buildBillableLines } from '@/lib/consulting/billing';
 
 export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'void';
-export type InvoiceLifecycleAction = 'edit' | 'mark_sent' | 'return_to_draft' | 'void' | 'delete' | 'record_payment';
+export type InvoiceLifecycleAction = 'edit' | 'mark_sent' | 'return_to_draft' | 'void' | 'delete' | 'record_payment' | 'sign';
 
 export interface ConsultingInvoice {
   id: string;
@@ -34,6 +34,16 @@ export interface ConsultingInvoice {
   bill_to_city: string | null;
   bill_to_state: string | null;
   bill_to_postal: string | null;
+  sign_token: string | null;
+  sent_to_client_at: string | null;
+  sender_signed_at: string | null;
+  sender_signed_name: string | null;
+  sender_signature_path: string | null;
+  client_signed_at: string | null;
+  client_signed_name: string | null;
+  client_signature_path: string | null;
+  client_signature_method: string | null;
+  client_comments: string | null;
   subtotal: number;
   total: number;
   created_by: string | null;
@@ -71,6 +81,17 @@ export interface NewInvoiceLine {
   pct_prev: number;
   pct_this: number;
   amount: number;
+}
+
+export interface InvoiceSignatureInput {
+  name: string;
+  signatureDataUrl: string;
+}
+
+export interface ClientInvoiceApprovalInput {
+  name: string;
+  method: 'electronic' | 'download_print_scan';
+  comments?: string | null;
 }
 
 export interface InvoiceBillTo {
@@ -121,11 +142,13 @@ export function invoiceLifecycleActions(invoice: Pick<ConsultingInvoice, 'status
     actions.add('edit');
     actions.add('mark_sent');
     actions.add('delete');
+    actions.add('sign');
     return actions;
   }
 
   if (invoice.status === 'sent') {
     actions.add('record_payment');
+    actions.add('sign');
     if (paid <= 0.005) {
       actions.add('return_to_draft');
       actions.add('void');
@@ -417,7 +440,60 @@ export function useConsultingInvoices(projectId: string | null | undefined) {
     onError: (e: Error) => toast.error(`Couldn't delete invoice: ${e.message}`),
   });
 
-  return { ...list, create, update, setStatus, returnToDraft, remove };
+  const sign = useMutation({
+    mutationFn: async ({ id, name, signatureDataUrl }: { id: string } & InvoiceSignatureInput) => {
+      const inv = (list.data ?? []).find((i) => i.id === id);
+      if (inv?.status === 'paid' || inv?.status === 'void') {
+        throw lifecycleError('Only draft or issued invoices can be signed for client delivery.');
+      }
+      if (!name.trim()) throw lifecycleError('Signer name is required.');
+      if (!signatureDataUrl.startsWith('data:image')) throw lifecycleError('Typed signature is required.');
+      const bytes = Uint8Array.from(atob(signatureDataUrl.split(',')[1] ?? ''), (char) => char.charCodeAt(0));
+      const tenant_id = inv?.tenant_id ?? await requireTenantId();
+      const storagePath = `${tenant_id}/${projectId}/invoices/signature/${id}-${Date.now()}.png`;
+      const upload = await supabase.storage.from('daily-report-files').upload(storagePath, bytes, {
+        contentType: 'image/png',
+        upsert: true,
+      });
+      if (upload.error) throw upload.error;
+      const signaturePath = supabase.storage.from('daily-report-files').getPublicUrl(storagePath).data.publicUrl;
+      const { error } = await invoices().update({
+        sender_signed_at: new Date().toISOString(),
+        sender_signed_name: name.trim(),
+        sender_signature_path: signaturePath,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['consulting-invoice-detail', vars.id] });
+      toast.success('Invoice signed');
+    },
+    onError: (e: Error) => toast.error(`Couldn't sign invoice: ${e.message}`),
+  });
+
+  const recordClientApproval = useMutation({
+    mutationFn: async ({ id, name, method, comments }: { id: string } & ClientInvoiceApprovalInput) => {
+      if (!name.trim()) throw lifecycleError('Client signer name is required.');
+      const { error } = await invoices().update({
+        client_signed_at: new Date().toISOString(),
+        client_signed_name: name.trim(),
+        client_signature_method: method,
+        client_comments: comments?.trim() || null,
+        updated_at: new Date().toISOString(),
+      }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      invalidate();
+      qc.invalidateQueries({ queryKey: ['consulting-invoice-detail', vars.id] });
+      toast.success('Client approval recorded');
+    },
+    onError: (e: Error) => toast.error(`Couldn't record client approval: ${e.message}`),
+  });
+
+  return { ...list, create, update, setStatus, returnToDraft, remove, sign, recordClientApproval };
 }
 
 export function useInvoiceDetail(invoiceId: string | null | undefined) {

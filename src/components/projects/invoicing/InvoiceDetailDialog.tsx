@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Download, Send, Plus, Loader2, Mail, Pencil, Paperclip, Upload, X, RotateCcw, XCircle, Trash2 } from 'lucide-react';
+import { Download, Send, Plus, Loader2, Mail, Pencil, Paperclip, Upload, X, RotateCcw, XCircle, Trash2, PenLine, CheckCircle2 } from 'lucide-react';
 import {
   invoiceLifecycleActions,
   useInvoiceDetail,
@@ -20,13 +20,13 @@ import { buildProposalAccountSummaries, type ProposalBillingRow } from '@/lib/co
 import {
   APAS_COMPANY_BRANDS,
   invoiceDocumentLabelForCompany,
-  invoiceEmailOpeningForCompany,
   invoicePackageSubject,
   type ApasCompanyBrand,
 } from '@/lib/financial/apasCompanyBranding';
 import { supabase } from '@/integrations/supabase/client';
 import { INVOICE_STATUS_META, money } from './invoiceMeta';
 import { cn } from '@/lib/utils';
+import { TypedSignaturePad } from '@/components/financial/TypedSignaturePad';
 
 interface Props {
   open: boolean;
@@ -70,7 +70,7 @@ export function InvoiceDetailDialog({
   billingBrand = APAS_COMPANY_BRANDS.apas_consulting,
 }: Props) {
   const { data, isLoading, addPayment } = useInvoiceDetail(invoiceId);
-  const { setStatus, returnToDraft, remove } = useConsultingInvoices(projectId);
+  const { setStatus, returnToDraft, remove, sign, recordClientApproval } = useConsultingInvoices(projectId);
   const { data: ledger } = useConsultingArLedger(projectId);
   const { billedByProposal, paidByProposal } = useProposalBillingMaps(projectId, open && !!invoiceId);
   const { data: coSettings } = useCoSettings();
@@ -79,7 +79,7 @@ export function InvoiceDetailDialog({
   const [payMethod, setPayMethod] = useState('');
   const [payNote, setPayNote] = useState('');
   const [emailOpen, setEmailOpen] = useState(false);
-  const [emailHtml, setEmailHtml] = useState('');
+  const [emailText, setEmailText] = useState('');
   const [editOpen, setEditOpen] = useState(false);
   const [pdfAttachment, setPdfAttachment] = useState<
     { filename: string; contentBase64: string; contentType: string } | undefined
@@ -87,6 +87,10 @@ export function InvoiceDetailDialog({
   const [reportAttachments, setReportAttachments] = useState<ReportAttachmentDraft[]>([]);
   const [previewAttachments, setPreviewAttachments] = useState<SendExternalEmailPreviewAttachment[]>([]);
   const [packaging, setPackaging] = useState(false);
+  const [signerName, setSignerName] = useState(consultingBrand.senderName);
+  const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null);
+  const [clientApprovalName, setClientApprovalName] = useState('');
+  const [clientApprovalComments, setClientApprovalComments] = useState('');
 
   const inv: ConsultingInvoice | undefined = data?.invoice;
   const consultingBrand = billingBrand;
@@ -182,6 +186,14 @@ export function InvoiceDetailDialog({
       accountSummaries,
       priorPayments,
       branding,
+      senderSignedName: inv.sender_signed_name,
+      senderSignedAt: inv.sender_signed_at,
+      senderSignaturePath: inv.sender_signature_path,
+      clientSignedName: inv.client_signed_name,
+      clientSignedAt: inv.client_signed_at,
+      clientSignaturePath: inv.client_signature_path,
+      clientSignatureMethod: inv.client_signature_method,
+      clientComments: inv.client_comments,
     };
   };
 
@@ -208,31 +220,18 @@ export function InvoiceDetailDialog({
   const handleSend = async () => {
     if (!inv) return;
     setPackaging(true);
-    const company = branding.companyName || consultingBrand.legalName;
-    const rows = lines
-      .map(
-        (l) =>
-          `<tr><td style="padding:8px 0;border-bottom:1px solid #eee">${l.description}</td>` +
-          `<td style="padding:8px 0;border-bottom:1px solid #eee;text-align:right;font-variant-numeric:tabular-nums">${money(Number(l.amount))}</td></tr>`,
-      )
-      .join('');
-    setEmailHtml(`
-      <div style="font-family:${consultingBrand.fontFamily};color:${consultingBrand.ink};max-width:620px">
-        <div style="border-bottom:3px solid ${consultingBrand.accent};padding-bottom:12px;margin-bottom:20px">
-          <div style="font-size:18px;font-weight:700">${company}</div>
-          <div style="color:${consultingBrand.primary};font-size:14px;margin-top:4px">Invoice package #${inv.invoice_no}</div>
-        </div>
-        ${inv.subject ? `<p style="color:#878581"><strong>RE:</strong> ${inv.subject}</p>` : ''}
-        <p>${invoiceEmailOpeningForCompany(consultingBrand)}</p>
-        <p>Please find Invoice #${inv.invoice_no} for <strong>${projectName}</strong>.</p>
-        <table style="width:100%;border-collapse:collapse;margin:16px 0">${rows}</table>
-        <p style="font-size:16px"><strong>Amount due: ${money(balance)}</strong></p>
-        ${inv.due_date ? `<p style="color:#878581">Due ${inv.due_date}</p>` : ''}
-        ${inv.payment_terms ? `<p style="color:#878581;font-size:13px">${inv.payment_terms}</p>` : ''}
-        <p style="color:#878581;font-size:13px">The attached PDF package is client-ready and includes the invoice detail, running account tab, payment terms, approval/sign-off block${reportAttachments.length ? ', and the attached report backup.' : '.'}</p>
-        <p style="margin-top:20px">Regards,<br/>${consultingBrand.senderName}<br/><span style="color:${consultingBrand.muted}">${consultingBrand.legalName}</span></p>
-      </div>
-    `);
+    setEmailText(
+      [
+        `Please see attached Invoice #${inv.invoice_no} for ${projectName}.`,
+        `Amount due: ${money(balance)}${inv.due_date ? `\nDue: ${inv.due_date}` : ''}`,
+        inv.payment_terms || null,
+        reportAttachments.length
+          ? 'The invoice PDF package includes the attached report backup.'
+          : 'The invoice is attached as a PDF.',
+      ]
+        .filter(Boolean)
+        .join('\n\n'),
+    );
     const input = pdfInput();
     if (input) {
       try {
@@ -311,6 +310,31 @@ export function InvoiceDetailDialog({
   const markSent = () => {
     if (!inv) return;
     setStatus.mutate({ id: inv.id, status: 'sent' });
+    void supabase
+      .from('consulting_invoices' as never)
+      .update({ sent_to_client_at: new Date().toISOString(), updated_at: new Date().toISOString() } as never)
+      .eq('id', inv.id);
+  };
+
+  const signInvoice = async () => {
+    if (!inv) return;
+    await sign.mutateAsync({
+      id: inv.id,
+      name: signerName,
+      signatureDataUrl: signatureDataUrl ?? '',
+    });
+  };
+
+  const recordReturnedClientApproval = async (method: 'electronic' | 'download_print_scan') => {
+    if (!inv) return;
+    await recordClientApproval.mutateAsync({
+      id: inv.id,
+      name: clientApprovalName,
+      method,
+      comments: clientApprovalComments,
+    });
+    setClientApprovalName('');
+    setClientApprovalComments('');
   };
 
   const deleteEligibleInvoice = async () => {
@@ -340,7 +364,7 @@ export function InvoiceDetailDialog({
             <div className="py-10 text-center text-sm text-muted-foreground">Loading…</div>
           ) : (
             <div className="space-y-4">
-              <div className="rounded-xl border bg-gradient-to-br from-[#FAF8F4] to-white p-4" style={{ borderColor: `${consultingBrand.accent}55` }}>
+              <div className="rounded-xl border bg-white p-4 shadow-sm" style={{ borderColor: '#d9d4c9' }}>
                 <div className="flex items-start justify-between gap-3 border-b-2 pb-3" style={{ borderColor: consultingBrand.accent }}>
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: consultingBrand.accent }}>
@@ -361,7 +385,7 @@ export function InvoiceDetailDialog({
                         {inv.bill_to_address || clientSeed?.address}
                       </p>
                     )}
-                    <p className="mt-2 text-2xl font-semibold tabular-nums text-[var(--apas-sapphire)]">
+                    <p className="mt-2 text-2xl font-black tabular-nums text-[#1A1714]">
                       {money(balance)}
                     </p>
                     <p className="text-xs text-muted-foreground">amount due</p>
@@ -388,6 +412,88 @@ export function InvoiceDetailDialog({
                     ))}
                   </div>
                 </div>
+              </div>
+
+              <div className="rounded-lg border bg-white p-3 text-sm shadow-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      <PenLine className="h-3.5 w-3.5" />
+                      Signature lifecycle
+                    </div>
+                    <p className="mt-1 font-semibold text-[#1A1714]">Sign it, send it, then let the client sign electronically or return a scanned copy.</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-1', inv.sender_signed_at ? 'bg-emerald-50 text-emerald-800' : 'bg-stone-100 text-stone-700')}>
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {inv.sender_signed_at ? `Signed by ${inv.sender_signed_name || 'sender'}` : 'Sender signature pending'}
+                      </span>
+                      <span className={cn('inline-flex items-center gap-1 rounded-full px-2 py-1', inv.client_signed_at ? 'bg-emerald-50 text-emerald-800' : 'bg-stone-100 text-stone-700')}>
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                        {inv.client_signed_at ? `Client signed by ${inv.client_signed_name || 'client'}` : 'Client approval pending'}
+                      </span>
+                    </div>
+                    <p className="mt-2 max-w-xl text-xs leading-5 text-muted-foreground">
+                      The package supports both choices: the client can approve by reply email, or print, sign, scan, and return it. Record the returned approval below so the invoice audit trail is complete.
+                    </p>
+                  </div>
+                  {!inv.sender_signed_at && lifecycleActions.has('sign') && (
+                    <div className="w-full max-w-sm rounded-lg border bg-stone-50 p-3">
+                      <TypedSignaturePad
+                        defaultName={consultingBrand.senderName}
+                        onChange={setSignatureDataUrl}
+                        onNameChange={setSignerName}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="mt-3 w-full bg-[#1A1714] text-white hover:bg-[#1A1714]/90"
+                        onClick={() => void signInvoice()}
+                        disabled={sign.isPending || !signatureDataUrl || !signerName.trim()}
+                      >
+                        {sign.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PenLine className="mr-2 h-4 w-4" />}
+                        Sign invoice package
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {!inv.client_signed_at && inv.sender_signed_at && (
+                  <div className="mt-3 rounded-lg border bg-stone-50 p-3">
+                    <div className="grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+                      <Input
+                        value={clientApprovalName}
+                        onChange={(event) => setClientApprovalName(event.target.value)}
+                        placeholder="Client signer name"
+                        className="bg-white"
+                      />
+                      <Input
+                        value={clientApprovalComments}
+                        onChange={(event) => setClientApprovalComments(event.target.value)}
+                        placeholder="Approval note or email reference"
+                        className="bg-white"
+                      />
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={recordClientApproval.isPending || !clientApprovalName.trim()}
+                        onClick={() => void recordReturnedClientApproval('electronic')}
+                      >
+                        Record electronic approval
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={recordClientApproval.isPending || !clientApprovalName.trim()}
+                        onClick={() => void recordReturnedClientApproval('download_print_scan')}
+                      >
+                        Record scanned signed copy
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {accountSummaries.length > 0 && (
@@ -478,7 +584,7 @@ export function InvoiceDetailDialog({
               <div className="flex flex-col items-end gap-1 text-sm pr-1">
                 <div className="flex gap-8"><span className="text-muted-foreground">Total</span><span className="font-medium w-28 text-right tabular-nums">{money(Number(inv.total))}</span></div>
                 {paid > 0 && <div className="flex gap-8"><span className="text-muted-foreground">Paid</span><span className="w-28 text-right tabular-nums">- {money(paid)}</span></div>}
-                <div className="flex gap-8"><span className="text-muted-foreground">Amount due</span><span className="font-semibold w-28 text-right tabular-nums text-[var(--apas-sapphire)]">{money(balance)}</span></div>
+                <div className="flex gap-8"><span className="text-muted-foreground">Amount due</span><span className="font-black w-28 text-right tabular-nums text-[#1A1714]">{money(balance)}</span></div>
               </div>
 
               {inv.notes && (
@@ -538,7 +644,7 @@ export function InvoiceDetailDialog({
                 <Button size="sm" variant="outline" onClick={handlePdf} className="gap-1.5"><Download className="h-4 w-4" />Download package PDF</Button>
                 <Button size="sm" variant="outline" onClick={() => void handleSend()} disabled={packaging} className="gap-1.5">
                   {packaging ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-                  Preview & email package
+                  Preview & email PDF
                 </Button>
                 {lifecycleActions.has('mark_sent') && (
                   <Button size="sm" onClick={markSent} disabled={setStatus.isPending} className="gap-1.5 bg-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/90">
@@ -607,7 +713,8 @@ export function InvoiceDetailDialog({
           projectName={projectName}
           projectId={projectId}
           defaultSubject={inv.subject || invoicePackageSubject(consultingBrand, inv.invoice_no, projectName)}
-          contentHtml={emailHtml}
+          contentText={emailText}
+          deliveryMode="attachment_only"
           fromName={consultingBrand.senderName}
           fromEmail={consultingBrand.senderEmail}
           fromEmailVerified={consultingBrand.senderEmailStatus === 'verified'}

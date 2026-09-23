@@ -9,7 +9,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ResizableWorkspace } from '@/components/layout/ResizableWorkspace';
-import { Loader2, Plus, Trash2, FileText, Info, LockKeyhole, ShieldCheck, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Trash2, FileText, Info, LockKeyhole, ShieldCheck, CheckCircle2, AlertCircle, UserPlus } from 'lucide-react';
 import { useProjectScopes } from '@/hooks/useProjectScopes';
 import { useFinancialProposals } from '@/hooks/useFinancialProposals';
 import {
@@ -33,6 +33,8 @@ import { APAS_COMPANY_BRANDS, invoiceDocumentLabelForCompany, type ApasCompanyBr
 import { money } from './invoiceMeta';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useCRMContacts, useCreateCRMContact } from '@/hooks/useCRMContacts';
+import { useSyncContactAssignments } from '@/hooks/useContactAssignments';
 
 export interface InvoiceClientSeed {
   name?: string | null;
@@ -82,6 +84,21 @@ function addDaysIso(iso: string, days: number) {
   return d.toISOString().slice(0, 10);
 }
 
+function normalizeContactValue(value?: string | null) {
+  return (value ?? '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function splitContactName(name: string, fallback: string) {
+  const cleaned = name.trim().replace(/\s+/g, ' ');
+  if (!cleaned) return { firstName: fallback.trim() || 'Invoice client', lastName: '' };
+  const parts = cleaned.split(' ');
+  if (parts.length === 1) return { firstName: parts[0], lastName: '' };
+  return {
+    firstName: parts.slice(0, -1).join(' '),
+    lastName: parts.at(-1) ?? '',
+  };
+}
+
 export function ConsultingInvoiceBuilder({
   open,
   onOpenChange,
@@ -98,6 +115,9 @@ export function ConsultingInvoiceBuilder({
   const { create, update, remove, data: invoices = [] } = useConsultingInvoices(projectId);
   const { data: editDetail } = useInvoiceDetail(open && editInvoiceId ? editInvoiceId : null);
   const { billedByProposal, paidByProposal } = useProposalBillingMaps(projectId, open);
+  const { data: crmContacts = [] } = useCRMContacts();
+  const createContact = useCreateCRMContact();
+  const { sync: syncContactAssignments } = useSyncContactAssignments();
   const editing = !!editInvoiceId;
   const existing = useMemo(
     () => editDetail?.invoice ?? (editInvoiceId ? invoices.find((i) => i.id === editInvoiceId) : null) ?? null,
@@ -120,6 +140,7 @@ export function ConsultingInvoiceBuilder({
   const [billToCity, setBillToCity] = useState('');
   const [billToState, setBillToState] = useState('');
   const [billToPostal, setBillToPostal] = useState('');
+  const [lastSavedBillToSignature, setLastSavedBillToSignature] = useState('');
   const [rows, setRows] = useState<ScopeRow[]>([]);
   const [proposalRows, setProposalRows] = useState<ProposalBillingRow[]>([]);
   const [customRows, setCustomRows] = useState<CustomRow[]>([
@@ -317,6 +338,67 @@ export function ConsultingInvoiceBuilder({
   const total =
     mode === 'proposals' ? proposalTotal : mode === 'scopes' ? scopeTotal : customTotal;
 
+  const billToSignature = useMemo(
+    () =>
+      [
+        billToName,
+        billToCompany,
+        billToEmail,
+        billToPhone,
+        billToAddress,
+        billToCity,
+        billToState,
+        billToPostal,
+      ]
+        .map(normalizeContactValue)
+        .join('|'),
+    [
+      billToName,
+      billToCompany,
+      billToEmail,
+      billToPhone,
+      billToAddress,
+      billToCity,
+      billToState,
+      billToPostal,
+    ],
+  );
+
+  const hasBillToIdentity = Boolean(
+    billToName.trim() ||
+      billToCompany.trim() ||
+      billToPhone.trim() ||
+      billToEmail.trim(),
+  );
+
+  const matchingBillToContact = useMemo(() => {
+    if (!hasBillToIdentity) return null;
+    const email = normalizeContactValue(billToEmail);
+    const phone = normalizeContactValue(billToPhone).replace(/\D/g, '');
+    const name = normalizeContactValue(billToName);
+    const company = normalizeContactValue(billToCompany);
+
+    return crmContacts.find((contact) => {
+      const contactEmail = normalizeContactValue(contact.email);
+      if (email && contactEmail === email) return true;
+
+      const contactPhone = normalizeContactValue(contact.phone || contact.mobile).replace(/\D/g, '');
+      if (phone && contactPhone && contactPhone === phone) return true;
+
+      const contactName = normalizeContactValue([contact.first_name, contact.last_name].filter(Boolean).join(' '));
+      const contactCompany = normalizeContactValue(contact.company_name);
+      if (name && company) return contactName === name && contactCompany === company;
+      if (name && !company) return contactName === name;
+      if (company && !name) return contactCompany === company;
+      return false;
+    }) ?? null;
+  }, [billToEmail, billToPhone, billToName, billToCompany, crmContacts, hasBillToIdentity]);
+
+  const shouldOfferBillToContactSave =
+    hasBillToIdentity &&
+    !matchingBillToContact &&
+    billToSignature !== lastSavedBillToSignature;
+
   const accountSummaries = useMemo(
     () => (mode === 'proposals' ? buildProposalAccountSummaries(proposalRows) : []),
     [mode, proposalRows],
@@ -393,6 +475,37 @@ export function ConsultingInvoiceBuilder({
         pct_this: 100,
         amount: Number(r.amount) || 0,
       }));
+  };
+
+  const handleAddBillToContact = async () => {
+    if (!hasBillToIdentity) return;
+    const { firstName, lastName } = splitContactName(billToName, billToCompany);
+    try {
+      const saved = await createContact.mutateAsync({
+        first_name: firstName,
+        last_name: lastName || undefined,
+        company_name: billToCompany.trim() || undefined,
+        contact_type: 'owner',
+        email: billToEmail.trim() || undefined,
+        phone: billToPhone.trim() || undefined,
+        address_line1: billToAddress.trim() || undefined,
+        city: billToCity.trim() || undefined,
+        state: billToState.trim() || undefined,
+        zip_code: billToPostal.trim() || undefined,
+        country: 'USA',
+        tags: ['client', 'invoice'],
+        notes: `Added from client invoice for ${projectName}.`,
+      });
+      await syncContactAssignments.mutateAsync({
+        contactId: saved.id,
+        projectIds: [projectId],
+        propertyIds: [],
+      });
+      setLastSavedBillToSignature(billToSignature);
+      toast.success('Added to the client list');
+    } catch {
+      /* toast handled by the contact hooks */
+    }
   };
 
   const handleSave = async () => {
@@ -589,6 +702,32 @@ export function ConsultingInvoiceBuilder({
               <Input value={billToPhone} onChange={(e) => setBillToPhone(e.target.value)} />
             </div>
           </div>
+          {shouldOfferBillToContactSave && (
+            <div className="rounded-md border border-[var(--apas-gold)]/50 bg-[var(--apas-gold)]/10 p-3 text-sm text-foreground">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-semibold">Do you want to add to the client list?</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    This saves the bill-to information to CRM and attaches it to this project, even if there is no email address yet.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="shrink-0 gap-2"
+                  disabled={createContact.isPending || syncContactAssignments.isPending}
+                  onClick={handleAddBillToContact}
+                >
+                  {createContact.isPending || syncContactAssignments.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="h-4 w-4" />
+                  )}
+                  Add to client list
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="grid gap-1.5">

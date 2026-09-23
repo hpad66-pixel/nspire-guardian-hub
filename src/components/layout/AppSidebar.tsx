@@ -83,12 +83,12 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
       to={to}
       end={end}
       className={cn(
-        'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[14px] font-medium leading-5',
-        'text-sidebar-foreground/60 transition-all duration-150',
+        'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-[14px] font-semibold leading-5',
+        'text-sidebar-foreground/70 transition-all duration-150',
         'hover:bg-sidebar-nav-hover-bg hover:text-sidebar-foreground',
         collapsed && 'justify-center px-0 py-2.5',
       )}
-      activeClassName="!bg-sidebar-nav-active-bg !text-sidebar-foreground !font-semibold"
+      activeClassName="!bg-sidebar-nav-active-bg !text-[var(--ow-ink)] !font-semibold shadow-sm"
     >
       <Icon className={cn('h-[18px] w-[18px] shrink-0 stroke-[1.6]', collapsed && 'h-5 w-5')} />
       {!collapsed && (
@@ -122,7 +122,7 @@ function NavItem({ to, icon: Icon, label, collapsed, end, badge }: NavItemProps)
 function SectionLabel({ label, collapsed }: { label: string; collapsed: boolean }) {
   if (collapsed) return <div className="mx-auto my-3 h-px w-5 bg-sidebar-border" />;
   return (
-    <p className="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-label">
+    <p className="px-3 pt-5 pb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-sidebar-label/90">
       {label}
     </p>
   );
@@ -169,7 +169,7 @@ export function AppSidebar() {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar">
+      <Sidebar collapsible="icon" className="border-r border-sidebar-border bg-sidebar shadow-[18px_0_40px_rgba(37,44,57,0.14)]">
         {/* ── HEADER ── */}
         <SidebarHeader className="px-3 py-4">
           <NavLink
@@ -179,13 +179,11 @@ export function AppSidebar() {
               collapsed && 'justify-center px-0',
             )}
           >
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-[7px] font-bold tracking-[0.08em] text-primary-foreground shadow-sm ring-2 ring-accent/60 ring-offset-2 ring-offset-sidebar">
-              POS
-            </div>
+            <div className="ow-signal-mark flex h-10 w-10 shrink-0 items-center justify-center" aria-hidden="true" />
             {!collapsed && (
               <span className="grid gap-1 leading-none">
                 <strong className="text-[16px] font-bold text-sidebar-foreground">Proj OS</strong>
-                <small className="text-[9px] font-bold uppercase tracking-[0.14em] text-sidebar-muted">Project operating system</small>
+                <small className="text-[9px] font-bold uppercase tracking-[0.14em] text-sidebar-muted">By OneWater.ai</small>
               </span>
             )}
           </NavLink>

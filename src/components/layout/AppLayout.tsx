@@ -65,13 +65,13 @@ function ProjectRouteContextPill({ pathname }: { pathname: string }) {
   return (
     <div className="flex min-w-0 flex-1 justify-end px-1 sm:px-3">
       <div
-        className="min-w-0 max-w-[46vw] rounded-lg border border-[var(--apas-amber)]/35 bg-[#FBF8F1]/95 px-3 py-1.5 text-right shadow-sm sm:max-w-[360px]"
+        className="min-w-0 max-w-[46vw] rounded-lg border border-[var(--ow-taupe-2)] bg-[rgba(251,250,245,0.95)] px-3 py-1.5 text-right shadow-sm sm:max-w-[360px]"
         aria-label={`Current ${contextType.toLowerCase()}: ${label}`}
       >
-        <p className="text-[10px] font-semibold uppercase leading-none tracking-[0.12em] text-[#8B7E6A]">
+        <p className="text-[10px] font-semibold uppercase leading-none tracking-[0.12em] text-[var(--ow-muted)]">
           Current {contextType}
         </p>
-        <p className="mt-1 truncate font-[Playfair_Display] text-sm font-semibold leading-tight text-[#08271F] sm:text-base">
+        <p className="mt-1 truncate text-sm font-semibold leading-tight text-[var(--ow-ink)] sm:text-base">
           {label}
         </p>
         {projectName && clientName && (
@@ -220,7 +220,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     <>
       <PWAUpdateBanner />
       <SidebarProvider>
-        <div className="apas-app-shell flex min-h-dvh w-full max-w-[100vw]">
+        <div className="apas-app-shell ow-app-surface flex min-h-dvh w-full max-w-[100vw]">
           {/* Desktop sidebar — hidden on mobile/tablet */}
           <div className="hidden lg:block">
             <AppSidebar />
@@ -228,7 +228,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
           <div className="flex flex-1 flex-col min-w-0">
             {/* Header — safe-area top for notch / Dynamic Island in standalone PWA */}
-            <header className="sticky top-0 z-10 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center gap-2 border-b border-border/80 bg-background/80 px-3 pt-[env(safe-area-inset-top,0px)] backdrop-blur-xl supports-[backdrop-filter]:bg-background/70 md:px-5">
+            <header className="sticky top-0 z-10 flex h-[calc(3.5rem+env(safe-area-inset-top,0px))] items-center gap-2 border-b border-[rgba(37,44,57,0.14)] bg-[rgba(251,250,245,0.86)] px-3 pt-[env(safe-area-inset-top,0px)] shadow-[0_10px_30px_rgba(37,44,57,0.05)] backdrop-blur-xl md:px-5">
 
               {/* Desktop only: sidebar trigger */}
               <div className="hidden lg:block">
@@ -250,7 +250,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               <Button
                 variant="outline"
                 className={cn(
-                  'relative hidden h-10 w-80 justify-start gap-2 rounded-lg border-border/70 bg-muted/30 px-3 text-sm font-medium text-muted-foreground shadow-none hover:bg-muted/50 hover:text-foreground lg:flex'
+                  'relative hidden h-10 w-80 justify-start gap-2 rounded-lg border-[var(--ow-taupe-2)] bg-[rgba(251,250,245,0.8)] px-3 text-sm font-medium text-[var(--ow-muted)] shadow-none hover:bg-[rgba(230,224,210,0.5)] hover:text-[var(--ow-ink)] lg:flex'
                 )}
                 onClick={() => setSearchOpen(true)}
               >
@@ -270,7 +270,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   onClick={() => navigate('/product-ideas')}
                   aria-current={location.pathname === '/product-ideas' ? 'page' : undefined}
                   className={cn(
-                    'h-9 gap-2 rounded-full border-primary/25 bg-primary/[0.06] px-3 font-semibold text-primary shadow-sm transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary',
+                    'h-9 gap-2 rounded-lg border-[rgba(36,63,104,0.25)] bg-[rgba(36,63,104,0.07)] px-3 font-semibold text-[var(--ow-navy)] shadow-sm transition-all hover:border-[rgba(36,63,104,0.4)] hover:bg-[rgba(36,63,104,0.1)] hover:text-[var(--ow-navy)]',
                     location.pathname === '/product-ideas' &&
                       'border-primary bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
                   )}
