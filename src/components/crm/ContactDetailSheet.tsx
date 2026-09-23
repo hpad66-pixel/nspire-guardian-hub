@@ -45,6 +45,7 @@ import {
   useSyncContactAssignments,
 } from "@/hooks/useContactAssignments";
 import { mergeAssignmentIds } from "@/lib/crm/contactAssignments";
+import { contactAvatarColor, contactDisplayName, contactInitials } from "@/lib/crm/contactDisplay";
 
 interface ContactDetailSheetProps {
   contact: CRMContact | null;
@@ -89,31 +90,6 @@ export function ContactDetailSheet({
       propertyIds: nextProperties,
       primaryPropertyId: nextProperties[0] ?? null,
     });
-  };
-
-  const getInitials = (contact: CRMContact) => {
-    const first = contact.first_name?.charAt(0) || "";
-    const last = contact.last_name?.charAt(0) || "";
-    return (first + last).toUpperCase() || "?";
-  };
-
-  const getDisplayName = (contact: CRMContact) => {
-    return [contact.first_name, contact.last_name].filter(Boolean).join(" ");
-  };
-
-  const getAvatarColor = (contact: CRMContact) => {
-    const colors = [
-      "bg-blue-500",
-      "bg-green-500",
-      "bg-purple-500",
-      "bg-orange-500",
-      "bg-pink-500",
-      "bg-cyan-500",
-      "bg-indigo-500",
-      "bg-teal-500",
-    ];
-    const index = contact.first_name.charCodeAt(0) % colors.length;
-    return colors[index];
   };
 
   const copyToClipboard = (text: string, label: string) => {
@@ -189,15 +165,15 @@ export function ContactDetailSheet({
         {/* Header */}
         <SheetHeader className="p-6 pb-4 border-b bg-muted/30">
           <div className="flex items-start gap-4">
-            <Avatar className={cn("h-16 w-16", getAvatarColor(contact))}>
+            <Avatar className={cn("h-16 w-16", contactAvatarColor(contact))}>
               <AvatarFallback className="text-white text-xl font-semibold">
-                {getInitials(contact)}
+                {contactInitials(contact)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0 space-y-1">
               <div className="flex items-center gap-2">
                 <SheetTitle className="text-xl truncate">
-                  {getDisplayName(contact)}
+                  {contactDisplayName(contact)}
                 </SheetTitle>
                 {contact.is_favorite && (
                   <Star className="h-4 w-4 text-yellow-500 fill-yellow-500 shrink-0" />

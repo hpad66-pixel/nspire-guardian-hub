@@ -51,6 +51,7 @@ import { useProjects } from "@/hooks/useProjects";
 import { useContactAssignmentsMap } from "@/hooks/useContactAssignments";
 import { ContactAssignmentBadges } from "@/components/crm/ContactAssignmentsEditor";
 import { mergeAssignmentIds } from "@/lib/crm/contactAssignments";
+import { contactAvatarColor, contactDisplayName, contactGroupLetter } from "@/lib/crm/contactDisplay";
 import { cn } from "@/lib/utils";
 import { useModules } from "@/contexts/ModuleContext";
 import { CrmCardIntakeDialog } from "@/components/crm/CrmCardIntakeDialog";
@@ -119,7 +120,7 @@ export default function ContactsPage() {
   // Filter by letter, project, and extra property links
   const filteredContacts = useMemo(() => {
     return contacts.filter((contact) => {
-      if (activeLetter && !contact.first_name.toUpperCase().startsWith(activeLetter)) {
+      if (activeLetter && contactGroupLetter(contact) !== activeLetter) {
         return false;
       }
       const { projectIds, propertyIds } = namesForContact(contact);
@@ -137,9 +138,7 @@ export default function ContactsPage() {
   const availableLetters = useMemo(() => {
     const letters = new Set<string>();
     contacts.forEach((c) => {
-      if (c.first_name) {
-        letters.add(c.first_name.charAt(0).toUpperCase());
-      }
+      letters.add(contactGroupLetter(c));
     });
     return Array.from(letters).sort();
   }, [contacts]);
@@ -148,7 +147,7 @@ export default function ContactsPage() {
   const groupedContacts = useMemo(() => {
     const groups: Record<string, CRMContact[]> = {};
     filteredContacts.forEach((contact) => {
-      const letter = contact.first_name.charAt(0).toUpperCase();
+      const letter = contactGroupLetter(contact);
       if (!groups[letter]) groups[letter] = [];
       groups[letter].push(contact);
     });
@@ -523,19 +522,10 @@ export default function ContactsPage() {
                     <div
                       className={cn(
                         "h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold shrink-0",
-                        [
-                          "bg-blue-500",
-                          "bg-green-500",
-                          "bg-purple-500",
-                          "bg-orange-500",
-                          "bg-pink-500",
-                          "bg-cyan-500",
-                          "bg-indigo-500",
-                          "bg-teal-500",
-                        ][contact.first_name.charCodeAt(0) % 8]
+                        contactAvatarColor(contact)
                       )}
                     >
-                      {contact.first_name.charAt(0)}
+                      {contactGroupLetter(contact) === "#" ? contactDisplayName(contact).charAt(0).toUpperCase() : contactGroupLetter(contact)}
                       {contact.last_name?.charAt(0) || ""}
                     </div>
 
@@ -543,9 +533,7 @@ export default function ContactsPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-medium truncate">
-                          {[contact.first_name, contact.last_name]
-                            .filter(Boolean)
-                            .join(" ")}
+                          {contactDisplayName(contact)}
                         </span>
                         {contact.is_favorite && (
                           <Star className="h-3.5 w-3.5 text-yellow-500 fill-yellow-500 shrink-0" />

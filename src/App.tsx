@@ -280,6 +280,34 @@ function OfflineQueueManager() {
   return null;
 }
 
+function ContactsErrorFallback() {
+  return (
+    <div className="mx-auto flex min-h-[60vh] max-w-2xl items-center justify-center p-6">
+      <div className="w-full rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center shadow-sm">
+        <h1 className="text-2xl font-bold text-amber-950">Contacts needs a refresh</h1>
+        <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-amber-900">
+          A CRM record did not load cleanly, but the rest of Proj OS is still available. Use one of these exits and come back after refreshing.
+        </p>
+        <div className="mt-5 flex flex-col justify-center gap-2 sm:flex-row">
+          <a className="rounded-xl bg-amber-900 px-4 py-2 text-sm font-bold text-white" href="/dashboard">
+            Dashboard
+          </a>
+          <a className="rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-950" href="/organizations">
+            Clients
+          </a>
+          <button
+            type="button"
+            className="rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-950"
+            onClick={() => window.location.reload()}
+          >
+            Refresh Contacts
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -428,7 +456,14 @@ const App = () => (
                               <Route path="/qr-scanner" element={<QRScannerPage />} />
                               <Route path="/training" element={<TrainingDashboardPage />} />
                               <Route path="/training/dashboard" element={<TrainingDashboardPage />} />
-                              <Route path="/contacts" element={<ContactsPage />} />
+                              <Route
+                                path="/contacts"
+                                element={
+                                  <ErrorBoundary fallback={<ContactsErrorFallback />}>
+                                    <ContactsPage />
+                                  </ErrorBoundary>
+                                }
+                              />
                               <Route path="/voice-agent" element={<VoiceAgentDashboard />} />
                               <Route path="/settings/activity-log" element={<ActivityLogPage />} />
                               
