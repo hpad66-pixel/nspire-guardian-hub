@@ -74,6 +74,7 @@ export function InvoiceDetailDialog({
   const { data: ledger } = useConsultingArLedger(projectId);
   const { billedByProposal, paidByProposal } = useProposalBillingMaps(projectId, open && !!invoiceId);
   const { data: coSettings } = useCoSettings();
+  const consultingBrand = billingBrand;
   const [payAmount, setPayAmount] = useState('');
   const [payDate, setPayDate] = useState(new Date().toISOString().slice(0, 10));
   const [payMethod, setPayMethod] = useState('');
@@ -93,7 +94,6 @@ export function InvoiceDetailDialog({
   const [clientApprovalComments, setClientApprovalComments] = useState('');
 
   const inv: ConsultingInvoice | undefined = data?.invoice;
-  const consultingBrand = billingBrand;
   const invoiceDocumentLabel = invoiceDocumentLabelForCompany(consultingBrand);
   const lines = useMemo(() => data?.lines ?? [], [data?.lines]);
   const payments = useMemo(() => data?.payments ?? [], [data?.payments]);

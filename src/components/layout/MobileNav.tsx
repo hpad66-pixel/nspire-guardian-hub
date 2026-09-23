@@ -673,7 +673,7 @@ export function MobileNav() {
         style={{
           minHeight: '4rem',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          backgroundColor: 'rgba(251, 250, 245, 0.96)',
+          backgroundColor: 'rgba(251, 248, 241, 0.95)',
         }}
         data-testid="mobile-bottom-nav"
       >
