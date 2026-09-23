@@ -54,35 +54,41 @@ export interface ProjectNavItem {
 }
 
 const CONSTRUCTION_GROUPS: NavGroupDef[] = [
-  { key: 'engagement', label: 'Project', color: 'text-blue-400' },
-  { key: 'field', label: 'Field', color: 'text-amber-400' },
-  { key: 'commercial', label: 'Money', color: 'text-[var(--apas-sapphire)]' },
-  { key: 'documents', label: 'Docs & Comms', color: 'text-purple-400' },
-  { key: 'client', label: 'Client', color: 'text-emerald-400' },
-  { key: 'admin', label: 'Admin', color: 'text-muted-foreground' },
+  { key: 'engagement', label: 'Project setup', color: 'text-[#335c7d]' },
+  { key: 'commercial', label: 'Money', color: 'text-[#0d6b57]' },
+  { key: 'field', label: 'Field execution', color: 'text-[#8b5a15]' },
+  { key: 'documents', label: 'Docs & Comms', color: 'text-[#5b5fc7]' },
+  { key: 'client', label: 'Client', color: 'text-[#0f766e]' },
+  { key: 'admin', label: 'Admin', color: 'text-slate-600' },
 ];
 
 const CONSULTING_GROUPS: NavGroupDef[] = [
-  { key: 'engagement', label: 'Engagement', color: 'text-blue-400' },
-  { key: 'field', label: 'Delivery', color: 'text-emerald-400' },
-  { key: 'commercial', label: 'Commercial', color: 'text-[var(--apas-sapphire)]' },
-  { key: 'documents', label: 'Docs & Comms', color: 'text-purple-400' },
-  { key: 'client', label: 'Client', color: 'text-amber-400' },
-  { key: 'admin', label: 'Admin', color: 'text-muted-foreground' },
+  { key: 'engagement', label: 'Engagement setup', color: 'text-[#335c7d]' },
+  { key: 'commercial', label: 'Money', color: 'text-[#0d6b57]' },
+  { key: 'field', label: 'Delivery', color: 'text-[#8b5a15]' },
+  { key: 'documents', label: 'Docs & Comms', color: 'text-[#5b5fc7]' },
+  { key: 'client', label: 'Client', color: 'text-[#0f766e]' },
+  { key: 'admin', label: 'Admin', color: 'text-slate-600' },
 ];
 
 /** Canonical nav items — order within each group matters. */
 export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   // Engagement / Project
   { value: 'overview', label: 'Overview', shortLabel: 'Overview', icon: LayoutDashboard, group: 'engagement' },
-  { value: 'subprojects', label: 'Subprojects', shortLabel: 'Subs', icon: FolderTree, group: 'engagement' },
-  { value: 'directory', label: 'People & Team', shortLabel: 'People', icon: Users, group: 'engagement', route: (id) => `/projects/${id}/directory` },
-  { value: 'contractors', label: 'Contractor Readiness', shortLabel: 'Contractors', icon: UserRoundCheck, group: 'engagement', route: (id) => `/projects/${id}/contractors` },
   { value: 'scope', label: 'Scope', shortLabel: 'Scope', icon: ListTree, group: 'engagement' },
   { value: 'schedule', label: 'Schedule', shortLabel: 'Schedule', icon: CalendarDays, group: 'engagement' },
   { value: 'action-items', label: 'Action Items', shortLabel: 'Actions', icon: CheckSquare, group: 'engagement' },
+  { value: 'directory', label: 'People & Team', shortLabel: 'People', icon: Users, group: 'engagement', route: (id) => `/projects/${id}/directory` },
+  { value: 'contractors', label: 'Contractor Readiness', shortLabel: 'Contractors', icon: UserRoundCheck, group: 'engagement', route: (id) => `/projects/${id}/contractors` },
+  { value: 'subprojects', label: 'Subprojects', shortLabel: 'Subs', icon: FolderTree, group: 'engagement' },
 
-  // Field / Delivery — Permits near the top so scan/upload is easy to find on PWA
+  // Commercial / Money — money is the first operational section after setup.
+  { value: 'financials', label: 'Financials', shortLabel: 'Finance', icon: Wallet, group: 'commercial', route: (id) => `/projects/${id}/financials/overview` },
+  { value: 'contracts', label: 'Contracts', shortLabel: 'Contracts', icon: FileSignature, group: 'commercial', route: (id) => `/projects/${id}/financials/prime-contract` },
+  { value: 'proposals', label: 'Proposals', shortLabel: 'Proposals', icon: Send, group: 'commercial', route: (id) => `/projects/${id}/financials/proposals` },
+  { value: 'invoicing', label: 'Client Invoices', shortLabel: 'Invoices', icon: Receipt, group: 'commercial', route: (id) => `/projects/${id}/financials/client-invoices` },
+
+  // Field / Delivery — start with the field record, then controls, execution, risk, progress, and closeout.
   { value: 'daily-logs', label: 'Daily Logs', shortLabel: 'Logs', icon: ClipboardList, group: 'field' },
   { value: 'accountability', label: 'Field Accountability', shortLabel: 'Accountability', icon: ScanEye, group: 'field', route: (id) => `/projects/${id}/accountability` },
   { value: 'permits', label: 'Permits', shortLabel: 'Permits', icon: FileBadge2, group: 'field' },
@@ -97,16 +103,10 @@ export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   { value: 'stores', label: 'Stores & Materials', shortLabel: 'Stores', icon: Warehouse, group: 'field' },
   { value: 'voice-agent', label: 'Voice Complaints', shortLabel: 'Voice', icon: Phone, group: 'field' },
   { value: 'closeout', label: 'Closeout', shortLabel: 'Close', icon: Award, group: 'field' },
-  { value: 'project-log', label: 'Project Log', shortLabel: 'Log', icon: ClipboardList, group: 'field' },
   { value: 'meetings', label: 'Meetings', shortLabel: 'Meetings', icon: MessageSquareText, group: 'documents' },
 
-  // Commercial / Money
-  { value: 'financials', label: 'Financials', shortLabel: 'Finance', icon: Wallet, group: 'commercial', route: (id) => `/projects/${id}/financials/overview` },
-  { value: 'contracts', label: 'Contracts', shortLabel: 'Contracts', icon: FileSignature, group: 'commercial', route: (id) => `/projects/${id}/financials/prime-contract` },
-  { value: 'proposals', label: 'Proposals', shortLabel: 'Proposals', icon: Send, group: 'commercial', route: (id) => `/projects/${id}/financials/proposals` },
-  { value: 'invoicing', label: 'Client Invoices', shortLabel: 'Invoices', icon: Receipt, group: 'commercial', route: (id) => `/projects/${id}/financials/client-invoices` },
-
   // Docs & Comms
+  { value: 'project-log', label: 'Project Log', shortLabel: 'Log', icon: ClipboardList, group: 'documents' },
   { value: 'reports', label: 'Reports', shortLabel: 'Reports', icon: FileChartColumn, group: 'documents', route: (id) => `/projects/${id}/reports` },
   { value: 'repository', label: 'Documents', shortLabel: 'Docs', icon: FileText, group: 'documents', route: (id) => `/projects/${id}/repository` },
   { value: 'gallery', label: 'Gallery', shortLabel: 'Gallery', icon: Images, group: 'documents' },
@@ -172,28 +172,28 @@ export function routedTabDestinations(projectId: string): Record<string, string>
 }
 
 export const GROUP_ICON_COLORS: Record<string, string> = {
-  engagement: 'text-blue-400',
-  field: 'text-amber-400',
-  commercial: 'text-[var(--apas-sapphire)]',
-  documents: 'text-purple-400',
-  client: 'text-emerald-400',
-  admin: 'text-muted-foreground',
+  engagement: 'text-[#335c7d]',
+  commercial: 'text-[#0d6b57]',
+  field: 'text-[#8b5a15]',
+  documents: 'text-[#5b5fc7]',
+  client: 'text-[#0f766e]',
+  admin: 'text-slate-600',
   // legacy
-  core: 'text-blue-400',
-  compliance: 'text-amber-400',
-  reports: 'text-purple-400',
-  delivery: 'text-emerald-400',
+  core: 'text-[#335c7d]',
+  compliance: 'text-[#8b5a15]',
+  reports: 'text-[#5b5fc7]',
+  delivery: 'text-[#0f766e]',
 };
 
 export const GROUP_ICON_BG: Record<string, string> = {
-  engagement: 'bg-blue-500/15',
-  field: 'bg-amber-500/15',
-  commercial: 'bg-[var(--apas-sapphire)]/15',
-  documents: 'bg-purple-500/15',
-  client: 'bg-emerald-500/15',
-  admin: 'bg-muted',
-  core: 'bg-blue-500/15',
-  compliance: 'bg-amber-500/15',
-  reports: 'bg-purple-500/15',
-  delivery: 'bg-emerald-500/15',
+  engagement: 'bg-[#dbeafe]',
+  commercial: 'bg-[#d6f5ea]',
+  field: 'bg-[#fff2cc]',
+  documents: 'bg-[#ecebff]',
+  client: 'bg-[#ccfbf1]',
+  admin: 'bg-slate-200',
+  core: 'bg-[#dbeafe]',
+  compliance: 'bg-[#fff2cc]',
+  reports: 'bg-[#ecebff]',
+  delivery: 'bg-[#ccfbf1]',
 };

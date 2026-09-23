@@ -8,8 +8,7 @@ describe('projectNav', () => {
       isAdmin: true,
     });
     expect(kind).toBe('consulting');
-    expect(groups.map((g) => g.key)).toContain('engagement');
-    expect(groups.map((g) => g.key)).toContain('commercial');
+    expect(groups.map((g) => g.key)).toEqual(['engagement', 'commercial', 'field', 'documents', 'client', 'admin']);
     expect(items.find((i) => i.value === 'financials')).toBeTruthy();
     expect(items.find((i) => i.value === 'invoicing')).toBeTruthy();
     expect(items.find((i) => i.value === 'directory')).toBeTruthy();
@@ -22,6 +21,20 @@ describe('projectNav', () => {
     expect(items.find((i) => i.value === 'rfis')).toBeFalsy();
     expect(items.find((i) => i.value === 'safety')).toBeFalsy();
     expect(items.find((i) => i.value === 'procurement')).toBeFalsy();
+  });
+
+  it('puts money immediately after setup before field execution', () => {
+    const { groups, items } = getProjectNav({
+      project: { project_type: 'construction' },
+      isAdmin: true,
+    });
+
+    expect(groups.map((g) => g.label).slice(0, 3)).toEqual(['Project setup', 'Money', 'Field execution']);
+
+    const order = items.map((i) => i.value);
+    expect(order.indexOf('financials')).toBeGreaterThan(order.indexOf('overview'));
+    expect(order.indexOf('financials')).toBeLessThan(order.indexOf('daily-logs'));
+    expect(items.find((i) => i.value === 'project-log')?.group).toBe('documents');
   });
 
   it('shows construction field modules on property projects', () => {

@@ -866,14 +866,14 @@ export default function ProjectDetailPage() {
             <div className="hidden lg:flex gap-6 items-start">
 
               {/* LEFT: Vertical sidebar */}
-              <div className="w-[188px] shrink-0 sticky top-4 space-y-1">
+              <div className="w-[212px] shrink-0 sticky top-4 space-y-2 rounded-2xl border border-slate-200 bg-white/82 p-2 shadow-sm backdrop-blur">
                 {tabGroups.map((group) => {
                   const groupTabs = visibleTabs.filter(t => groupKeyOf(t.value) === group.key);
                   if (groupTabs.length === 0) return null;
                   return (
-                    <div key={group.key} className="mb-2">
+                    <div key={group.key} className="space-y-1">
                       <p className={cn(
-                        'text-[10px] font-bold uppercase tracking-widest px-2 mb-1 mt-2',
+                        'px-2 pt-2 text-[10px] font-extrabold uppercase tracking-[0.18em]',
                         group.color
                       )}>
                         {group.label}
@@ -887,35 +887,43 @@ export default function ProjectDetailPage() {
                             key={tab.value}
                             onClick={() => setActiveTab(tab.value)}
                             className={cn(
-                              'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150 text-left group relative',
+                              'w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm font-semibold transition-all duration-150 text-left group relative',
                               isActive
-                                ? 'bg-module-projects/10 text-module-projects'
+                                ? 'bg-[#10263f] text-white shadow-sm'
                                 : isPermits
-                                  ? 'text-[var(--apas-sapphire)] hover:bg-[var(--apas-sapphire)]/10'
-                                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+                                  ? 'text-[#335c7d] hover:bg-[#dbeafe]'
+                                  : 'text-slate-600 hover:bg-slate-100 hover:text-[#10263f]'
                             )}
                           >
                             {isActive && (
-                              <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-module-projects" />
+                              <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-[#d6f5ea]" />
                             )}
-                            {isPermits ? (
-                              <Camera className={cn('h-3.5 w-3.5 shrink-0', isActive ? 'text-module-projects' : 'text-[var(--apas-sapphire)]')} />
-                            ) : (
-                              <Icon className={cn(
-                                'h-3.5 w-3.5 shrink-0 transition-colors',
-                                isActive ? 'text-module-projects' : GROUP_ICON_COLORS[group.key]
-                              )} />
-                            )}
+                            <span className={cn(
+                              'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ring-1 ring-black/5',
+                              isActive ? 'bg-white/15' : isPermits ? 'bg-[#dbeafe]' : GROUP_ICON_BG[group.key],
+                            )}>
+                              {isPermits ? (
+                                <Camera className={cn('h-4 w-4 shrink-0', isActive ? 'text-white' : 'text-[#335c7d]')} />
+                              ) : (
+                                <Icon className={cn(
+                                  'h-4 w-4 shrink-0 transition-colors',
+                                  isActive ? 'text-white' : GROUP_ICON_COLORS[group.key]
+                                )} />
+                              )}
+                            </span>
                             <span className="flex-1 truncate">{tab.label}</span>
                             {isPermits && (
-                              <span className="text-[9px] font-bold uppercase tracking-wide text-[var(--apas-sapphire)] bg-[var(--apas-sapphire)]/15 px-1.5 py-0.5 rounded-full shrink-0">
+                              <span className={cn(
+                                'shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide',
+                                isActive ? 'bg-white/15 text-white' : 'bg-[#dbeafe] text-[#335c7d]',
+                              )}>
                                 Register
                               </span>
                             )}
                             {tab.badge !== null && (
                               <span className={cn(
                                 'h-4 min-w-4 px-1 rounded-full text-[10px] font-bold flex items-center justify-center shrink-0',
-                                isActive ? 'bg-module-projects/20 text-module-projects' : 'bg-destructive text-white'
+                                isActive ? 'bg-white/20 text-white' : 'bg-rose-600 text-white'
                               )}>
                                 {tab.badge}
                               </span>
