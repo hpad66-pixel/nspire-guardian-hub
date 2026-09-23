@@ -15,6 +15,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   'site-accountability': 'Site Accountability',
   organizations: 'Clients',
   clients: 'Clients',
+  contacts: 'CRM Contacts',
   meetings: 'Meetings',
   templates: 'Templates',
   financials: 'Financials',
@@ -69,18 +70,24 @@ export function Breadcrumbs() {
     return out;
   }, [pathname]);
 
+  const goBack = () => {
+    if (window.history.length > 1) navigate(-1);
+    else navigate('/dashboard');
+  };
+
   // Nothing to navigate from the home surfaces.
   if (pathname === '/' || pathname === '/dashboard' || crumbs.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1.5 border-b border-border/60 bg-background/70 px-2 py-1.5 backdrop-blur-sm md:px-5">
+    <div className="sticky top-[calc(3.5rem+env(safe-area-inset-top,0px))] z-[9] flex items-center gap-2 border-b border-[rgba(37,44,57,0.12)] bg-[rgba(248,245,238,0.94)] px-2 py-2 shadow-[0_10px_26px_rgba(37,44,57,0.05)] backdrop-blur-xl md:px-5">
       <button
         type="button"
-        onClick={() => navigate(-1)}
+        onClick={goBack}
         aria-label="Go back"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+        className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl border border-[var(--ow-taupe-2)] bg-white/80 px-2.5 text-sm font-semibold text-[var(--ow-ink)] shadow-sm transition-colors hover:bg-white hover:text-[var(--ow-navy)] active:scale-95"
       >
-        <ChevronLeft className="h-5 w-5" />
+        <ChevronLeft className="h-4 w-4" />
+        <span className="hidden sm:inline">Back</span>
       </button>
 
       <nav
@@ -89,7 +96,7 @@ export function Breadcrumbs() {
       >
         <Link
           to="/dashboard"
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-transparent text-[var(--ow-muted)] hover:border-[var(--ow-taupe-2)] hover:bg-white hover:text-[var(--ow-ink)]"
           aria-label="Dashboard"
         >
           <Home className="h-[15px] w-[15px]" />
@@ -100,11 +107,11 @@ export function Breadcrumbs() {
             <span key={c.href} className="flex shrink-0 items-center gap-1">
               <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40" />
               {last ? (
-                <span className="max-w-[60vw] truncate font-semibold text-foreground sm:max-w-[280px]">{c.label}</span>
+                <span className="max-w-[60vw] truncate rounded-lg bg-white/70 px-2 py-1 font-semibold text-[var(--ow-ink)] shadow-sm sm:max-w-[280px]">{c.label}</span>
               ) : (
                 <Link
                   to={c.href}
-                  className="rounded px-1 py-0.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                  className="rounded-lg px-2 py-1 font-semibold text-[var(--ow-muted)] transition-colors hover:bg-white hover:text-[var(--ow-ink)]"
                 >
                   {c.label}
                 </Link>

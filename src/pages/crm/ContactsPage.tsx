@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   Plus,
+  ArrowLeft,
+  ArrowRight,
   Search,
   Star,
   Building2,
@@ -199,7 +202,31 @@ export default function ContactsPage() {
   const favoriteContacts = contacts.filter((c) => c.is_favorite).length;
 
   return (
-    <div className="p-6 space-y-6 animate-fade-in">
+    <div className="space-y-6 p-4 animate-fade-in sm:p-6">
+      <div className="rounded-2xl border border-[rgba(37,44,57,0.12)] bg-[#f8f5ee] p-3 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">CRM workspace</p>
+            <p className="mt-1 text-sm text-slate-600">
+              Use the trail above or these quick exits any time. Contacts should never feel like a dead end.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm" className="border-slate-300 bg-white">
+              <Link to="/dashboard">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Dashboard
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="border-slate-300 bg-white">
+              <Link to="/organizations">
+                Clients
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
