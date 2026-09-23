@@ -23,7 +23,7 @@ import {
   MoreHorizontal, Archive, Trash2, TriangleAlert, Settings2, X,
   LayoutDashboard, HelpCircle, TrendingUp as TrendingUpIcon, ShoppingCart,
   FileSpreadsheet, ChevronDown, ChevronRight, Users, Images, Brain,
-  FileSignature, Mail,
+  FileSignature, Mail, Phone,
   Megaphone, UserPlus, Camera,
 } from 'lucide-react';
 import { PhotoGallery } from '@/components/gallery/PhotoGallery';
@@ -425,6 +425,94 @@ export default function ProjectDetailPage() {
     setActiveTab('permits');
     setPermitScanRequested(true);
   };
+  const visibleTabValues = new Set<string>(visibleTabs.map((tab) => tab.value));
+  const mobileProjectActions = [
+    {
+      value: 'overview',
+      label: 'Project snapshot',
+      helper: 'Health, attention items, scope, dates',
+      icon: LayoutDashboard,
+      tone: 'bg-blue-500/10 text-blue-500',
+    },
+    ...(isConsulting
+      ? [
+          {
+            value: 'meetings',
+            label: 'Meeting notes',
+            helper: 'Client notes and decisions',
+            icon: MessageSquareText,
+            tone: 'bg-emerald-500/10 text-emerald-500',
+          },
+          {
+            value: 'action-items',
+            label: 'Action items',
+            helper: 'Assign and close next steps',
+            icon: CheckSquare,
+            tone: 'bg-amber-500/10 text-amber-500',
+          },
+          {
+            value: 'correspondence',
+            label: 'Client email',
+            helper: 'Send updates from the project',
+            icon: Mail,
+            tone: 'bg-purple-500/10 text-purple-500',
+          },
+          {
+            value: 'proposals',
+            label: 'Proposals',
+            helper: 'Best on desktop for fee setup',
+            icon: Send,
+            tone: 'bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]',
+            desktopOnly: true,
+          },
+          {
+            value: 'invoicing',
+            label: 'Invoices',
+            helper: 'Review status, send from desktop',
+            icon: Receipt,
+            tone: 'bg-slate-500/10 text-slate-500',
+            desktopOnly: true,
+          },
+        ]
+      : [
+          {
+            value: 'daily-logs',
+            label: 'Daily log',
+            helper: 'Narrate field progress',
+            icon: ClipboardList,
+            tone: 'bg-amber-500/10 text-amber-500',
+          },
+          {
+            value: 'permits',
+            label: 'Scan permit',
+            helper: 'Camera capture and register',
+            icon: Camera,
+            tone: 'bg-[var(--apas-sapphire)]/10 text-[var(--apas-sapphire)]',
+          },
+          {
+            value: 'punch-list',
+            label: 'Punch list',
+            helper: 'Open, assign, close',
+            icon: ListChecks,
+            tone: 'bg-red-500/10 text-red-500',
+          },
+          {
+            value: 'project-log',
+            label: 'Project log',
+            helper: 'Owner comments and field proof',
+            icon: ClipboardList,
+            tone: 'bg-purple-500/10 text-purple-500',
+          },
+          {
+            value: 'financials',
+            label: 'Pay apps',
+            helper: 'Full controls on desktop',
+            icon: Wallet,
+            tone: 'bg-slate-500/10 text-slate-500',
+            desktopOnly: true,
+          },
+        ]),
+  ].filter((action) => visibleTabValues.has(action.value));
 
   return (
     <div className="relative flex flex-col md:flex-row md:h-[calc(100vh-3.5rem)] md:overflow-hidden">
@@ -1216,6 +1304,68 @@ export default function ProjectDetailPage() {
             {/* ── Tablet + Mobile tab contents ─────────────────────────── */}
             <div className="lg:hidden mt-2 space-y-4">
               <TabsContent value="overview" className="space-y-6">
+                <div className="md:hidden rounded-2xl border border-[hsl(222,30%,17%)] bg-[hsl(222,47%,9%)] p-4 text-[hsl(215,25%,92%)] shadow-[0_18px_45px_rgba(15,23,42,0.22)]">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[hsl(39,48%,58%)]">
+                        iPhone project cockpit
+                      </p>
+                      <h2 className="mt-1 text-lg font-semibold leading-tight text-white">
+                        {isConsulting ? 'Consulting workbench' : 'Construction field workbench'}
+                      </h2>
+                      <p className="mt-1 text-xs leading-relaxed text-[hsl(215,16%,70%)]">
+                        The phone view shows the actions people use in the field. Full setup, contract controls, and detailed financial editing stay on desktop.
+                      </p>
+                    </div>
+                    <Badge className="shrink-0 border border-white/10 bg-white/10 text-[10px] font-semibold text-white hover:bg-white/10">
+                      {isConsulting ? 'Consulting' : 'Construction'}
+                    </Badge>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-2">
+                    {mobileProjectActions.map((action) => {
+                      const Icon = action.icon;
+                      return (
+                        <button
+                          key={action.value}
+                          type="button"
+                          onClick={() => setActiveTab(action.value)}
+                          className="min-h-[104px] rounded-xl border border-white/10 bg-white/[0.06] p-3 text-left transition-colors active:bg-white/[0.1]"
+                        >
+                          <div className={cn('mb-2 flex h-9 w-9 items-center justify-center rounded-lg', action.tone)}>
+                            <Icon className="h-4 w-4" />
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="min-w-0 truncate text-sm font-semibold text-white">{action.label}</span>
+                            {action.desktopOnly && (
+                              <span className="rounded-full bg-[hsl(39,48%,58%)]/18 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[hsl(39,58%,72%)]">
+                                Desktop
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-[11px] leading-snug text-[hsl(215,16%,67%)]">{action.helper}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {!isConsulting && visibleTabValues.has('voice-agent') && (
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('voice-agent')}
+                      className="mt-3 flex w-full items-center gap-3 rounded-xl border border-[hsl(39,48%,58%)]/35 bg-[hsl(39,48%,58%)]/12 p-3 text-left"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[hsl(39,48%,58%)]/20 text-[hsl(39,58%,72%)]">
+                        <Phone className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-white">Voice agent inspection narration</p>
+                        <p className="text-[11px] leading-snug text-[hsl(215,16%,70%)]">
+                          Narrate the condition, capture the issue, and turn approved defects into work orders.
+                        </p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-[hsl(39,58%,72%)]" />
+                    </button>
+                  )}
+                </div>
                 <ProjectLifecyclePanel project={project} teamCount={teamMembers.length} />
                 {closeout.readiness && (
                   <ConstructionCloseoutBanner

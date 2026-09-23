@@ -67,7 +67,7 @@ export function SafetyViolationSection({ open, onOpenChange, propertyId, onEntri
         property_id: propertyId,
         title: `Safety Violation Follow-up: ${VIOLATION_TYPES.find(v => v.value === form.violation_type)?.label}`,
         description: `${form.description}${form.issued_to ? `\nIssued to: ${form.issued_to}` : ''}`,
-        priority: 'high',
+        priority: form.violation_type === 'unsafe_conditions' ? 'emergency' : 'routine',
         status: 'pending',
         due_date: form.compliance_date,
       } as any);

@@ -163,12 +163,14 @@ export function useCreateWorkOrder() {
       intake_source?: string | null;
       requester_name?: string | null;
     }) => {
+      const { data: { user } } = await supabase.auth.getUser();
       const propertyId = workOrder.property_id;
       const supervisorId = propertyId
         ? await resolveOpsSupervisor(propertyId)
         : null;
       const payload: Record<string, unknown> = {
         ...workOrder,
+        created_by: workOrder.created_by ?? user?.id ?? null,
         intake_source: workOrder.intake_source ?? 'manual',
         supervisor_id: supervisorId,
         assigned_to: workOrder.assigned_to ?? supervisorId,
@@ -188,7 +190,7 @@ export function useCreateWorkOrder() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['work-orders'] });
-      toast.success('Work order created — assigned to maintenance supervisor');
+      toast.success('Work order created');
     },
     onError: (error: Error) => {
       toast.error(`Failed to create work order: ${error.message}`);
