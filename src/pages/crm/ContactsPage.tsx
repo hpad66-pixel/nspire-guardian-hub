@@ -11,6 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
@@ -78,7 +79,7 @@ export default function ContactsPage() {
   const { isModuleEnabled } = useModules();
   const crmIntegrationEnabled = isModuleEnabled('apasCrmIntegrationEnabled');
 
-  const { data: contacts = [], isLoading } = useCRMContacts({
+  const { data: contacts = [], isLoading, isFetching } = useCRMContacts({
     search,
     contactType: typeFilter,
     propertyId: undefined,
@@ -199,6 +200,9 @@ export default function ContactsPage() {
   const personalContacts = contacts.filter((c) => c.user_id).length;
   const propertyContacts = contacts.filter((c) => c.property_id).length;
   const favoriteContacts = contacts.filter((c) => c.is_favorite).length;
+  const contactsHydrating = isLoading && contacts.length === 0;
+  const statValue = (value: number) =>
+    contactsHydrating ? <Skeleton className="h-8 w-12" /> : <div className="text-2xl font-bold">{value}</div>;
 
   return (
     <div className="space-y-6 overflow-x-hidden p-4 animate-fade-in sm:p-6">
@@ -233,6 +237,11 @@ export default function ContactsPage() {
           <p className="mt-1 max-w-2xl text-muted-foreground">
             Manage your network of vendors, regulators, and partners
           </p>
+          {contactsHydrating && (
+            <p className="mt-1 text-sm font-medium text-[#0f766e]" role="status">
+              Loading CRM contacts…
+            </p>
+          )}
           {masterSync.data && (
             <p className="mt-1 text-sm text-emerald-700" role="status">
               Master CRM current: {masterSync.data.sourceCount} source contacts synchronized
@@ -287,7 +296,7 @@ export default function ContactsPage() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalContacts}</div>
+            {statValue(totalContacts)}
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-background to-muted/30">
@@ -298,7 +307,7 @@ export default function ContactsPage() {
             <User className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{personalContacts}</div>
+            {statValue(personalContacts)}
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-background to-muted/30">
@@ -309,7 +318,7 @@ export default function ContactsPage() {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{propertyContacts}</div>
+            {statValue(propertyContacts)}
           </CardContent>
         </Card>
         <Card className="bg-gradient-to-br from-background to-muted/30">
@@ -320,7 +329,7 @@ export default function ContactsPage() {
             <Star className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{favoriteContacts}</div>
+            {statValue(favoriteContacts)}
           </CardContent>
         </Card>
       </div>
@@ -432,7 +441,11 @@ export default function ContactsPage() {
             </div>
 
             {/* Alphabet Nav */}
-            {contacts.length > 10 && (
+            {contactsHydrating ? (
+              <div className="pt-2 border-t">
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ) : contacts.length > 10 && (
               <div className="pt-2 border-t">
                 <AlphabetNav
                   availableLetters={availableLetters}
@@ -463,9 +476,31 @@ export default function ContactsPage() {
         </TabsList>
 
         <TabsContent value={ownershipTab} className="mt-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
+          {contactsHydrating ? (
+            <div className="space-y-5 py-2" role="status" aria-live="polite">
+              <div className="rounded-2xl border border-[rgba(37,44,57,0.10)] bg-white/75 p-4">
+                <p className="text-sm font-semibold text-foreground">Loading contacts from CRM…</p>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Pulling names, companies, project links, and favorite status.
+                </p>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 8 }).map((_, index) => (
+                  <Card key={index} className="overflow-hidden">
+                    <CardContent className="space-y-4 p-4">
+                      <div className="flex items-center gap-3">
+                        <Skeleton className="h-11 w-11 rounded-full" />
+                        <div className="min-w-0 flex-1 space-y-2">
+                          <Skeleton className="h-4 w-2/3" />
+                          <Skeleton className="h-3 w-1/2" />
+                        </div>
+                      </div>
+                      <Skeleton className="h-8 w-full" />
+                      <Skeleton className="h-3 w-3/4" />
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           ) : filteredContacts.length === 0 ? (
             <ContactsEmptyState
@@ -575,6 +610,7 @@ export default function ContactsPage() {
           {filteredContacts.length > 0 && (
             <div className="text-center text-sm text-muted-foreground pt-4">
               Showing {filteredContacts.length} of {totalContacts} contacts
+              {isFetching && !contactsHydrating ? " · refreshing…" : ""}
             </div>
           )}
         </TabsContent>
