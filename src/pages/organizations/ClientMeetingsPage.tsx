@@ -37,6 +37,7 @@ export default function ClientMeetingsPage() {
     const [weekly, setWeekly] = useState(false);
     const [selectedReportActions, setSelectedReportActions] = useState<Set<string>>(new Set());
     const [actionReportOpen, setActionReportOpen] = useState(false);
+    const [digestOpen, setDigestOpen] = useState(false);
     const b = api.data;
     const edit = !!b?.canEdit && !portal;
     const records = useMemo(() => {
@@ -111,7 +112,7 @@ export default function ClientMeetingsPage() {
         ][]).map(([key, label]) => <button key={key} aria-pressed={tab === key} onClick={() => { if (tab === 'edit' && key !== 'edit' && !window.confirm('Leave the editor? Unsaved changes will be lost.'))
             return; setTab(key); }}>{label}</button>)}</div>
     {tab === 'actions' && <><div className="meeting-hub__action-toolbar my-4"><div><p className="text-sm font-medium">Live actions across all meetings</p><p className="text-sm text-muted-foreground">Expand an item to provide an update. Released items can be selected for a client report.</p></div>{edit && <div className="flex flex-wrap gap-2"><Button variant="ghost" onClick={() => { const released = visibleActions.filter(a => a.published).map(a => a.id); setSelectedReportActions(selectedReportActions.size === released.length ? new Set() : new Set(released)); }}>{selectedReportActions.size === visibleActions.filter(a => a.published).length && selectedReportActions.size ? 'Clear report selection' : 'Select client-visible'}</Button><Button variant="outline" disabled={!selectedReportActions.size} onClick={() => setActionReportOpen(true)}><ClipboardList className="mr-2 h-4 w-4"/>Compile update {selectedReportActions.size ? `(${selectedReportActions.size})` : ''}</Button>{meeting && <Button variant="outline" onClick={() => setPendingAction({ meeting_id: meeting.id })}><Plus className="mr-2 h-4 w-4"/>Add action</Button>}</div>}</div>{visibleActions.length === 0 ? <p className="py-6 text-muted-foreground">No actions have been recorded yet.</p> : [...visibleActions].sort((a, c) => Number(['closed', 'approved'].includes(c.state)) - Number(['closed', 'approved'].includes(a.state))).map(a => <ActionRow key={a.id} action={a} bundle={b} edit={edit} command={api.command} addUpdate={api.addUpdate} submitCompletion={api.submitCompletion} onEdit={() => setPendingAction(a)} reportSelected={selectedReportActions.has(a.id)} onReportSelect={(checked) => setSelectedReportActions(current => { const next = new Set(current); if (checked) next.add(a.id); else next.delete(a.id); return next; })}/>)}</>}
-    {tab === 'report' && (publication ? <><div className="flex flex-wrap gap-2 my-4"><Button variant="outline" disabled={busyPdf} onClick={() => void download()}><Download className="mr-2 h-4 w-4"/>{busyPdf ? 'Preparing PDF...' : 'Download PDF'}</Button>{edit && <Button onClick={() => setEmail(true)}><Mail className="mr-2 h-4 w-4"/>Email this report</Button>}<span className="self-center text-sm text-muted-foreground">Released {dateLabel(publication.published_at)} · Snapshot, not live progress</span></div><PublishedReport snapshot={publication.snapshot}/></> : <p className="py-8 text-muted-foreground">No client report released yet. Use Edit entire report to prepare and publish it.</p>)}
+    {tab === 'report' && (publication ? <><div className="flex flex-wrap gap-2 my-4"><Button variant="outline" disabled={busyPdf} onClick={() => void download()}><Download className="mr-2 h-4 w-4"/>{busyPdf ? 'Preparing PDF...' : 'Download PDF'}</Button>{edit && <Button variant="outline" onClick={() => setDigestOpen(true)}><ClipboardList className="mr-2 h-4 w-4"/>Create client digest</Button>}{edit && <Button onClick={() => setEmail(true)}><Mail className="mr-2 h-4 w-4"/>Email this report</Button>}<span className="self-center text-sm text-muted-foreground">Released {dateLabel(publication.published_at)} · Snapshot, not live progress</span></div><PublishedReport snapshot={publication.snapshot}/></> : <p className="py-8 text-muted-foreground">No client report released yet. Use Edit entire report to prepare and publish it.</p>)}
     {tab === 'edit' && edit && meeting && <ReportEditor key={meeting.id} meeting={meeting} bundle={b} api={api} notionMappings={notionMappings} notionSyncing={notion.sync.isPending} onNotionSync={(mappingId) => void syncNotion(mappingId)} onAction={setPendingAction} onReleased={() => setTab('report')}/>}
     </>}
    </div>
@@ -119,6 +120,7 @@ export default function ClientMeetingsPage() {
   {edit && pendingAction && <ActionEditor key={pendingAction.id || 'new'} action={pendingAction} bundle={b} command={api.command} close={() => setPendingAction(null)}/>}
   {edit && weekly && <WeeklyDelivery bundle={b} command={api.command} close={() => setWeekly(false)}/>}
   {edit && actionReportOpen && <ActionUpdateReportDialog bundle={b} actions={visibleActions.filter(a => selectedReportActions.has(a.id) && a.published)} portalUrl={portalUrl} close={() => setActionReportOpen(false)}/>}
+  {edit && publication && digestOpen && <MeetingDigestDialog bundle={b} publication={publication} actions={visibleActions.filter(a => a.meeting_id === publication.meeting_id && a.published)} portalUrl={portalUrl} close={() => setDigestOpen(false)}/>}
   {edit && publication && <BrandedReportEmailDialog open={email} onOpenChange={setEmail} reportTitle={publication.snapshot.title} projectName={b.client.name} filename={`Meeting-${publication.snapshot.meeting_date}.pdf`} defaultSubject={`${b.client.name}: ${publication.snapshot.title} | ${publication.snapshot.meeting_date}`} sourceModule="client-meetings" reportType="client_meeting" clientMeetingPublicationId={publication.id} prepareDelivery={async (message) => {
                 // Re-read the released record before rendering; never email unsaved editor text.
                 const refreshed = await api.refetch();
@@ -241,6 +243,81 @@ function ActionRow({ action: a, bundle, edit, command, addUpdate, submitCompleti
     return <article className={`meeting-hub__action ${done ? 'is-complete' : ''}`}><div className="flex gap-3 items-start"><input className="mt-1 h-5 w-5 shrink-0" type="checkbox" aria-label={done ? `Reopen ${a.title}` : `${edit ? 'Confirm' : 'Submit'} completion: ${a.title}`} checked={done || (!edit && a.step === 2)} disabled={command.isPending || submitCompletion.isPending || (!edit && (a.assignee_id !== user?.id || done || a.step === 2))} onChange={() => void (edit ? command.mutateAsync({ operation: done ? 'reopen' : 'confirm', payload: { id: a.id } }) : submitCompletion.mutateAsync(a.id))}/><div className="min-w-0 flex-1"><div className="flex flex-wrap items-start justify-between gap-3"><div className="flex flex-wrap gap-2 items-center"><span className="meeting-hub__eyebrow">{bundle.projects.find(p => p.id === a.project_id)?.name || 'Project'}</span><Badge variant="secondary">{done ? 'Confirmed complete' : a.step === 2 ? 'Completion review' : 'Open'}</Badge>{!a.published && edit && <Badge variant="outline">Not released</Badge>}</div><div className="flex flex-wrap items-center justify-end gap-2">{edit && a.published && <label className="meeting-hub__report-select"><input type="checkbox" aria-label={`Include ${a.title} in client report`} checked={reportSelected} onChange={event => onReportSelect(event.target.checked)}/><span>Include in report</span></label>}<span className="meeting-hub__owner-chip" aria-label={`Action owner: ${owner}`} style={{ color: ownerColor.accent, borderColor: ownerColor.border, backgroundColor: ownerColor.soft, boxShadow: `0 4px 16px ${ownerColor.glow}` }}><UserRound className="h-4 w-4"/><span><small>Owner</small><strong>{owner}</strong></span></span></div></div><h3 className="mt-2 font-semibold text-lg">{a.title}</h3><p className="text-sm text-muted-foreground mt-1">Ball in court: {a.step === 2 ? 'APAS reviewer' : a.ball_in_court || 'To confirm'} · Due: {a.due_date || 'Not agreed'}</p>{edit && <Button variant="link" className="px-0" onClick={onEdit}>Edit action</Button>}<details className="mt-3"><summary className="cursor-pointer text-sm">{comments.length} updates · Discuss &amp; view evidence</summary>{comments.map(c => <div key={c.id} className="border-l-2 pl-3 my-4"><div className="flex flex-wrap items-center gap-1 text-xs text-muted-foreground">{c.author_name} · {new Date(c.created_at).toLocaleString()} {edit && <Badge variant="outline" className="ml-2">{c.audience === 'internal' ? 'Team only' : 'Client visible'}</Badge>}</div><p className="whitespace-pre-wrap mt-1">{c.body}</p></div>)}{edit && a.source_quote && <blockquote className="text-sm bg-muted p-3 my-3">{a.source_quote}<br />{a.source_locator}</blockquote>}<form className="mt-4 space-y-3" onSubmit={async e => { e.preventDefault(); if (!body.trim()) return; await addUpdate.mutateAsync({ actionId: a.id, body, audience }); setBody(''); }}><div className="flex flex-wrap gap-2">{bundle.canAddInternalUpdates && <Button type="button" size="sm" variant={audience === 'internal' ? 'default' : 'outline'} onClick={() => setAudience('internal')}>Team instruction</Button>}<Button type="button" size="sm" variant={audience === 'client' ? 'default' : 'outline'} onClick={() => setAudience('client')} disabled={!a.published}>Client-visible update</Button></div><label className="block">{audience === 'internal' ? 'Add instructions for the team' : 'Add an update for the client'}<VoiceDictationTextareaWithAI value={body} onValueChange={setBody} context="notes" placeholder={audience === 'internal' ? 'Dictate context, constraints, evidence needed, and the expected result.' : 'Write a concise progress update the client can understand.'}/></label><Button type="submit" disabled={addUpdate.isPending || !body.trim()}><Send className="mr-2 h-4 w-4"/>{audience === 'internal' ? 'Post team instruction' : 'Publish client update'}</Button></form></details></div></div></article>;
 }
 
+function compactClientText(text: string, max = 900) {
+    const clean = text.replace(/\s+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+    if (clean.length <= max)
+        return clean;
+    const slice = clean.slice(0, max);
+    const breakAt = Math.max(slice.lastIndexOf('. '), slice.lastIndexOf('\n'));
+    return `${slice.slice(0, breakAt > 240 ? breakAt + 1 : max).trim()}...`;
+}
+function actionStatus(action: Pick<MeetingAction, 'state' | 'step'>) {
+    if (['closed', 'approved'].includes(action.state))
+        return 'Confirmed complete';
+    if (action.step === 2)
+        return 'Completion under APAS review';
+    return 'Open';
+}
+function buildClientDigestText(snapshot: MeetingSnapshot, actions: MeetingAction[], bundle: ClientMeetingBundle, purpose: 'progress' | 'decision') {
+    const opener = purpose === 'decision'
+        ? 'This digest summarizes the reviewed meeting record and the items that need client attention.'
+        : 'This digest summarizes the reviewed meeting record in a shorter client-facing format.';
+    const sections = snapshot.sections.slice(0, 4).map(section => `${section.heading}\n${compactClientText(section.text)}`);
+    const actionLines = actions.slice(0, 8).map(action => {
+        const project = bundle.projects.find(p => p.id === action.project_id)?.name || 'Project';
+        const owner = action.assignee_name || action.ball_in_court || 'To be assigned';
+        const due = action.due_date ? ` Due ${action.due_date}.` : '';
+        return `${action.title}: ${actionStatus(action)}. ${project}. Owner: ${owner}.${due}`;
+    });
+    return [opener, ...sections, actionLines.length ? `Client visible actions\n${actionLines.join('\n')}` : 'No client-visible actions are attached to this digest yet.'].join('\n\n');
+}
+function MeetingDigestDialog({ bundle, publication, actions, portalUrl, close }: {
+    bundle: ClientMeetingBundle;
+    publication: MeetingPublication;
+    actions: MeetingAction[];
+    portalUrl: string;
+    close: () => void;
+}) {
+    const [purpose, setPurpose] = useState<'progress' | 'decision'>('progress');
+    const [title, setTitle] = useState(`${bundle.client.name}: ${publication.snapshot.title} digest`);
+    const [digest, setDigest] = useState(() => buildClientDigestText(publication.snapshot, actions, bundle, 'progress'));
+    const [includeActions, setIncludeActions] = useState(true);
+    const [emailOpen, setEmailOpen] = useState(false);
+    const meetingDate = publication.snapshot.meeting_date;
+    const refreshPurpose = (nextPurpose: 'progress' | 'decision') => {
+        setPurpose(nextPurpose);
+        setDigest(buildClientDigestText(publication.snapshot, actions, bundle, nextPurpose));
+    };
+    const snapshot: MeetingSnapshot = {
+        title,
+        meeting_date: meetingDate,
+        client_name: bundle.client.name,
+        attendees: 'Prepared by APAS Consulting',
+        project_ids: publication.snapshot.project_ids,
+        sections: [
+            {
+                heading: purpose === 'decision' ? 'Client decision digest' : 'Client progress digest',
+                text: digest,
+                basis: 'verified',
+            },
+        ],
+        actions: includeActions ? actions.map(action => ({
+            id: action.id,
+            title: action.title,
+            project: bundle.projects.find(project => project.id === action.project_id)?.name || 'Project',
+            assignee: action.assignee_name,
+            ball_in_court: action.step === 2 ? 'APAS reviewer' : action.ball_in_court,
+            due_date: action.due_date,
+            state: action.state,
+            step: action.step,
+        })) : [],
+    };
+    return <><Dialog open onOpenChange={value => !value && close()}><DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto"><DialogHeader><DialogTitle>Create client digest from reviewed meeting</DialogTitle></DialogHeader><div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]"><div className="space-y-4"><div className="rounded-xl border bg-muted/30 p-3 text-sm"><strong>Notion stays the working source.</strong><p className="mt-1 text-muted-foreground">This digest starts from the approved Proj OS meeting snapshot, excludes raw transcript material, and lets APAS edit the client-facing version before email or PDF delivery.</p></div><div className="grid grid-cols-2 gap-2"><Button type="button" variant={purpose === 'progress' ? 'default' : 'outline'} onClick={() => refreshPurpose('progress')}>Progress update</Button><Button type="button" variant={purpose === 'decision' ? 'default' : 'outline'} onClick={() => refreshPurpose('decision')}>Decision note</Button></div><label className="block">Digest title<Input value={title} onChange={event => setTitle(event.target.value)}/></label><label className="block">Editable client digest<VoiceDictationTextareaWithAI value={digest} onValueChange={setDigest} context="notes" placeholder="Edit the short client version here before sending." className="mt-1 min-h-72"/></label><label className="flex items-start gap-2 rounded-xl border bg-background p-3 text-sm"><input type="checkbox" className="mt-1" checked={includeActions} onChange={event => setIncludeActions(event.target.checked)}/><span><strong>Attach client-visible action register</strong><br/><span className="text-muted-foreground">{actions.length} approved action{actions.length === 1 ? '' : 's'} from this meeting can be included below the digest.</span></span></label><Button className="w-full" disabled={!title.trim() || !digest.trim()} onClick={() => setEmailOpen(true)}><Mail className="mr-2 h-4 w-4"/>Email digest HTML + PDF</Button></div><div className="min-w-0"><PublishedReport snapshot={snapshot}/></div></div></DialogContent></Dialog><BrandedReportEmailDialog open={emailOpen} onOpenChange={setEmailOpen} reportTitle={snapshot.title} projectName={bundle.client.name} filename={`Meeting-Digest-${meetingDate}.pdf`} defaultSubject={`${bundle.client.name}: meeting digest | ${meetingDate}`} defaultMessage={`Please see the attached meeting digest for ${bundle.client.name}.`} sourceModule="client-meetings" reportType="client_meeting_digest" clientMeetingPublicationId={publication.id} prepareDelivery={async deliveryMessage => {
+        const bodyHtml = meetingReportHtml(snapshot, portalUrl, deliveryMessage);
+        const pdf = await htmlReportPdfBase64(meetingReportHtml(snapshot, portalUrl), { pageAware: true });
+        return { bodyHtml, bodyText: `${deliveryMessage}\n${snapshot.title}\n${portalUrl}`, pdfBase64: pdf.base64, pdfSize: pdf.size };
+    }}/></>;
+}
 function ActionUpdateReportDialog({ bundle, actions, portalUrl, close }: {
     bundle: ClientMeetingBundle;
     actions: MeetingAction[];
