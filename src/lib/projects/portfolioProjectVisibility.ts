@@ -14,8 +14,9 @@ type ProjectWithStatus = {
 export function matchesPortfolioStatus(
   project: ProjectWithStatus,
   statusFilter: PortfolioStatusFilter,
+  options?: { includeClosedInAll?: boolean },
 ) {
-  if (statusFilter === 'all') return project.status !== 'closed';
+  if (statusFilter === 'all') return options?.includeClosedInAll ? true : project.status !== 'closed';
   return project.status === statusFilter;
 }
 

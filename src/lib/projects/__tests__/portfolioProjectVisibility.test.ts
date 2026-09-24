@@ -19,6 +19,11 @@ describe('portfolio project visibility', () => {
       ]);
   });
 
+  it('keeps closed projects visible when a client portfolio is selected', () => {
+    expect(projects.filter((project) => matchesPortfolioStatus(project, 'all', { includeClosedInAll: true })))
+      .toEqual(projects);
+  });
+
   it('keeps explicit status filters exact', () => {
     expect(projects.filter((project) => matchesPortfolioStatus(project, 'closed')))
       .toEqual([{ id: 'closed', status: 'closed' }]);

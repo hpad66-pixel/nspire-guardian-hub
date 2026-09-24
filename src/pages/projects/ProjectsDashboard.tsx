@@ -125,12 +125,16 @@ export default function ProjectsDashboard() {
   const { canCreate, isAdmin, currentRole } = useUserPermissions();
   const canCreateProjects = canCreate('projects');
   const canCloseProjects = canDeleteProjects || isAdmin || currentRole === 'owner' || currentRole === 'administrator';
+  const portfolioProjects = useMemo(
+    () => resolveClientPortfolioProjects(projects ?? []),
+    [projects],
+  );
 
   const filteredProperty = propertyFilterId
     ? properties?.find((p) => p.id === propertyFilterId) ?? null
     : null;
   const filteredClient = clientFilterId
-    ? projects?.find((p: any) => p.client_id === clientFilterId)?.client ?? null
+    ? portfolioProjects.find((p: any) => p.client_id === clientFilterId)?.client ?? null
     : null;
   const filteredClientName = filteredClient?.name ?? null;
 
@@ -187,7 +191,7 @@ export default function ProjectsDashboard() {
   // --- Filtered & sorted projects ---
   const displayProjects = useMemo(() => {
     if (!projects) return [];
-    let filtered = [...projects];
+    let filtered = [...portfolioProjects];
 
     // Property filter (from URL ?propertyId=…)
     if (propertyFilterId) {
@@ -196,7 +200,7 @@ export default function ProjectsDashboard() {
 
     // Client filter (from dashboard portfolio cards)
     if (clientFilterId) {
-      const selectedClientName = projects.find((p: any) => p.client_id === clientFilterId)?.client?.name ?? null;
+      const selectedClientName = portfolioProjects.find((p: any) => p.client_id === clientFilterId)?.client?.name ?? null;
       filtered = filtered.filter((p: any) =>
         shouldIncludeProjectForClientFilter(p, clientFilterId, selectedClientName),
       );
@@ -208,13 +212,12 @@ export default function ProjectsDashboard() {
       filtered = filtered.filter(p => p.name.toLowerCase().includes(q));
     }
 
-    // Main portfolio views stay focused on current work; closed projects are
-    // visible only when the user deliberately selects Closed.
-    filtered = filtered.filter((project) => matchesPortfolioStatus(project, statusFilter));
-
-    // Portfolio normalization keeps legacy standalone/R4 items grouped in the
-    // right client journey without changing the underlying project records.
-    filtered = resolveClientPortfolioProjects(filtered);
+    // The main portfolio stays focused on current work. A client-filtered
+    // portfolio is a record of that client's complete work, so closed projects
+    // remain visible there unless the user chooses a specific status.
+    filtered = filtered.filter((project) =>
+      matchesPortfolioStatus(project, statusFilter, { includeClosedInAll: Boolean(clientFilterId) }),
+    );
 
     // Kind filter (construction vs consulting) — they measure different things.
     if (kindFilter !== 'all') {
@@ -264,7 +267,7 @@ export default function ProjectsDashboard() {
     });
 
     return filtered;
-  }, [projects, financials, consultingTotals, propertyFilterId, clientFilterId, search, statusFilter, kindFilter, healthFilter, sectorFilter, sortBy, sortDir]);
+  }, [projects, portfolioProjects, financials, consultingTotals, propertyFilterId, clientFilterId, search, statusFilter, kindFilter, healthFilter, sectorFilter, sortBy, sortDir]);
 
   // ── Hierarchy (shared rollup layer) ────────────────────────────────────────
   const tree = useMemo(() => buildProjectTree((projects ?? []) as Project[]), [projects]);
