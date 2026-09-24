@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Settings,
   ClipboardCheck,
@@ -91,9 +91,18 @@ export default function SettingsPage() {
   const { data: isWorkspaceAdmin = false } = useIsWorkspaceAdmin();
   const navigate = useNavigate();
   const { workspace, isLoading: workspaceLoading, isTrialing, trialDaysLeft } = useWorkspaceContext();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const isAdmin = isWorkspaceAdmin;
   const canManageUsers = isWorkspaceAdmin;
+  const requestedTab = searchParams.get('tab');
+  const defaultTab = isAdmin ? 'billing' : 'notifications';
+  const activeTab = requestedTab || defaultTab;
+  const handleTabChange = (value: string) => {
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.set('tab', value);
+    setSearchParams(nextParams, { replace: true });
+  };
 
   return (
     <div className="p-6 space-y-6 animate-fade-in">
@@ -126,7 +135,7 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue={isAdmin ? 'billing' : 'notifications'} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
         <TabsList>
           {canManageUsers && <TabsTrigger value="users">Users & Roles</TabsTrigger>}
           {isAdmin && <TabsTrigger value="ai-skills">AI Skills</TabsTrigger>}

@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { CheckCircle2, Database, ExternalLink, Loader2, Search, Unlink } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Copy, Database, ExternalLink, Loader2, Search, Unlink } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,8 +15,11 @@ import { useNotionConnection, type NotionSearchResult } from '@/hooks/useNotionC
 type ClientOption = { id: string; name: string };
 type ProjectOption = { id: string; name: string; client_id: string | null };
 
+const notionCallbackUrl = 'https://xlfwzqpixlrnntzqhvcm.supabase.co/functions/v1/notion-oauth-callback';
+
 export function NotionSettings() {
   const notion = useNotionConnection();
+  const [searchParams, setSearchParams] = useSearchParams();
   const connected = notion.status.data?.connected;
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<'all' | 'page' | 'database'>('all');
@@ -49,8 +53,41 @@ export function NotionSettings() {
 
   const searchResults = notion.search.data?.results ?? [];
   const mappings = notion.status.data?.mappings ?? [];
+  const connectError = notion.connect.error instanceof Error ? notion.connect.error.message : null;
+  const statusError = notion.status.error instanceof Error ? notion.status.error.message : null;
+  const setupError = connectError || statusError;
 
-  const handleConnect = () => notion.connect.mutate('/settings?tab=integrations');
+  useEffect(() => {
+    const callbackStatus = searchParams.get('notion');
+    if (!callbackStatus) return;
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete('notion');
+    nextParams.set('tab', 'integrations');
+    setSearchParams(nextParams, { replace: true });
+
+    if (callbackStatus === 'connected') {
+      toast.success('Notion connected. You can now map shared pages and databases to clients or projects.');
+      void notion.status.refetch();
+      return;
+    }
+
+    toast.error('Notion did not connect. Check the Notion OAuth app callback URL and Supabase secrets.');
+  }, [notion.status, searchParams, setSearchParams]);
+
+  const handleConnect = () => {
+    notion.connect.mutate('/settings?tab=integrations', {
+      onError: error => {
+        const message = error instanceof Error ? error.message : 'Could not start the Notion connection.';
+        toast.error(message);
+      },
+    });
+  };
+
+  const handleCopyCallbackUrl = async () => {
+    await navigator.clipboard.writeText(notionCallbackUrl);
+    toast.success('Notion callback URL copied.');
+  };
   const handleSearch = async () => {
     const result = await notion.search.mutateAsync({ query, kind });
     if (!result.results.length) toast.info('No shared Notion pages or databases were found. In Notion, share the page/database with the Proj OS connection and try again.');
@@ -101,6 +138,39 @@ export function NotionSettings() {
         </div>
       </CardHeader>
       <CardContent className="space-y-5">
+        {!connected && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-50 p-4 text-sm text-amber-950 dark:bg-amber-950/20 dark:text-amber-100">
+            <div className="flex gap-3">
+              <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
+              <div className="space-y-3">
+                <div>
+                  <p className="font-semibold">Notion setup check</p>
+                  <p className="mt-1 text-amber-900/80 dark:text-amber-100/80">
+                    If Connect Notion does not open the Notion consent screen, production is missing the Notion OAuth client ID or secret.
+                  </p>
+                </div>
+                {setupError && (
+                  <p className="rounded-lg border border-amber-500/20 bg-white/60 px-3 py-2 font-mono text-xs text-amber-950 dark:bg-black/20 dark:text-amber-100">
+                    {setupError}
+                  </p>
+                )}
+                <div className="grid gap-2 sm:grid-cols-[1fr_auto] sm:items-center">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-amber-800 dark:text-amber-200">Required Notion redirect URI</p>
+                    <p className="break-all font-mono text-xs text-amber-950 dark:text-amber-100">{notionCallbackUrl}</p>
+                  </div>
+                  <Button type="button" variant="outline" size="sm" onClick={handleCopyCallbackUrl} className="border-amber-500/30 bg-white/70 text-amber-950 hover:bg-white dark:bg-amber-950/40 dark:text-amber-50">
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copy
+                  </Button>
+                </div>
+                <p className="text-xs text-amber-900/80 dark:text-amber-100/75">
+                  Supabase secrets needed: <span className="font-mono">NOTION_OAUTH_CLIENT_ID</span> and <span className="font-mono">NOTION_OAUTH_CLIENT_SECRET</span>.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
         {notion.status.isLoading ? (
           <p className="text-sm text-muted-foreground">Checking Notion connection...</p>
         ) : connected ? (
