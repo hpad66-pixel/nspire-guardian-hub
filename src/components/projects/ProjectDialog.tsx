@@ -192,12 +192,12 @@ export function ProjectDialog({ open, onOpenChange, project, parentProject, clie
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>{isEditing ? 'Edit Project' : isSubproject ? 'Add Subproject' : isClientScoped ? `Create a project for ${clientContext?.name}` : 'Create New Project'}</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit Project' : isSubproject ? 'Add Linked Project' : isClientScoped ? `Create a project for ${clientContext?.name}` : 'Create New Project'}</DialogTitle>
           <DialogDescription>
             {isEditing
               ? 'Update the project details below.'
               : isSubproject
-                ? `A subproject of ${parentProject?.name} — its own scope, schedule, and budget, rolled up to the parent.`
+                ? `A linked project under ${parentProject?.name} with its own scope, schedule, and budget.`
                 : isClientScoped
                   ? 'This project will be securely contained within this client account and visible to its authorized team.'
                   : 'Enter the details for the new project.'}

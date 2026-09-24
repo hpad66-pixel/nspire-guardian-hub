@@ -16,7 +16,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FlaskConical, FolderKanban, FolderTree, Lightbulb,
+  ArrowLeft, Building2, Briefcase, Calendar, DollarSign, Edit, FlaskConical, FolderKanban, Lightbulb,
   TrendingUp, Clock, MessageSquareText, Activity, CheckSquare, FileText,
   AlertCircle, ShieldCheck, Package, BarChart3, Award, Send, Layers, Receipt,
   CalendarDays, ClipboardList, Wallet, ListChecks, ListTree, PenSquare, FileBarChart2,
@@ -94,7 +94,6 @@ import { ProjectStoresTab } from '@/components/projects/stores/ProjectStoresTab'
 import { ProjectVoiceAgentTab } from '@/components/projects/voice-agent/ProjectVoiceAgentTab';
 import { MeetingsTab } from '@/components/projects/MeetingsTab';
 import { ClientPortalTab } from '@/components/projects/ClientPortalTab';
-import { SubprojectsTab } from '@/components/projects/SubprojectsTab';
 import { EnvComplianceTab } from '@/components/projects/envcompliance/EnvComplianceTab';
 import { useProjectTree } from '@/hooks/useProjectTree';
 import { cn } from '@/lib/utils';
@@ -164,7 +163,6 @@ export default function ProjectDetailPage() {
   );
   const { tree: projectTree } = useProjectTree();
   const projectAncestors = id ? projectTree.ancestors(id).reverse() : []; // root → parent
-  const subprojectCount = id ? projectTree.children(id).length : 0;
   const { data: milestones } = useMilestonesByProject(id ?? null);
   const { data: dailyReports } = useDailyReportsByProject(id ?? null);
   const { data: changeOrders } = useChangeOrdersByProject(id ?? null);
@@ -390,7 +388,6 @@ export default function ProjectDetailPage() {
     parent: parentProject as never,
     isAdmin,
     badges: {
-      subprojects: subprojectCount > 0 ? subprojectCount : null,
       rfis: (rfiStats?.open ?? 0) > 0 ? (rfiStats?.open ?? 0) : null,
       'punch-list': punchOpen > 0 ? punchOpen : null,
       // Prefer open Project Log items (Glorieta punch path); fall back to unread client comments
@@ -1177,7 +1174,6 @@ export default function ProjectDetailPage() {
                     )}
                   </div>
                 </TabsContent>
-                <TabsContent value="subprojects" className="mt-0"><SubprojectsTab projectId={id!} project={project} /></TabsContent>
                 <TabsContent value="scope" className="mt-0"><ScopesTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
                 <TabsContent value="schedule" className="mt-0"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
                 <TabsContent value="daily-logs" className="mt-0"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>
@@ -1562,7 +1558,6 @@ export default function ProjectDetailPage() {
                   ) : (<p className="text-xs text-muted-foreground italic">{contributorCount > 0 ? `${contributorCount} ${contributorCount === 1 ? 'person has' : 'people have'} contributed via daily reports — open People & Team to add them formally.` : 'No team members yet — open People & Team to add internal users or CRM contacts.'}</p>)}
                 </div>
               </TabsContent>
-              <TabsContent value="subprojects"><SubprojectsTab projectId={id!} project={project} /></TabsContent>
               <TabsContent value="scope"><ScopesTab projectId={id!} projectName={project.name} clientName={project.client?.name ?? null} /></TabsContent>
               <TabsContent value="schedule"><MilestoneTimeline projectId={id!} milestones={milestones || []} /></TabsContent>
               <TabsContent value="daily-logs"><DailyReportsList projectId={id!} reports={dailyReports || []} projectName={project.name} propertyName={project.property?.name} projectType={(project as any).project_type} /></TabsContent>

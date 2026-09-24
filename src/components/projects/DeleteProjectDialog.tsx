@@ -94,13 +94,13 @@ export function DeleteProjectDialog({
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        {/* Subproject warning + choice */}
+        {/* Linked project warning + choice */}
         {hasSubs && (
           <div className="space-y-2">
             <div className="flex items-start gap-2 rounded-lg border border-[var(--apas-amber)]/30 bg-[var(--apas-amber)]/5 p-3">
               <FolderTree className="h-4 w-4 text-[var(--apas-amber)] shrink-0 mt-0.5" />
               <div className="text-sm">
-                <span className="font-medium">This program has {descendants.length} subproject{descendants.length !== 1 ? 's' : ''}.</span>
+                <span className="font-medium">This project has {descendants.length} linked child project{descendants.length !== 1 ? 's' : ''}.</span>
                 <div className="mt-0.5 text-xs text-muted-foreground truncate">{directChildren.map((c) => c.name).join(', ')}</div>
               </div>
             </div>
@@ -109,7 +109,7 @@ export function DeleteProjectDialog({
               onClick={() => setMode('detach')}
               className={cn('w-full text-left rounded-lg border p-2.5 text-sm transition-colors', mode === 'detach' ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50')}
             >
-              <span className="font-medium">Keep subprojects</span>
+              <span className="font-medium">Keep linked projects</span>
               <span className="block text-xs text-muted-foreground">They become standalone projects (their data is preserved).</span>
             </button>
             <button
@@ -118,7 +118,7 @@ export function DeleteProjectDialog({
               className={cn('w-full text-left rounded-lg border p-2.5 text-sm transition-colors', mode === 'all' ? 'border-destructive bg-destructive/5' : 'border-border hover:bg-muted/50')}
             >
               <span className="font-medium text-destructive">Remove the whole program</span>
-              <span className="block text-xs text-muted-foreground">Also removes all {descendants.length} subproject{descendants.length !== 1 ? 's' : ''} from the active workspace.</span>
+              <span className="block text-xs text-muted-foreground">Also removes all {descendants.length} linked child project{descendants.length !== 1 ? 's' : ''} from the active workspace.</span>
             </button>
           </div>
         )}

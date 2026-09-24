@@ -10,7 +10,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import {
   Gauge, Sparkles, Loader2, AlertTriangle, TrendingUp, DollarSign, ListChecks, Flame,
-  Trophy, Medal, ChevronRight, ChevronDown as ChevronDownIcon, Network, ShieldAlert, CircleDot, Radar, ArrowRight, Users,
+  Trophy, Medal, ChevronRight, ChevronDown as ChevronDownIcon, ShieldAlert, CircleDot, Radar, ArrowRight, Users,
   Building2, Briefcase,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -96,12 +96,11 @@ export default function PortfolioCockpitPage() {
   }), [rows, kind, ragFilter, clientFilter]);
 
   // Hierarchy grouping for the risk tiles.
-  const [groupTiles, setGroupTiles] = useState(true);
+  const groupTiles = false;
   const [collapsedProg, setCollapsedProg] = useState<Set<string>>(new Set());
   const visibleIds = useMemo(() => new Set(shown.map((r) => r.project.id)), [shown]);
   const childRows = (id: string) => shown.filter((r) => r.parentId === id);
   const rootRows = shown.filter((r) => !r.parentId || !visibleIds.has(r.parentId));
-  const hasHierarchy = shown.some((r) => r.parentId && visibleIds.has(r.parentId));
   const toggleProg = (id: string) => setCollapsedProg((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const charts = useMemo(() => {
@@ -418,11 +417,6 @@ export default function PortfolioCockpitPage() {
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="text-sm font-semibold">Projects <span className="font-normal text-muted-foreground">· sorted by attention</span></div>
-              {shown.length > 0 && (
-                <Button variant={groupTiles ? 'default' : 'outline'} size="sm" className="h-7 gap-1.5 text-xs" onClick={() => setGroupTiles((v) => !v)} title={hasHierarchy ? 'Group subprojects under their program' : 'Groups subprojects under their program once you add some'}>
-                  <Network className="h-3.5 w-3.5" />Group by program
-                </Button>
-              )}
             </div>
             {isLoading ? <Empty label="Loading projects…" /> : shown.length === 0 ? <Empty label="No projects in this view." /> : (
               groupTiles ? (

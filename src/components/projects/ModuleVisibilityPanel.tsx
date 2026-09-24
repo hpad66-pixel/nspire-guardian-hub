@@ -181,13 +181,13 @@ export function ModuleVisibilityPanel({
         </div>
       </div>
 
-      {/* Sub-project inheritance */}
+      {/* Parent project inheritance */}
       {project.parent_project_id && (
         <div className="flex items-center gap-3 rounded-lg border border-dashed px-3 py-3">
           <div className="min-w-0 flex-1">
             <div className="text-sm font-medium">Inherit modules from parent project</div>
             <div className="text-xs text-muted-foreground">
-              Sub-project uses the parent’s on/off map unless you override a module here.
+              This project can use the parent project’s on/off map unless you override a module here.
             </div>
           </div>
           <Switch checked={inherit} onCheckedChange={setInherit} aria-label="Inherit from parent" />

@@ -26,7 +26,7 @@ import {
   FolderKanban, Plus, Calendar, DollarSign, FileText, Building2, Briefcase,
   LayoutGrid, List, Table2, Search, ArrowUpDown, ArrowUp, ArrowDown,
   CheckCircle, AlertTriangle, XCircle, PauseCircle, MoreHorizontal,
-  Edit, Archive, Trash2, Filter, X, FolderTree, ChevronDown, ChevronRight, Network,
+  Edit, Archive, Trash2, Filter, X, FolderTree, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { buildProjectTree } from '@/lib/projectTree';
 import { useProjects, useProjectStats } from '@/hooks/useProjects';
@@ -112,7 +112,6 @@ export default function ProjectsDashboard() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<SortBy>('created');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [groupByProgram, setGroupByProgram] = useState(true);
   const [collapsedPrograms, setCollapsedPrograms] = useState<Set<string>>(new Set());
 
   // --- Data ---
@@ -313,7 +312,6 @@ export default function ProjectsDashboard() {
   const visibleIds = useMemo(() => new Set(displayProjects.map((p) => p.id)), [displayProjects]);
   const childrenOf = (id: string) => displayProjects.filter((p) => (p as any).parent_project_id === id);
   const rootProjects = displayProjects.filter((p) => { const pid = (p as any).parent_project_id; return !pid || !visibleIds.has(pid); });
-  const hasHierarchy = displayProjects.some((p) => (p as any).parent_project_id && visibleIds.has((p as any).parent_project_id));
   const toggleProgram = (pid: string) => setCollapsedPrograms((prev) => { const n = new Set(prev); n.has(pid) ? n.delete(pid) : n.add(pid); return n; });
 
   const handleArchive = (project: Project) => {
@@ -549,7 +547,7 @@ export default function ProjectsDashboard() {
     );
   };
 
-  const grouped = groupByProgram;
+  const grouped = false;
   const standaloneRoots = rootProjects.filter((p) => childrenOf(p.id).length === 0);
   const programRoots = rootProjects.filter((p) => childrenOf(p.id).length > 0);
 
@@ -767,20 +765,6 @@ export default function ProjectsDashboard() {
           </Button>
 
           <div className="flex-1" />
-
-          {/* Group subprojects under their program (renders in cards view) */}
-          {displayProjects.length > 0 && (
-            <Button
-              variant={groupByProgram ? 'default' : 'outline'}
-              size="sm"
-              className="h-9 gap-1.5"
-              onClick={() => { const nv = !groupByProgram; setGroupByProgram(nv); if (nv && viewMode !== 'cards') handleViewChange('cards'); }}
-              title={hasHierarchy ? 'Group subprojects under their program' : 'Once you add subprojects, they nest under their program here'}
-            >
-              <Network className="h-4 w-4" />
-              <span className="hidden sm:inline">Group by program</span>
-            </Button>
-          )}
 
           {/* View toggle */}
           <ToggleGroup type="single" value={viewMode} onValueChange={handleViewChange} className="border rounded-lg p-0.5 bg-muted/30">

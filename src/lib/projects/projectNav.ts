@@ -7,7 +7,7 @@
 
 import type { LucideIcon } from 'lucide-react';
 import {
-  LayoutDashboard, FolderTree, Users, ListTree, CalendarDays, ClipboardList,
+  LayoutDashboard, Users, ListTree, CalendarDays, ClipboardList,
   Images, Wallet, FileSignature, HelpCircle, Package, ListChecks, CheckSquare,
   TrendingUp, ShoppingCart, ShieldCheck, FlaskConical, MessageSquareText, Mail,
   Award, Receipt, Send, Megaphone, FileText, Settings2, FileBadge2, Map, Warehouse, Phone, ScanEye,
@@ -80,7 +80,6 @@ export const PROJECT_NAV_ITEMS: ProjectNavItem[] = [
   { value: 'action-items', label: 'Action Items', shortLabel: 'Actions', icon: CheckSquare, group: 'engagement' },
   { value: 'directory', label: 'People & Team', shortLabel: 'People', icon: Users, group: 'engagement', route: (id) => `/projects/${id}/directory` },
   { value: 'contractors', label: 'Contractor Readiness', shortLabel: 'Contractors', icon: UserRoundCheck, group: 'engagement', route: (id) => `/projects/${id}/contractors` },
-  { value: 'subprojects', label: 'Subprojects', shortLabel: 'Subs', icon: FolderTree, group: 'engagement' },
 
   // Commercial / Money — money is the first operational section after setup.
   { value: 'financials', label: 'Financials', shortLabel: 'Finance', icon: Wallet, group: 'commercial', route: (id) => `/projects/${id}/financials/overview` },

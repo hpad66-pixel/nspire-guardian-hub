@@ -74,7 +74,6 @@ export interface ProjectModuleDef {
 // layout; the sidebar itself keeps its own tab ordering via projectNav.
 export const PROJECT_MODULE_CATALOG: ProjectModuleDef[] = [
   { slug: 'overview', label: 'Overview', description: 'Project health, KPIs, and quick actions', group: 'engagement', locked: true },
-  { slug: 'subprojects', label: 'Subprojects', description: 'Child projects rolled up under this one', group: 'engagement' },
   { slug: 'directory', label: 'People & Team', description: 'CRM contacts and project directory — feeds email & invoices', group: 'engagement' },
   { slug: 'contractors', label: 'Contractor Readiness', description: 'Project-scoped vendor screening, documents, expirations, and mobilization gates', group: 'engagement' },
   { slug: 'scope', label: 'Scope', description: 'Workstreams, owners, % complete (consulting)', group: 'engagement' },
@@ -163,7 +162,6 @@ export const LOCKED_MODULES: ReadonlySet<ProjectModuleSlug> = new Set(
 // Modules shown by default on consulting / client engagements.
 export const CONSULTING_DEFAULT_MODULES: ReadonlySet<ProjectModuleSlug> = new Set<ProjectModuleSlug>([
   'overview',
-  'subprojects',
   'directory',
   'contractors',
   'env-compliance',

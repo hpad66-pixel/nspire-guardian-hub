@@ -7,7 +7,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { useProject, useUpdateProject } from '@/hooks/useProjects';
 import { useUserPermissions } from '@/hooks/usePermissions';
-import { useProjectTree } from '@/hooks/useProjectTree';
 import { ModuleVisibilityPanel } from '@/components/projects/ModuleVisibilityPanel';
 import { ProjectKindBadge, ProjectTypeMissingAlert } from '@/components/projects/ProjectKindBadge';
 import { ProjectTypeDialog } from '@/components/projects/ProjectTypeDialog';
@@ -36,16 +35,11 @@ export default function ProjectAdminPage() {
   const navigate = useNavigate();
   const { data: project, isLoading } = useProject(projectId ?? null);
   const { isAdmin, isLoading: permsLoading } = useUserPermissions();
-  const { tree } = useProjectTree();
   const updateProject = useUpdateProject();
   const [typeOpen, setTypeOpen] = useState(false);
   const [closeOpen, setCloseOpen] = useState(false);
   const { isSuperAdmin } = usePlatformSuperAdmin();
 
-  const parent = project?.parent_project_id
-    ? tree.byId.get(project.parent_project_id) ?? null
-    : null;
-  const children = projectId ? tree.children(projectId) : [];
   const kind = projectKind(project ?? {});
   const brand = companyBrandForProject(project as { project_type?: string | null; program_meta?: unknown } | null);
   const workflow = billingWorkflowDescriptorForProjectType((project as { project_type?: string | null } | null)?.project_type, brand);
@@ -258,69 +252,6 @@ export default function ProjectAdminPage() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Hierarchy</CardTitle>
-            <CardDescription>
-              Sub-projects can inherit this project’s module map.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {parent ? (
-              <p>
-                Parent:{' '}
-                <Link to={`/projects/${parent.id}/admin`} className="font-medium text-[var(--apas-sapphire)] hover:underline">
-                  {parent.name}
-                </Link>
-              </p>
-            ) : (
-              <p className="text-muted-foreground">Top-level project (no parent).</p>
-            )}
-            {children.length > 0 ? (
-              <div>
-                <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  Sub-projects ({children.length})
-                </p>
-                <ul className="space-y-1">
-                  {children.slice(0, 6).map((c) => (
-                    <li key={c.id}>
-                      <Link
-                        to={`/projects/${c.id}/admin`}
-                        className="text-[var(--apas-sapphire)] hover:underline"
-                      >
-                        {c.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-                {children.length > 0 && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 px-0"
-                    onClick={async () => {
-                      let ok = 0;
-                      for (const child of children) {
-                        try {
-                          await updateProject.mutateAsync({
-                            id: child.id,
-                            module_inherit_from_parent: true,
-                          } as never);
-                          ok += 1;
-                        } catch { /* continue */ }
-                      }
-                      toast.success(`Set inherit on ${ok} sub-project${ok === 1 ? '' : 's'}`);
-                    }}
-                  >
-                    Make all sub-projects inherit these modules
-                  </Button>
-                )}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">No sub-projects yet.</p>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* Cross-connections */}
