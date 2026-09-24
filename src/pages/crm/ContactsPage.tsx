@@ -216,13 +216,13 @@ export default function ContactsPage() {
           </div>
           <div className="grid w-full grid-cols-2 gap-2 md:w-auto md:flex md:shrink-0 md:flex-wrap md:justify-end">
             <Button asChild variant="outline" size="sm" className="w-full border-slate-300 bg-white md:w-auto">
-              <Link to="/dashboard">
+              <Link to="/dashboard" reloadDocument>
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Dashboard
               </Link>
             </Button>
             <Button asChild variant="outline" size="sm" className="w-full border-slate-300 bg-white md:w-auto">
-              <Link to="/organizations">
+              <Link to="/organizations" reloadDocument>
                 Clients
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>

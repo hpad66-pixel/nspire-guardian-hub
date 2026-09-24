@@ -133,6 +133,25 @@ export function AppLayout({ children }: AppLayoutProps) {
     .sort((a, b) => (rolePriority[b] || 0) - (rolePriority[a] || 0))
     .map((role) => roleLabels[role] || role);
 
+  useEffect(() => {
+    const expectedPath = location.pathname;
+    const reloadKey = 'proj-os-router-desync-reload';
+    const checkForRouterDesync = () => {
+      if (window.location.pathname === expectedPath) {
+        sessionStorage.removeItem(reloadKey);
+        return;
+      }
+
+      const lastReload = Number(sessionStorage.getItem(reloadKey) || '0');
+      if (Number.isFinite(lastReload) && Date.now() - lastReload < 5000) return;
+      sessionStorage.setItem(reloadKey, String(Date.now()));
+      window.location.reload();
+    };
+
+    const timer = window.setInterval(checkForRouterDesync, 750);
+    return () => window.clearInterval(timer);
+  }, [location.pathname]);
+
   const fullName = (user?.user_metadata?.full_name as string | undefined)?.trim();
   const initials = (() => {
     if (fullName) {
