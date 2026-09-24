@@ -42,6 +42,19 @@ describe('client portfolio grouping', () => {
     )).toBe(true);
   });
 
+  it('includes the canonical Conveyance closeout job under R4 even when the title omits Glorieta', () => {
+    expect(shouldIncludeProjectForClientFilter(
+      {
+        id: '4b168bb0-a0a0-4c0a-bcd8-eb56ec2f413d',
+        name: 'Conveyance & Close-Out to the City of Opa-Locka',
+        status: 'closed',
+        client_id: null,
+      },
+      'r4-1',
+      'R4 Capital LLC',
+    )).toBe(true);
+  });
+
   it('does not pull unrelated projects into the R4 filter', () => {
     expect(shouldIncludeProjectForClientFilter(
       { id: 'p2', name: 'City Hall Roof', client_id: 'city-1', client: { name: 'City of Opa-locka' } },

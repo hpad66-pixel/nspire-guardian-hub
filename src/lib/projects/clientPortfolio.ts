@@ -18,6 +18,7 @@ export type ClientPortfolioGroup<T extends ClientPortfolioProjectLike = ClientPo
 };
 
 const R4_LABEL = 'R4';
+const GLORIETA_CONVEYANCE_PROJECT_ID = '4b168bb0-a0a0-4c0a-bcd8-eb56ec2f413d';
 const R4_STANDALONE_CONSULTING_NAMES = new Set([
   'review',
   'approval',
@@ -36,6 +37,8 @@ export function isR4ClientName(value: string | null | undefined): boolean {
 }
 
 export function isGlorietaPortfolioProject(project: ClientPortfolioProjectLike): boolean {
+  if (project.id === GLORIETA_CONVEYANCE_PROJECT_ID) return true;
+
   const haystack = [
     project.name,
     project.client?.name,

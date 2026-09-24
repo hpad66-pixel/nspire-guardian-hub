@@ -18,6 +18,7 @@ import { compareClosedProjectsFirst } from '@/lib/projects/portfolioProjectVisib
 import { cn } from '@/lib/utils';
 
 const PINNED_CLIENT_PROJECTS_KEY = 'proj-os:pinned-client-projects:v1';
+const GLORIETA_CONVEYANCE_PROJECT_ID = '4b168bb0-a0a0-4c0a-bcd8-eb56ec2f413d';
 
 type PortfolioPhase = 'planning' | 'design' | 'construction';
 
@@ -280,7 +281,30 @@ function ClientProjectTile({
         </div>
       </div>
       {isClosed ? (
-        <ProjectClosedCardStamp project={project} />
+        <div className="relative mt-4 space-y-3">
+          <ProjectClosedCardStamp project={project} />
+          <div className="rounded-xl border border-current/10 bg-background/45 px-3 py-2 shadow-sm backdrop-blur-sm">
+            <div className="flex flex-wrap items-end justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
+                  {amountLabel}
+                </p>
+                <p className="text-base font-black tabular-nums">{amount ?? '—'}</p>
+              </div>
+              {amounts.spent > 0 && (
+                <div className="text-right">
+                  <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">Billed</p>
+                  <p className="text-sm font-bold tabular-nums">{formatCurrency(amounts.spent)}</p>
+                </div>
+              )}
+            </div>
+            {project.id === GLORIETA_CONVEYANCE_PROJECT_ID && (
+              <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
+                D&apos;SHIN Plumbing · SC-001 sewer extension commitment
+              </p>
+            )}
+          </div>
+        </div>
       ) : (
         <div className="relative mt-4 flex items-end justify-between gap-2 border-t border-current/10 pt-3">
           <div>

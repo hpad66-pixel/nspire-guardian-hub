@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import { buildProjectTree } from '@/lib/projectTree';
 import { useProjects, useProjectStats } from '@/hooks/useProjects';
+import { useClient } from '@/hooks/useClients';
 import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
 import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import { projectKind, projectKindTileClass, type ProjectKind } from '@/lib/projectKind';
@@ -71,6 +72,7 @@ type SectorFilter = ProjectSector | 'all';
 type SortBy = 'name' | 'created' | 'due_date' | 'budget' | 'health';
 
 const LS_VIEW_KEY = 'projects_view_preference';
+const GLORIETA_CONVEYANCE_PROJECT_ID = '4b168bb0-a0a0-4c0a-bcd8-eb56ec2f413d';
 
 const normalizeKindParam = (value: string | null): 'all' | ProjectKind =>
   value === 'construction' || value === 'consulting' ? value : 'all';
@@ -116,6 +118,7 @@ export default function ProjectsDashboard() {
 
   // --- Data ---
   const { data: projects, isLoading } = useProjects();
+  const { data: selectedClient } = useClient(clientFilterId ?? undefined);
   const { financials } = useAllProjectFinancials();
   const { consultingTotals } = useAllApprovedProposalTotals();
   const { data: stats } = useProjectStats();
@@ -134,7 +137,7 @@ export default function ProjectsDashboard() {
     ? properties?.find((p) => p.id === propertyFilterId) ?? null
     : null;
   const filteredClient = clientFilterId
-    ? portfolioProjects.find((p: any) => p.client_id === clientFilterId)?.client ?? null
+    ? selectedClient ?? portfolioProjects.find((p: any) => p.client_id === clientFilterId)?.client ?? null
     : null;
   const filteredClientName = filteredClient?.name ?? null;
 
@@ -200,7 +203,8 @@ export default function ProjectsDashboard() {
 
     // Client filter (from dashboard portfolio cards)
     if (clientFilterId) {
-      const selectedClientName = portfolioProjects.find((p: any) => p.client_id === clientFilterId)?.client?.name ?? null;
+      const selectedClientName =
+        selectedClient?.name ?? portfolioProjects.find((p: any) => p.client_id === clientFilterId)?.client?.name ?? null;
       filtered = filtered.filter((p: any) =>
         shouldIncludeProjectForClientFilter(p, clientFilterId, selectedClientName),
       );
@@ -267,7 +271,7 @@ export default function ProjectsDashboard() {
     });
 
     return filtered;
-  }, [projects, portfolioProjects, financials, consultingTotals, propertyFilterId, clientFilterId, search, statusFilter, kindFilter, healthFilter, sectorFilter, sortBy, sortDir]);
+  }, [projects, portfolioProjects, financials, consultingTotals, propertyFilterId, clientFilterId, selectedClient?.name, search, statusFilter, kindFilter, healthFilter, sectorFilter, sortBy, sortDir]);
 
   // ── Hierarchy (shared rollup layer) ────────────────────────────────────────
   const tree = useMemo(() => buildProjectTree((projects ?? []) as Project[]), [projects]);
@@ -444,7 +448,28 @@ export default function ProjectsDashboard() {
           </div>
 
           {isClosed ? (
-            <ProjectClosedCardStamp project={project} />
+            <div className="space-y-3">
+              <ProjectClosedCardStamp project={project} />
+              <div className="rounded-xl border border-current/10 bg-background/45 px-3 py-2 shadow-sm backdrop-blur-sm">
+                <div className="flex flex-wrap items-end justify-between gap-2">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">
+                      {kind === 'consulting' ? 'Approved fees' : 'Revised contract'}
+                    </p>
+                    <p className="text-base font-black tabular-nums">{formatCurrency(budgetVal)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-muted-foreground">Billed</p>
+                    <p className="text-sm font-bold tabular-nums">{formatCurrency(spentVal)}</p>
+                  </div>
+                </div>
+                {project.id === GLORIETA_CONVEYANCE_PROJECT_ID && (
+                  <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
+                    D&apos;SHIN Plumbing · SC-001 sewer extension commitment
+                  </p>
+                )}
+              </div>
+            </div>
           ) : (
             <>
               <div className="grid gap-2 sm:grid-cols-2">
