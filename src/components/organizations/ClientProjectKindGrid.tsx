@@ -1,8 +1,10 @@
 import { format } from 'date-fns';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Building2, Calendar, HardHat, Lightbulb } from 'lucide-react';
+import { Building2, Calendar, ClipboardList, HardHat, Lightbulb, Pin, PinOff, PenTool, ShieldCheck } from 'lucide-react';
 import { ProjectKindBadge } from '@/components/projects/ProjectKindBadge';
 import { ProjectClosedCardStamp } from '@/components/projects/ProjectClosedCardStamp';
+import { ProjectOwnerBadge } from '@/components/projects/ProjectOwnerBadge';
 import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import type { Project } from '@/hooks/useProjects';
 import {
@@ -14,6 +16,28 @@ import {
 import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { compareClosedProjectsFirst } from '@/lib/projects/portfolioProjectVisibility';
 import { cn } from '@/lib/utils';
+
+const PINNED_CLIENT_PROJECTS_KEY = 'proj-os:pinned-client-projects:v1';
+
+type PortfolioPhase = 'planning' | 'design' | 'construction';
+
+function readPinnedProjects(): Set<string> {
+  try {
+    const raw = localStorage.getItem(PINNED_CLIENT_PROJECTS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function writePinnedProjects(ids: Set<string>) {
+  try {
+    localStorage.setItem(PINNED_CLIENT_PROJECTS_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Browser storage is a convenience only; the project tile should still work.
+  }
+}
 
 /** Status chips on blue (consulting) tiles — light on dark. */
 const STATUS_ON_BLUE: Record<string, string> = {
@@ -40,6 +64,47 @@ function formatCurrency(amount: number) {
     currency: 'USD',
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function portfolioPhase(project: Project, kind: ProjectKind): PortfolioPhase {
+  const status = (project.status ?? '').toLowerCase();
+  if (status === 'planning' || status === 'on_hold') return 'planning';
+  if (status === 'closed' || status === 'completed') {
+    return kind === 'construction' ? 'construction' : 'design';
+  }
+  return kind === 'construction' ? 'construction' : 'design';
+}
+
+function phaseLabel(phase: PortfolioPhase): string {
+  if (phase === 'planning') return 'Planning';
+  if (phase === 'design') return 'Design';
+  return 'Construction';
+}
+
+function PhaseBadge({ phase }: { phase: PortfolioPhase }) {
+  const Icon = phase === 'planning' ? ClipboardList : phase === 'design' ? PenTool : HardHat;
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold',
+        phase === 'planning' && 'border-slate-300/70 bg-slate-100 text-slate-700',
+        phase === 'design' && 'border-sky-300/70 bg-sky-50 text-sky-800',
+        phase === 'construction' && 'border-amber-300/80 bg-amber-50 text-amber-900',
+      )}
+    >
+      <Icon className="h-3 w-3" />
+      {phaseLabel(phase)}
+    </span>
+  );
+}
+
+function comparePinnedThenClosed(pinnedIds: Set<string>) {
+  return (a: Project, b: Project) => {
+    const aPinned = pinnedIds.has(a.id);
+    const bPinned = pinnedIds.has(b.id);
+    if (aPinned !== bPinned) return aPinned ? -1 : 1;
+    return compareClosedProjectsFirst(a, b);
+  };
 }
 
 function KindSectionHeader({
@@ -104,12 +169,17 @@ function KindSectionHeader({
 function ClientProjectTile({
   project,
   consultingTotals,
+  pinned,
+  onTogglePinned,
 }: {
   project: Project;
   consultingTotals: Map<string, { approvedFee: number; invoiced: number }>;
+  pinned: boolean;
+  onTogglePinned: (projectId: string) => void;
 }) {
   const navigate = useNavigate();
   const kind = projectKind(project);
+  const phase = portfolioPhase(project, kind);
   const amounts = resolveProjectTileAmounts({
     project,
     consulting: consultingTotals.get(project.id),
@@ -123,14 +193,13 @@ function ClientProjectTile({
   const isClosed = project.status === 'closed';
 
   return (
-    <button
-      type="button"
-      onClick={() => navigate(`/projects/${project.id}`)}
+    <article
       className={cn(
-        'group relative overflow-hidden rounded-2xl border border-l-4 p-4 text-left transition-all',
+        'group relative overflow-hidden rounded-2xl border border-l-4 text-left transition-all',
         'hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2',
         projectKindTileClass(kind),
-        isClosed && 'border-amber-300/80 ring-1 ring-amber-300/30 shadow-lg',
+        isClosed && 'border-slate-400/60 opacity-95 ring-1 ring-slate-300/40 shadow-md',
+        pinned && 'ring-2 ring-[var(--kind-construction-accent)]/45',
         kind === 'consulting'
           ? 'focus-visible:ring-[var(--kind-consulting)]'
           : 'focus-visible:ring-[var(--kind-construction-accent)]',
@@ -139,6 +208,29 @@ function ClientProjectTile({
       data-kind={kind}
       data-status={project.status ?? 'planning'}
     >
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onTogglePinned(project.id);
+        }}
+        className={cn(
+          'absolute right-3 top-3 z-10 inline-flex h-9 w-9 items-center justify-center rounded-full border text-xs font-black shadow-sm transition',
+          pinned
+            ? 'border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200'
+            : 'border-current/15 bg-white/75 text-current/60 hover:bg-white hover:text-current',
+        )}
+        aria-pressed={pinned}
+        aria-label={pinned ? `Unpin ${project.name}` : `Pin ${project.name}`}
+        title={pinned ? 'Unpin from favorites' : 'Pin to favorites'}
+      >
+        {pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+      </button>
+      <button
+        type="button"
+        onClick={() => navigate(`/projects/${project.id}`)}
+        className="block h-full w-full p-4 pr-14 text-left focus-visible:outline-none"
+      >
       <div
         className={cn(
           'pointer-events-none absolute -right-4 -top-4 h-24 w-24 rounded-full opacity-15 blur-2xl transition-opacity group-hover:opacity-30',
@@ -165,16 +257,26 @@ function ClientProjectTile({
                 statusClass,
               )}
             >
-              {project.status?.replace('_', ' ')}
+              {isClosed ? 'closed' : project.status?.replace('_', ' ')}
             </span>
           </div>
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <ProjectKindBadge project={project} />
+            <PhaseBadge phase={phase} />
+            {isClosed && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-slate-300 bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                <ShieldCheck className="h-3 w-3" />
+                Locked record
+              </span>
+            )}
           </div>
           <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
             <Building2 className="h-3 w-3" />
             <span className="truncate">{project.property?.name ?? 'Standalone'}</span>
           </p>
+          <div className="mt-3">
+            <ProjectOwnerBadge project={project} compact />
+          </div>
         </div>
       </div>
       {isClosed ? (
@@ -195,17 +297,34 @@ function ClientProjectTile({
           )}
         </div>
       )}
-    </button>
+      </button>
+    </article>
   );
 }
 
 export function ClientProjectKindGrid({ projects }: { projects: Project[] }) {
   const { consultingTotals } = useAllApprovedProposalTotals();
+  const [pinnedProjectIds, setPinnedProjectIds] = useState<Set<string>>(() => readPinnedProjects());
   const { construction, consulting } = groupProjectsByKind(projects);
 
+  useEffect(() => {
+    writePinnedProjects(pinnedProjectIds);
+  }, [pinnedProjectIds]);
+
+  const togglePinned = (projectId: string) => {
+    setPinnedProjectIds((current) => {
+      const next = new Set(current);
+      if (next.has(projectId)) next.delete(projectId);
+      else next.add(projectId);
+      return next;
+    });
+  };
+
+  const sorter = useMemo(() => comparePinnedThenClosed(pinnedProjectIds), [pinnedProjectIds]);
+
   const rows: Array<{ kind: ProjectKind; items: Project[] }> = [
-    { kind: 'construction', items: [...construction].sort(compareClosedProjectsFirst) },
-    { kind: 'consulting', items: [...consulting].sort(compareClosedProjectsFirst) },
+    { kind: 'construction', items: [...construction].sort(sorter) },
+    { kind: 'consulting', items: [...consulting].sort(sorter) },
   ].filter((row) => row.items.length > 0);
 
   if (rows.length === 0) return null;
@@ -221,6 +340,8 @@ export function ClientProjectKindGrid({ projects }: { projects: Project[] }) {
                 key={project.id}
                 project={project}
                 consultingTotals={consultingTotals}
+                pinned={pinnedProjectIds.has(project.id)}
+                onTogglePinned={togglePinned}
               />
             ))}
           </div>

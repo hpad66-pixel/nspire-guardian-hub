@@ -29,7 +29,6 @@ export const MODULE_CATALOG: ModuleCategory[] = [
     { key: 'projectsEnabled', label: 'Projects (legacy)', description: 'Capital improvements, daily reports, change orders, and closeout' },
   ] },
   { key: 'field', label: 'Field ops', modules: [
-    { key: 'siteAccountabilityEnabled', label: 'Site Accountability', description: 'Owner walkthroughs, photo evidence, before/after closeout, and client-visible proof' },
     { key: 'equipmentTrackerEnabled', label: 'Equipment & fleet', description: 'Equipment and fleet tracking' },
     { key: 'qrScanningEnabled', label: 'QR scanning', description: 'QR asset scanning' },
     { key: 'credentialWalletEnabled', label: 'Credential wallet', description: 'Credentials & licenses' },
@@ -51,6 +50,13 @@ export const MODULE_CATALOG: ModuleCategory[] = [
       key: 'aiEnabled',
       label: 'AI + Resident Voice',
       description: 'Assistant, drafting, analysis, briefings, and the ElevenLabs Voice Complaints hotline (sidebar → Resident Voice)',
+    },
+  ] },
+  { key: 'enterprise_addons', label: 'Enterprise add-ons', modules: [
+    {
+      key: 'siteAccountabilityEnabled',
+      label: 'Site Accountability',
+      description: 'Enterprise-only owner walkthroughs, photo evidence, before/after closeout, and client-visible proof. Hidden unless licensed and enabled.',
     },
   ] },
 ];

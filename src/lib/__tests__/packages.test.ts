@@ -37,6 +37,18 @@ describe('buildPackageModulePatch', () => {
     expect(patch.platform_property_mgmt).toBe(false);
   });
 
+  it('site accountability is enterprise-only', () => {
+    const enterprise = PACKAGES.find((p) => p.key === 'enterprise')!;
+    expect(enterprise.modules).toContain('siteAccountabilityEnabled');
+
+    for (const pkg of PACKAGES.filter((p) => p.key !== 'enterprise')) {
+      expect(pkg.modules, pkg.key).not.toContain('siteAccountabilityEnabled');
+      const patch = buildPackageModulePatch(pkg.key);
+      expect(patch.site_accountability_enabled, pkg.key).toBe(false);
+      expect(patch.platform_site_accountability, pkg.key).toBe(false);
+    }
+  });
+
   it('maps every workspace column to a platform_* column', () => {
     for (const [mk, wsCol] of Object.entries(MODULE_WS_COLUMN)) {
       const platformCol = MODULE_PLATFORM_COLUMN[mk as keyof typeof MODULE_PLATFORM_COLUMN];

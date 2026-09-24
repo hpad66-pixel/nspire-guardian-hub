@@ -14,6 +14,10 @@ import { useUserPermissions } from '@/hooks/usePermissions';
 import { useModules } from '@/contexts/ModuleContext';
 import { groupProjectsByKind } from '@/lib/projectKind';
 import { OrganizationMembersSheet } from '@/components/organizations/OrganizationMembersSheet';
+import {
+  resolveClientPortfolioProjects,
+  shouldIncludeProjectForClientFilter,
+} from '@/lib/projects/clientPortfolio';
 
 const CLIENT_TYPE_LABEL: Record<ClientType, string> = {
   internal_org: 'Internal Organization',
@@ -37,10 +41,13 @@ export default function OrganizationDetailPage() {
   const canManageContractors = isModuleEnabled('contractorReadinessEnabled')
     && ['admin', 'owner', 'manager', 'project_manager', 'administrator'].includes(currentRole ?? '');
 
-  // RLS already scopes projects to the tenant; filter to this organization.
+  // RLS already scopes projects to the tenant. Use the same portfolio resolver
+  // as the all-projects dashboard so R4/Glorieta and legacy standalone
+  // consulting work do not disappear from the client detail page.
   const projects = useMemo(
-    () => allProjects.filter((p) => (p as { client_id?: string | null }).client_id === clientId),
-    [allProjects, clientId],
+    () => resolveClientPortfolioProjects(allProjects)
+      .filter((project) => shouldIncludeProjectForClientFilter(project, clientId ?? null, org?.name)),
+    [allProjects, clientId, org?.name],
   );
 
   const kindCounts = useMemo(() => {
