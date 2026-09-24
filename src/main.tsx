@@ -31,7 +31,7 @@ if (typeof window !== "undefined") {
 // 2026-09-13: flush stale SWs that hijacked /oauth/* connector consent routes.
 // 2026-09-23: flush stale protected-shell bundles that could leave Contacts
 // mounted after the URL changed, making CRM feel like a dead end.
-const SW_CLEANUP_VERSION = "2026-09-23-contacts-route-desync-flush";
+const SW_CLEANUP_VERSION = "2026-09-23-contacts-route-desync-flush-oauth-route-flush";
 const SW_CLEANUP_KEY = "proj-os-sw-cleanup";
 
 async function evictStaleServiceWorkers(): Promise<boolean> {

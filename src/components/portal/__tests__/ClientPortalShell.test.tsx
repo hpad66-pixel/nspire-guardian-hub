@@ -50,6 +50,12 @@ vi.mock("@/hooks/usePortals", () => ({
   }),
 }));
 
+vi.mock("@/contexts/ModuleContext", () => ({
+  useModules: () => ({
+    isModuleEnabled: (module: string) => module === "siteAccountabilityEnabled",
+  }),
+}));
+
 function renderAt(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
