@@ -8,14 +8,22 @@ interface BeforeInstallPromptEvent extends Event {
 const INSTALL_DISMISSED_UNTIL_KEY = 'apas-os-install-dismissed-until';
 const INSTALL_DISMISS_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
+let sharedInstallPrompt: BeforeInstallPromptEvent | null = null;
+const promptListeners = new Set<(prompt: BeforeInstallPromptEvent | null) => void>();
+
 function installPromptDismissedNow() {
   const dismissedUntil = Number(localStorage.getItem(INSTALL_DISMISSED_UNTIL_KEY) || '0');
   return Number.isFinite(dismissedUntil) && dismissedUntil > Date.now();
 }
 
+function publishInstallPrompt(prompt: BeforeInstallPromptEvent | null) {
+  sharedInstallPrompt = prompt;
+  promptListeners.forEach((listener) => listener(prompt));
+}
+
 export function usePWAInstall() {
-  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstallable, setIsInstallable] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(sharedInstallPrompt);
+  const [isInstallable, setIsInstallable] = useState(Boolean(sharedInstallPrompt));
   const [isIOS, setIsIOS] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
@@ -39,7 +47,7 @@ export function usePWAInstall() {
     // Listen for Chrome/Android/desktop install prompt
     const handler = (e: Event) => {
       e.preventDefault();
-      setInstallPrompt(e as BeforeInstallPromptEvent);
+      publishInstallPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
       if (!standalone && !installPromptDismissedNow()) {
         setShowBanner(true);
@@ -50,9 +58,14 @@ export function usePWAInstall() {
       setIsInstalled(true);
       setIsInstallable(false);
       setShowBanner(false);
-      setInstallPrompt(null);
+      publishInstallPrompt(null);
     };
 
+    const onSharedPromptChange = (prompt: BeforeInstallPromptEvent | null) => {
+      setInstallPrompt(prompt);
+      setIsInstallable(Boolean(prompt));
+    };
+    promptListeners.add(onSharedPromptChange);
     window.addEventListener('beforeinstallprompt', handler);
     window.addEventListener('appinstalled', onInstalled);
 
@@ -65,24 +78,28 @@ export function usePWAInstall() {
 
     return () => {
       if (timer) clearTimeout(timer);
+      promptListeners.delete(onSharedPromptChange);
       window.removeEventListener('beforeinstallprompt', handler);
       window.removeEventListener('appinstalled', onInstalled);
     };
   }, []);
 
   const install = async () => {
-    if (installPrompt) {
-      await installPrompt.prompt();
-      const { outcome } = await installPrompt.userChoice;
+    const prompt = installPrompt ?? sharedInstallPrompt;
+    if (prompt) {
+      await prompt.prompt();
+      const { outcome } = await prompt.userChoice;
       if (outcome === 'accepted') {
         setIsInstalled(true);
         setShowBanner(false);
       }
-      setInstallPrompt(null);
+      publishInstallPrompt(null);
       return;
     }
     // iOS / browsers without beforeinstallprompt — send them to the guide.
-    window.location.assign('/install');
+    if (window.location.pathname !== '/install') {
+      window.location.assign('/install');
+    }
   };
 
   const dismiss = () => {

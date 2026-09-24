@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { QRCodeGenerator } from '@/components/qr/QRCodeGenerator';
-import { Smartphone, Apple, ArrowRight, CheckCircle2, Share, Plus, Chrome } from 'lucide-react';
+import { usePWAInstall } from '@/hooks/usePWA';
+import { Smartphone, Apple, ArrowRight, CheckCircle2, Share, Plus, Chrome, Download, MonitorDown } from 'lucide-react';
 
 const APP_URL = 'https://projos.ai';
 
@@ -17,7 +18,15 @@ const androidSteps = [
   { icon: CheckCircle2, text: 'Confirm by tapping "Install". Proj OS will appear on your home screen.' },
 ];
 
+const desktopSteps = [
+  { icon: Chrome, text: 'Open Proj OS in Chrome or Microsoft Edge on your computer.' },
+  { icon: MonitorDown, text: 'Click the install icon in the address bar, or open the browser menu and choose "Install Proj OS".' },
+  { icon: CheckCircle2, text: 'Confirm the install. Proj OS will open as a desktop app with its own window.' },
+];
+
 export default function InstallPage() {
+  const { isInstallable, isInstalled, install } = usePWAInstall();
+
   return (
     <div className="flex min-h-dvh flex-col bg-background">
       {/* Header */}
@@ -49,6 +58,46 @@ export default function InstallPage() {
           </Link>
         </div>
 
+        {/* Desktop install */}
+        <section className="overflow-hidden rounded-3xl border border-[rgba(213,170,82,0.36)] bg-[linear-gradient(135deg,#10151f_0%,#1d2533_55%,#22364f_100%)] text-white shadow-[0_24px_70px_rgba(16,21,31,0.18)]">
+          <div className="h-1.5 bg-[linear-gradient(90deg,#d5aa52,#f2d997,#71a8cf)]" />
+          <div className="space-y-5 p-5 sm:p-6">
+            <div className="flex items-start gap-4">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/10">
+                <MonitorDown className="h-6 w-6 text-[#f2d997]" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#f2d997]">Desktop app</p>
+                <h2 className="mt-1 text-xl font-semibold tracking-tight">Install Proj OS on this computer</h2>
+                <p className="mt-2 text-sm leading-relaxed text-white/76">
+                  Chrome and Edge can install Proj OS as a desktop app. If the browser install prompt is available, use the button below.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {isInstalled ? (
+                <Button className="bg-[#d5aa52] text-[#10151f] hover:bg-[#f2d997]" asChild>
+                  <Link to="/dashboard">Open installed app</Link>
+                </Button>
+              ) : (
+                <Button className="gap-2 bg-[#d5aa52] text-[#10151f] hover:bg-[#f2d997]" onClick={() => void install()}>
+                  <Download className="h-4 w-4" />
+                  {isInstallable ? 'Install desktop app' : 'Show desktop install steps'}
+                </Button>
+              )}
+              <Button variant="outline" className="border-white/25 bg-white/8 text-white hover:bg-white/14 hover:text-white" asChild>
+                <Link to="/dashboard">Go to dashboard</Link>
+              </Button>
+            </div>
+            {!isInstallable && !isInstalled && (
+              <p className="rounded-2xl border border-white/12 bg-white/8 px-4 py-3 text-xs leading-relaxed text-white/72">
+                If the button does not open the browser install prompt, use the three-dot browser menu and choose <strong>Install Proj OS</strong>.
+                Some browsers hide the prompt after it was dismissed or when the app is already installed.
+              </p>
+            )}
+          </div>
+        </section>
+
         {/* iOS Instructions */}
         <section className="space-y-4">
           <div className="flex items-center gap-2">
@@ -71,6 +120,27 @@ export default function InstallPage() {
           <p className="text-xs text-muted-foreground">
             Push notifications on iOS require iOS 16.4+ and the app must be opened from the home screen.
           </p>
+        </section>
+
+        {/* Desktop instructions */}
+        <section className="space-y-4">
+          <div className="flex items-center gap-2">
+            <MonitorDown className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Desktop (Chrome / Edge)</h2>
+          </div>
+          <div className="space-y-3">
+            {desktopSteps.map((step, i) => (
+              <div key={i} className="flex items-start gap-4 p-4 rounded-xl border border-border bg-card">
+                <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <span className="text-sm font-bold text-primary">{i + 1}</span>
+                </div>
+                <div className="flex items-start gap-3 flex-1">
+                  <step.icon className="h-5 w-5 text-muted-foreground mt-0.5 shrink-0" />
+                  <p className="text-sm text-foreground leading-relaxed">{step.text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
 
         {/* Android Instructions */}
