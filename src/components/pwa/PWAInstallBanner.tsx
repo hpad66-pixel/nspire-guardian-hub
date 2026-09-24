@@ -23,18 +23,18 @@ export function PWAInstallBanner() {
         )}
         data-testid="pwa-install-banner"
       >
-        <div className="pointer-events-auto flex max-w-[min(100%,26rem)] items-center gap-2 rounded-2xl border border-[rgba(213,170,82,0.38)] bg-[#10151f]/95 p-2 text-white shadow-[0_18px_48px_rgba(16,21,31,0.28)] backdrop-blur-xl">
+        <div className="pointer-events-auto flex max-w-[min(100%,19rem)] items-center gap-1.5 rounded-2xl border border-[rgba(213,170,82,0.38)] bg-[#10151f]/95 p-1.5 text-white shadow-[0_18px_48px_rgba(16,21,31,0.28)] backdrop-blur-xl sm:max-w-[24rem] sm:gap-2 sm:p-2">
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-xl px-2.5 text-left transition-colors hover:bg-white/8"
+            className="flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-xl px-2 text-left transition-colors hover:bg-white/8 sm:px-2.5"
           >
             <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-white/10">
               <Download className="h-4 w-4 text-[#f2d997]" />
             </span>
             <span className="min-w-0">
-              <span className="block truncate text-sm font-semibold">Install Proj OS</span>
-              <span className="block truncate text-[11px] text-white/70">Fast mobile and desktop access</span>
+              <span className="block truncate text-xs font-semibold sm:text-sm">Install Proj OS</span>
+              <span className="hidden truncate text-[11px] text-white/70 sm:block">Fast mobile and desktop access</span>
             </span>
             <ChevronUp className="h-4 w-4 shrink-0 text-white/55" />
           </button>

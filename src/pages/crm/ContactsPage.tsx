@@ -201,23 +201,23 @@ export default function ContactsPage() {
   const favoriteContacts = contacts.filter((c) => c.is_favorite).length;
 
   return (
-    <div className="space-y-6 p-4 animate-fade-in sm:p-6">
+    <div className="space-y-6 overflow-x-hidden p-4 animate-fade-in sm:p-6">
       <div className="rounded-2xl border border-[rgba(37,44,57,0.12)] bg-[#f8f5ee] p-3 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#0f766e]">CRM workspace</p>
             <p className="mt-1 text-sm text-slate-600">
               Use the trail above or these quick exits any time. Contacts should never feel like a dead end.
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline" size="sm" className="border-slate-300 bg-white">
+          <div className="grid w-full grid-cols-2 gap-2 md:w-auto md:flex md:shrink-0 md:flex-wrap md:justify-end">
+            <Button asChild variant="outline" size="sm" className="w-full border-slate-300 bg-white md:w-auto">
               <Link to="/dashboard">
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Dashboard
               </Link>
             </Button>
-            <Button asChild variant="outline" size="sm" className="border-slate-300 bg-white">
+            <Button asChild variant="outline" size="sm" className="w-full border-slate-300 bg-white md:w-auto">
               <Link to="/organizations">
                 Clients
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -227,10 +227,10 @@ export default function ContactsPage() {
         </div>
       </div>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+        <div className="max-w-3xl">
           <h1 className="text-3xl font-bold">Contacts</h1>
-          <p className="text-muted-foreground">
+          <p className="mt-1 max-w-2xl text-muted-foreground">
             Manage your network of vendors, regulators, and partners
           </p>
           {masterSync.data && (
@@ -240,12 +240,13 @@ export default function ContactsPage() {
             </p>
           )}
         </div>
-        <div className="flex flex-wrap shrink-0 gap-2">
+        <div className="grid w-full grid-cols-1 gap-2 sm:grid-cols-2 xl:w-auto xl:grid-cols-4">
           {crmIntegrationEnabled && isSuperAdmin && (
             <Button
               onClick={() => masterSync.mutate()}
               disabled={!projects[0]?.id || masterSync.isPending}
               title="Synchronize every workspace contact, including archived records, into the canonical APAS CRM"
+              className="w-full justify-center"
             >
               {masterSync.isPending
                 ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -254,16 +255,17 @@ export default function ContactsPage() {
             </Button>
           )}
           {crmIntegrationEnabled && (
-            <Button variant="outline" onClick={() => setScanDialogOpen(true)}>
+            <Button variant="outline" onClick={() => setScanDialogOpen(true)} className="w-full justify-center">
               <ScanLine className="h-4 w-4 mr-2" />
               Scan into APAS CRM
             </Button>
           )}
-          <Button variant="outline" onClick={() => setImportDialogOpen(true)}>
+          <Button variant="outline" onClick={() => setImportDialogOpen(true)} className="w-full justify-center">
             <Sparkles className="h-4 w-4 mr-2" />
             Import from activity
           </Button>
           <Button
+            className="w-full justify-center"
             onClick={() => {
               setEditingContact(null);
               setDialogOpen(true);
@@ -328,7 +330,7 @@ export default function ContactsPage() {
         <CardContent className="p-4">
           <div className="flex flex-col gap-4">
             {/* Top row: Search + View Toggle */}
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -349,7 +351,7 @@ export default function ContactsPage() {
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 md:shrink-0">
                 <ToggleGroup
                   type="single"
                   value={viewMode}
@@ -366,14 +368,16 @@ export default function ContactsPage() {
             </div>
 
             {/* Filter row */}
-            <div className="flex flex-wrap items-center gap-2">
-              <Filter className="h-4 w-4 text-muted-foreground" />
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[auto_minmax(0,10rem)_minmax(0,12rem)_minmax(0,12rem)_auto] lg:items-center">
+              <div className="hidden h-9 items-center lg:flex">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+              </div>
 
               <Select
                 value={typeFilter}
                 onValueChange={(v) => setTypeFilter(v as ContactType | "all")}
               >
-                <SelectTrigger className="h-9 w-full min-w-[140px] sm:w-[150px]">
+                <SelectTrigger className="h-9 w-full">
                   <SelectValue placeholder="Type" />
                 </SelectTrigger>
                 <SelectContent>
@@ -387,7 +391,7 @@ export default function ContactsPage() {
               </Select>
 
               <Select value={propertyFilter} onValueChange={setPropertyFilter}>
-                <SelectTrigger className="h-9 w-full min-w-[140px] sm:w-[180px]">
+                <SelectTrigger className="h-9 w-full">
                   <SelectValue placeholder="All properties" />
                 </SelectTrigger>
                 <SelectContent>
@@ -401,7 +405,7 @@ export default function ContactsPage() {
               </Select>
 
               <Select value={projectFilter} onValueChange={setProjectFilter}>
-                <SelectTrigger className="h-9 w-full min-w-[140px] sm:w-[180px]">
+                <SelectTrigger className="h-9 w-full">
                   <SelectValue placeholder="All projects" />
                 </SelectTrigger>
                 <SelectContent>
