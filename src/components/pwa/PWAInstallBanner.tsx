@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Download, Smartphone, MonitorDown, Wifi, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { usePWAInstall } from '@/hooks/usePWA';
@@ -11,8 +11,20 @@ export function PWAInstallBanner() {
   const { isInstallable, isIOS, isInstalled, showBanner, install, dismiss } = usePWAInstall();
   const showMobileNav = useIsCompactNav();
   const [expanded, setExpanded] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
-  if (isInstalled || !showBanner) return null;
+  useEffect(() => {
+    const updateDialogState = () => {
+      setDialogOpen(Boolean(document.querySelector('[role="dialog"], [data-radix-dialog-content]')));
+    };
+
+    updateDialogState();
+    const observer = new MutationObserver(updateDialogState);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, []);
+
+  if (isInstalled || !showBanner || dialogOpen) return null;
 
   if (!expanded) {
     return (
