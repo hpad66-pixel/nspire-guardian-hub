@@ -34,7 +34,7 @@ import { useClient } from '@/hooks/useClients';
 import { useAllProjectFinancials } from '@/hooks/useAllProjectFinancials';
 import { useAllApprovedProposalTotals } from '@/hooks/useAllApprovedProposalTotals';
 import { projectKind, projectKindTileClass, type ProjectKind } from '@/lib/projectKind';
-import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
+import { isGlorietaSewerProject, resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { useProperties } from '@/hooks/useProperties';
 import { usePendingChangeOrders, useChangeOrderStats } from '@/hooks/useChangeOrders';
 import { useUpcomingMilestones } from '@/hooks/useMilestones';
@@ -72,8 +72,6 @@ type SectorFilter = ProjectSector | 'all';
 type SortBy = 'name' | 'created' | 'due_date' | 'budget' | 'health';
 
 const LS_VIEW_KEY = 'projects_view_preference';
-const GLORIETA_CONVEYANCE_PROJECT_ID = '4b168bb0-a0a0-4c0a-bcd8-eb56ec2f413d';
-
 const normalizeKindParam = (value: string | null): 'all' | ProjectKind =>
   value === 'construction' || value === 'consulting' ? value : 'all';
 
@@ -354,6 +352,7 @@ export default function ProjectsDashboard() {
     const sc = SECTOR_CONFIG[getProjectSector(project)];
     const SIcon = sc.icon;
     const isClosed = project.status === 'closed';
+    const isDshinSewerProject = isGlorietaSewerProject(project);
 
     return (
       <div
@@ -463,7 +462,7 @@ export default function ProjectsDashboard() {
                     <p className="text-sm font-bold tabular-nums">{formatCurrency(spentVal)}</p>
                   </div>
                 </div>
-                {project.id === GLORIETA_CONVEYANCE_PROJECT_ID && (
+                {isDshinSewerProject && (
                   <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
                     D&apos;SHIN Plumbing · SC-001 sewer extension commitment
                   </p>
@@ -506,6 +505,11 @@ export default function ProjectsDashboard() {
                     </span>
                   </div>
                   <Progress value={progress} className="h-1.5" />
+                  {isDshinSewerProject && (
+                    <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
+                      D&apos;SHIN Plumbing · SC-001 sewer extension commitment
+                    </p>
+                  )}
                 </div>
                 {project.target_end_date && (
                   <div className="shrink-0 rounded-xl border border-current/10 bg-background/20 px-2.5 py-1.5 text-right shadow-sm backdrop-blur-sm">

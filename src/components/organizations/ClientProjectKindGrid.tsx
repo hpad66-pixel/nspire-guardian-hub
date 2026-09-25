@@ -13,13 +13,11 @@ import {
   projectKindTileClass,
   type ProjectKind,
 } from '@/lib/projectKind';
-import { resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
+import { isGlorietaSewerProject, resolveProjectTileAmounts } from '@/lib/projectTileAmounts';
 import { compareClosedProjectsFirst } from '@/lib/projects/portfolioProjectVisibility';
 import { cn } from '@/lib/utils';
 
 const PINNED_CLIENT_PROJECTS_KEY = 'proj-os:pinned-client-projects:v1';
-const GLORIETA_CONVEYANCE_PROJECT_ID = '4b168bb0-a0a0-4c0a-bcd8-eb56ec2f413d';
-
 type PortfolioPhase = 'planning' | 'design' | 'construction';
 
 function readPinnedProjects(): Set<string> {
@@ -187,6 +185,7 @@ function ClientProjectTile({
   });
   const amountLabel = kind === 'consulting' ? 'Approved fees' : 'Budget';
   const amount = formatCurrency(amounts.budget);
+  const isDshinSewerProject = isGlorietaSewerProject(project);
   const statusClass =
     (kind === 'consulting' ? STATUS_ON_BLUE : STATUS_ON_IVORY)[project.status] ??
     (kind === 'consulting' ? STATUS_ON_BLUE.planning : STATUS_ON_IVORY.planning);
@@ -298,7 +297,7 @@ function ClientProjectTile({
                 </div>
               )}
             </div>
-            {project.id === GLORIETA_CONVEYANCE_PROJECT_ID && (
+            {isDshinSewerProject && (
               <p className="mt-1.5 text-[11px] font-semibold text-muted-foreground">
                 D&apos;SHIN Plumbing · SC-001 sewer extension commitment
               </p>
@@ -312,6 +311,11 @@ function ClientProjectTile({
               {amountLabel}
             </p>
             <p className="text-sm font-bold tabular-nums">{amount ?? '—'}</p>
+            {isDshinSewerProject && (
+              <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+                D&apos;SHIN Plumbing · SC-001 sewer extension commitment
+              </p>
+            )}
           </div>
           {project.target_end_date && (
             <span className="flex items-center gap-1 text-xs text-muted-foreground">

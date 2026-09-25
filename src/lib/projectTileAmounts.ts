@@ -16,7 +16,30 @@ export interface ProjectTileAmounts {
   spent: number;
   /** For consulting: approved proposal fee total (PROP-001 + PROP-002 …). */
   approvedFee: number;
-  source: 'construction_financials' | 'approved_proposals' | 'project_budget';
+  source: 'construction_financials' | 'approved_proposals' | 'project_budget' | 'certified_closeout';
+}
+
+export const GLORIETA_SEWER_PROJECT_ID = '4b168bb0-a0a0-4c0a-bcd8-eb56ec2f413d';
+export const GLORIETA_SEWER_CERTIFIED_CONTRACT = 902_104.65;
+
+export function isGlorietaSewerProject(project: {
+  id?: string | null;
+  name?: string | null;
+  property?: { name?: string | null } | null;
+}): boolean {
+  if (project.id === GLORIETA_SEWER_PROJECT_ID) return true;
+
+  const name = (project.name ?? '').trim().toLowerCase();
+  const propertyName = (project.property?.name ?? '').trim().toLowerCase();
+  if (name === 'sewer extension' && (propertyName.includes('glorieta') || propertyName.includes('glorita'))) {
+    return true;
+  }
+
+  return (
+    name.includes('glorieta gardens sewer extension') ||
+    name.includes('glorita gardens sewer extension') ||
+    name.includes('conveyance & close-out')
+  );
 }
 
 const num = (v: unknown) => {
@@ -30,7 +53,14 @@ const num = (v: unknown) => {
  * Consulting → sum of approved proposal totals (e.g. Larkin $3,369 + $14,500).
  */
 export function resolveProjectTileAmounts(input: {
-  project: { project_type?: string | null; budget?: number | string | null; spent?: number | string | null };
+  project: {
+    id?: string | null;
+    name?: string | null;
+    project_type?: string | null;
+    budget?: number | string | null;
+    spent?: number | string | null;
+    property?: { name?: string | null } | null;
+  };
   construction?: ConstructionFinLike | null;
   consulting?: ConsultingTotalsLike | null;
 }): ProjectTileAmounts {
@@ -70,6 +100,17 @@ export function resolveProjectTileAmounts(input: {
       source: 'construction_financials',
     };
   }
+
+  if (isGlorietaSewerProject(input.project)) {
+    return {
+      kind,
+      budget: GLORIETA_SEWER_CERTIFIED_CONTRACT,
+      spent: billed > 0 ? billed : GLORIETA_SEWER_CERTIFIED_CONTRACT,
+      approvedFee: 0,
+      source: 'certified_closeout',
+    };
+  }
+
   return {
     kind,
     budget: fallbackBudget,

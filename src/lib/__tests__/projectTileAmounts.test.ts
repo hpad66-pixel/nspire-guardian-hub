@@ -24,6 +24,25 @@ describe('resolveProjectTileAmounts', () => {
     expect(amt.source).toBe('construction_financials');
   });
 
+  it('uses the certified closeout value for the Glorieta sewer project when rollups are empty', () => {
+    const amt = resolveProjectTileAmounts({
+      project: {
+        id: '4b168bb0-a0a0-4c0a-bcd8-eb56ec2f413d',
+        name: 'Sewer Extension',
+        project_type: 'property',
+        budget: 0,
+        spent: 0,
+        property: { name: 'Glorieta Gardens' },
+      },
+      construction: { revised_contract: 0, billed_to_date: 0 },
+    });
+
+    expect(amt.kind).toBe('construction');
+    expect(amt.budget).toBe(902104.65);
+    expect(amt.spent).toBe(902104.65);
+    expect(amt.source).toBe('certified_closeout');
+  });
+
   it('falls back to projects.budget when consulting has no approved proposals yet', () => {
     const amt = resolveProjectTileAmounts({
       project: { project_type: 'consulting', budget: 5000, spent: 100 },
