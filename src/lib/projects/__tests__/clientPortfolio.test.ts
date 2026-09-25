@@ -55,6 +55,20 @@ describe('client portfolio grouping', () => {
     )).toBe(true);
   });
 
+  it('includes the live Sewer Extension title under R4 even when the property relation is missing', () => {
+    expect(shouldIncludeProjectForClientFilter(
+      {
+        id: 'live-sewer-extension',
+        name: 'Sewer Extension',
+        status: 'active',
+        project_type: 'property',
+        client_id: null,
+      },
+      'r4-1',
+      'R4 Capital LLC',
+    )).toBe(true);
+  });
+
   it('does not pull unrelated projects into the R4 filter', () => {
     expect(shouldIncludeProjectForClientFilter(
       { id: 'p2', name: 'City Hall Roof', client_id: 'city-1', client: { name: 'City of Opa-locka' } },

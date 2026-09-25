@@ -31,7 +31,7 @@ export function isGlorietaSewerProject(project: {
 
   const name = (project.name ?? '').trim().toLowerCase();
   const propertyName = (project.property?.name ?? '').trim().toLowerCase();
-  if (name === 'sewer extension' && (propertyName.includes('glorieta') || propertyName.includes('glorita'))) {
+  if (name === 'sewer extension') {
     return true;
   }
 
