@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Briefcase, FolderKanban, Search, ListTree } from 'lucide-react';
 import { useActiveClients } from '@/hooks/useClients';
 import { useProjects } from '@/hooks/useProjects';
+import { resolveClientPortfolioProjects } from '@/lib/projects/clientPortfolio';
 import { cn } from '@/lib/utils';
 
 const CLIENTS_VISIBLE_DEFAULT = 6;
@@ -25,7 +26,7 @@ export function OrgProjectTree({ collapsed }: { collapsed: boolean }) {
 
   const byClient = useMemo(() => {
     const map = new Map<string, Array<{ id: string; name: string }>>();
-    for (const p of projects) {
+    for (const p of resolveClientPortfolioProjects(projects as any[])) {
       const cid = (p as { client_id?: string | null }).client_id;
       if (!cid) continue;
       if (!map.has(cid)) map.set(cid, []);
