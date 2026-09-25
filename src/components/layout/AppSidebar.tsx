@@ -183,7 +183,6 @@ export function AppSidebar() {
             {!collapsed && (
               <span className="grid gap-1 leading-none">
                 <strong className="text-[16px] font-bold text-sidebar-foreground">Proj OS</strong>
-                <small className="text-[9px] font-bold uppercase tracking-[0.14em] text-sidebar-muted">By OneWater.ai</small>
               </span>
             )}
           </NavLink>
