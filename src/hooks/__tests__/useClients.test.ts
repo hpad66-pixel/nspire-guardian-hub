@@ -6,9 +6,9 @@ vi.mock('@/integrations/supabase/client', async () => {
   return { supabase: m.supabase, __mock: m.__mock };
 });
 
-import { useClientProjectAccess } from '../useClients';
+import { useClientProjectAccess, useClientsWithCounts } from '../useClients';
 import { renderHookWithClient } from '@/test/utils';
-import { __mock } from '@/test/fixtures/supabase';
+import { __mock, makeBuilder } from '@/test/fixtures/supabase';
 
 describe('useClientProjectAccess', () => {
   beforeEach(() => {
@@ -45,5 +45,41 @@ describe('useClientProjectAccess', () => {
     __mock.rpc.mockResolvedValueOnce({ data: null, error: { message: 'denied' } });
     const { result } = renderHookWithClient(() => useClientProjectAccess('client-r4'));
     await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+describe('useClientsWithCounts', () => {
+  beforeEach(() => {
+    __mock.reset();
+  });
+
+  it('counts the resolved R4 portfolio, including Glorieta alias projects', async () => {
+    __mock.from.mockImplementation((table: string) => {
+      if (table === 'clients') {
+        return makeBuilder({
+          data: [{ id: 'r4-1', name: 'R4 Capital LLC', client_type: 'business_client', is_active: true }],
+          error: null,
+        });
+      }
+      if (table === 'projects') {
+        return makeBuilder({
+          data: [
+            { id: 'stucco', name: 'Stucco Repairs', client_id: 'r4-1', client: { name: 'R4 Capital LLC' }, project_type: 'consulting' },
+            { id: 'closeout', name: 'Conveyance & Close-Out to the City of Opa-Locka', client_id: null, project_type: 'construction' },
+            { id: 'sewer-live', name: 'Sewer Extension', client_id: null, project_type: 'property' },
+          ],
+          error: null,
+        });
+      }
+      if (table === 'client_team_members') {
+        return makeBuilder({ data: [], error: null }) as any;
+      }
+      return makeBuilder();
+    });
+
+    const { result } = renderHookWithClient(() => useClientsWithCounts());
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(result.current.data?.[0]?.project_count).toBe(3);
   });
 });

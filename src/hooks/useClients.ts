@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
+import { groupProjectsByClientPortfolio } from '@/lib/projects/clientPortfolio';
 
 type AppRole = Database['public']['Enums']['app_role'];
 
@@ -178,7 +179,19 @@ export function useClientsWithCounts() {
         .order('name', { ascending: true });
       if (error) throw error;
 
-      // Get member counts and project counts in parallel
+      const { data: projects, error: projectsError } = await supabase
+        .from('projects')
+        .select('id,name,status,project_type,client_id,property_id,client:clients(name),property:properties(name)');
+      if (projectsError) throw projectsError;
+
+      const portfolioCounts = new Map<string, number>();
+      for (const group of groupProjectsByClientPortfolio((projects ?? []) as any[])) {
+        if (group.clientId) portfolioCounts.set(group.clientId, group.projects.length);
+      }
+
+      // Get member counts and direct project counts in parallel. Direct counts
+      // remain the fallback; portfolio counts include canonical presentation
+      // aliases like the R4 Glorieta sewer closeout without mutating records.
       const enriched = await Promise.all(
         (clients as Client[]).map(async (client) => {
           const [membersRes, projectsRes] = await Promise.all([
@@ -193,7 +206,7 @@ export function useClientsWithCounts() {
           return {
             ...client,
             member_count: membersRes.count ?? 0,
-            project_count: projectsRes.count ?? 0,
+            project_count: portfolioCounts.get(client.id) ?? projectsRes.count ?? 0,
           } as Client;
         })
       );
