@@ -2,7 +2,7 @@
  * A7 · SAML 2.0 Assertion Consumer Service (ACS).
  *
  * IdP (Okta, Azure AD, OneLogin, etc.) POSTs a signed SAMLResponse here.
- * Flow:
+ * Intended flow after XMLDSig support is implemented:
  *   1. Base64-decode the SAMLResponse form field
  *   2. Verify signature against tenant's stored IdP certificate
  *   3. Extract NameID + attribute statements
@@ -10,15 +10,13 @@
  *   5. On success, create/link an auth.users row and return a magic link
  *      so the browser can complete login.
  *
- * SECURITY NOTE — full XMLDSig verification in Deno requires an XML canonicalizer
- * + signature validator. This function ships the parsing + audit path plus a
- * verification hook (`verifyAssertion`) that MUST be wired to a real verifier
- * (e.g. @node-saml/node-saml via npm: specifier, or fastify-saml2) before the
- * first enterprise deal. Until then, `is_enforced` cannot be flipped on for a
- * production tenant.
+ * SECURITY NOTE — SAML login currently fails closed. Do not issue sessions from
+ * this endpoint until XMLDSig verification, tenant binding, replay protection,
+ * and RelayState validation have all passed tests.
  */
 import { serve } from "https://deno.land/std@0.192.0/http/server.ts";
 import { admin } from "../_shared/scim.ts";
+import { escapeHtml, requireVerifiedSamlSupport, resolveSafeRelayState } from "./saml-security.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,10 +59,11 @@ serve(async (req) => {
 
   let assertion: ParsedAssertion;
   try {
+    requireVerifiedSamlSupport();
     assertion = await verifyAssertion(atob(samlB64), cfg);
   } catch (err) {
     await logAttempt(sb, tenantId, null, "saml", req, false, (err as Error).message);
-    return htmlError("SAML verification failed: " + (err as Error).message);
+    return htmlError("SAML verification failed");
   }
 
   // Auto-provision or link the user
@@ -94,7 +93,7 @@ serve(async (req) => {
   const { data: link, error: linkErr } = await sb.auth.admin.generateLink({
     type: "magiclink",
     email,
-    options: { redirectTo: String(relayState ?? `${Deno.env.get("APP_ORIGIN") ?? ""}/dashboard`) },
+    options: { redirectTo: resolveSafeRelayState(relayState, Deno.env.get("APP_ORIGIN")) },
   });
   if (linkErr || !link) {
     await logAttempt(sb, tenantId, userId, "saml", req, false, linkErr?.message ?? "link failed");
@@ -118,10 +117,8 @@ interface ParsedAssertion {
 }
 
 async function verifyAssertion(xml: string, cfg: any): Promise<ParsedAssertion> {
-  // TODO: plug in real XMLDSig verification against cfg.idp_certificate.
-  // The surrounding parser below is safe to run without verification because
-  // logAttempt() records the attempt, but `is_enforced` must stay false until
-  // a verified library is wired up. Recommended: `import saml2 from "npm:saml2-js"`.
+  // TODO: plug in real XMLDSig verification against cfg.idp_certificate before
+  // requireVerifiedSamlSupport() is allowed to pass.
   const idMatch = xml.match(/<saml2?p?:Response[^>]*\bID="([^"]+)"/);
   const nameIdMatch = xml.match(/<saml2?:NameID[^>]*>([^<]+)<\/saml2?:NameID>/);
   const attrs: Record<string, string | string[]> = {};
@@ -210,10 +207,11 @@ async function logAttempt(
 }
 
 function htmlError(msg: string) {
+  const safeMsg = escapeHtml(msg);
   return new Response(
     `<!doctype html><html><body style="font-family:sans-serif;padding:40px;max-width:600px;margin:auto">
       <h1 style="color:#b00020">SSO error</h1>
-      <p>${msg}</p>
+      <p>${safeMsg}</p>
       <p><a href="/">Return to app</a></p>
     </body></html>`,
     { status: 400, headers: { "Content-Type": "text/html" } },
