@@ -23,14 +23,15 @@ has to be explicit in the PR or release notes.
 | Level | Branch | Meaning |
 | --- | --- | --- |
 | 0 | `main` | Live production baseline. This is what is live now. |
-| 1 | `codex/*`, `feature/*`, `fix/*`, `devops/*` | Workbench branches where changes start. These are allowed to move fast. |
+| 1 | `codex/workbench`, `codex/*`, `feature/*`, `fix/*`, `devops/workbench`, `devops/*` | Workbench branches where changes start. These are allowed to move fast. |
 | 2 | `staging` | Integration branch where reviewed work is tested together. |
-| 3 | `release/*` | QA-frozen release candidate. Only release fixes should enter here. |
+| 3 | `release/candidate`, `release/*` | QA-frozen release candidate. Only release fixes should enter here. |
 | 4 | `main` | Production branch after final approval. |
 
-Hardeep + Codex work starts at Level 1 in `codex/*`. Developer work starts at
-Level 1 in `feature/*` or `fix/*`. DevOps work starts at Level 1 in `devops/*`.
-All work, regardless of author, must move upward through PRs and evidence gates.
+Hardeep + Codex work starts at Level 1 in `codex/workbench` by default.
+Developer work starts at Level 1 in `feature/*` or `fix/*`. DevOps work starts
+at Level 1 in `devops/workbench` by default. All work, regardless of author,
+must move upward through PRs and evidence gates.
 
 ## Branch Flow
 
@@ -38,9 +39,9 @@ All work, regardless of author, must move upward through PRs and evidence gates.
 flowchart TD
   A[Idea, audit finding, or user request] --> B[Notion decision, issue, or prompt]
   B --> C{Who owns the first work branch?}
-  C -->|Hardeep + Codex| D[codex/scope]
+  C -->|Hardeep + Codex| D[codex/workbench or codex/scope]
   C -->|Developer| E[feature/scope or fix/scope]
-  C -->|DevOps| F[devops/scope]
+  C -->|DevOps| F[devops/workbench or devops/scope]
   D --> G[Implement with local evidence]
   E --> G
   F --> G
@@ -52,7 +53,7 @@ flowchart TD
   K --> L[Integrated testing across modules and tenants]
   L --> M{Release set ready?}
   M -->|No| K
-  M -->|Yes| N[Cut release/date-scope from staging]
+  M -->|Yes| N[Promote to release/candidate]
   N --> O[QA, tester sign-off, DevOps release check, rollback checklist]
   O --> P{Hardeep and release owner approve live merge?}
   P -->|No| N
@@ -69,14 +70,14 @@ flowchart TD
 
 Parallel work is expected. The control point is `staging`, not `main`.
 
-- Codex may work on one or more `codex/*` branches.
+- Codex may work on `codex/workbench` or one or more scoped `codex/*` branches.
 - Developers may work on independent `feature/*` or `fix/*` branches.
-- DevOps may work on `devops/*` branches.
+- DevOps may work on `devops/workbench` or scoped `devops/*` branches.
 - Each branch gets its own PR into `staging`.
 - The PR must explain the change in plain English so Hardeep can review it.
 - Cross-branch conflicts are resolved before merge to `staging`.
 - Combined behavior is tested in `staging`.
-- A `release/*` branch freezes the exact set of changes intended for live.
+- `release/candidate` freezes the exact set of changes intended for live.
 - `main` receives only approved release candidates or approved emergency hotfixes.
 
 ## Gates
@@ -84,8 +85,8 @@ Parallel work is expected. The control point is `staging`, not `main`.
 ### Implementation Gate
 
 - Work starts from current `main` or approved `staging`.
-- Codex work starts in `codex/*` unless Hardeep explicitly requests a different
-  branch.
+- Codex work starts in `codex/workbench` unless Hardeep explicitly requests a
+  different branch.
 - Scope is linked to a prompt, issue, audit finding, or Notion decision.
 - Branch name identifies intent.
 - No direct production environment changes.

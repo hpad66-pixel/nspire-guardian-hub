@@ -15,8 +15,8 @@ Examples: `D4 Change orders (G701)` | `fix(pay-apps): prevent duplicate billing`
 - Target branch:
 - Promotion level:
   - [ ] Level 1 work branch -> `staging`
-  - [ ] `staging` -> `release/*`
-  - [ ] `release/*` -> `main`
+  - [ ] `staging` -> `release/candidate`
+  - [ ] `release/candidate` -> `main`
   - [ ] Approved emergency `hotfix/*` -> `main`
 - Review purpose:
   - [ ] Individual change review
@@ -70,7 +70,7 @@ Plain-English reviewer summary:
 Target:
 
 - [ ] `staging`
-- [ ] `release/*`
+- [ ] `release/candidate`
 - [ ] `main`
 - [ ] Not applicable yet
 
