@@ -1,34 +1,78 @@
 <!--
-Title format (replace above): `<prompt-id> <title>`
-e.g. `D4 Change orders (G701)`  |  `F2 Owner portal`  |  `chore(ci): bump playwright`
+Title format:
+- Prompt work: `<prompt-id> <title>`
+- Normal work: `<type>(<scope>): <title>`
+Examples: `D4 Change orders (G701)` | `fix(pay-apps): prevent duplicate billing`
 -->
 
 ## What
 
-<!-- One sentence. End with the prompt ID (A1–F3) when applicable. -->
+<!-- One or two sentences. Link the prompt, issue, audit finding, or Notion decision. -->
 
-## Tests
+## Risk Level
 
-- [ ] `npm run typecheck` green
-- [ ] `npm run test` green
-- [ ] `npm run test:e2e` green locally
-- Playwright added/modified: `e2e/<prompt-id>.spec.ts` · N tests
-- Vitest added/modified: `src/hooks/__tests__/use<Resource>.test.ts` · N tests
+- [ ] Low - docs, copy, isolated UI, no production data impact.
+- [ ] Medium - user-facing workflow, edge function, integration, or shared component.
+- [ ] High - auth, RLS, migrations, payments, invoices, pay apps, tenant boundaries,
+      deployment config, or production data.
 
-## Out of Spec
+## Live Freeze
+
+- [ ] This PR does not deploy to production by itself.
+- [ ] This PR is not targeting `main`.
+- [ ] If this targets `main`, it is an approved hotfix or approved release.
+- [ ] Rollback notes are included below.
+
+## Tests And Evidence
+
+- [ ] `npm run typecheck` green or CI equivalent green.
+- [ ] `npm run test` / `npm run test:coverage` green or CI equivalent green.
+- [ ] `npm run build` green or CI equivalent green.
+- [ ] `npm run test:e2e` green or exception documented.
+- [ ] Supabase migration dry-run attached if migrations changed.
+- [ ] Browser/screenshot evidence attached for user-facing changes.
+- [ ] Authenticated route checked if the change affects signed-in workflows.
+
+Evidence links / notes:
+
+-
+
+## Data, Security, And Tenant Boundary
+
+- [ ] No database changes.
+- [ ] New migration only; no direct edits to a merged migration.
+- [ ] RLS policy + tenant/workspace boundary reviewed for every new user-data table.
+- [ ] Auth, portal, payment, invoice, pay app, or financial changes received extra review.
+- [ ] Secrets, environment variables, and production configuration are unchanged or
+      explicitly documented.
+
+## Release And Rollback
+
+Target:
+
+- [ ] `staging`
+- [ ] `main`
+- [ ] Not applicable yet
+
+Rollback plan:
+
+-
+
+Post-deploy smoke test:
+
+-
+
+## Out Of Spec
 
 <!--
-List every file changed outside the prompt's COMPONENTS: block.
-If this PR introduces a new convention that should be codified, call it
-out here and update CLAUDE.md in the same PR.
+List every file changed outside the prompt's COMPONENTS block. If this PR
+introduces a new convention, update CLAUDE.md or docs/governance in the same PR.
 -->
 
-## Checklist
+## Approvals
 
-- [ ] COMPONENTS: every path from the prompt exists at the exact path.
-- [ ] ROUTES: every route from the prompt is registered in `src/App.tsx`.
-- [ ] BUSINESS RULES: every rule is enforced in code (service / hook / trigger).
-- [ ] Playwright spec has one `test(...)` per ACCEPTANCE TEST bullet.
-- [ ] No new npm dependency without justification (see CONTRIBUTING.md).
-- [ ] No direct edits to a merged migration — new migration only.
-- [ ] RLS policy + `tenant_id` on every new user-data table.
+- [ ] Product owner / scope owner
+- [ ] Reviewer
+- [ ] Tester, when behavior changes
+- [ ] DevOps owner, when deployment or environment behavior changes
+- [ ] Release owner, when targeting `main`

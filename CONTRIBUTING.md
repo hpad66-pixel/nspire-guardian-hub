@@ -1,8 +1,11 @@
-# Contributing — Procore Lite build
+# Contributing — Proj OS
 
 > Workflow rules for every change that lands on `main`. Adapted from the
 > QA/QC memo's ground rules and formalized here so there's a single
 > authoritative copy.
+
+For the current enterprise branch and release model, also read `BRANCHING.md`
+and `docs/governance/`.
 
 ## The rule in one sentence
 
