@@ -122,7 +122,8 @@ verify_jwt = true
 verify_jwt = true
 
 # ───── A7 · SSO / SCIM ─────
-# SAML ACS is the IdP callback — no JWT, signature-verified via IdP certificate
+# SAML ACS is an IdP callback, so the gateway is public. The function must fail
+# closed until inside-the-function XML signature verification is implemented.
 [functions.saml-acs]
 verify_jwt = false
 
