@@ -9,6 +9,21 @@ Examples: `D4 Change orders (G701)` | `fix(pay-apps): prevent duplicate billing`
 
 <!-- One or two sentences. Link the prompt, issue, audit finding, or Notion decision. -->
 
+## Promotion Lane
+
+- Source branch:
+- Target branch:
+- Promotion level:
+  - [ ] Level 1 work branch -> `staging`
+  - [ ] `staging` -> `release/*`
+  - [ ] `release/*` -> `main`
+  - [ ] Approved emergency `hotfix/*` -> `main`
+- Review purpose:
+  - [ ] Individual change review
+  - [ ] Integration review
+  - [ ] QA release-candidate review
+  - [ ] Production release review
+
 ## Risk Level
 
 - [ ] Low - docs, copy, isolated UI, no production data impact.
@@ -37,6 +52,10 @@ Evidence links / notes:
 
 -
 
+Plain-English reviewer summary:
+
+-
+
 ## Data, Security, And Tenant Boundary
 
 - [ ] No database changes.
@@ -51,6 +70,7 @@ Evidence links / notes:
 Target:
 
 - [ ] `staging`
+- [ ] `release/*`
 - [ ] `main`
 - [ ] Not applicable yet
 

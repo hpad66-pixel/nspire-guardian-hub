@@ -9,16 +9,35 @@ workspace for daily development.
 | Branch | Purpose | Deployment meaning | Merge rule |
 | --- | --- | --- | --- |
 | `main` | Production source of truth | Live production | Protected. Merge only from an approved release PR. |
-| `staging` | Integration and release-candidate validation | Staging or preview | Protected. Merge only reviewed feature or fix PRs. |
-| `feature/<scope>` | Normal product work | No live deploy | PR into `staging`; never deploy directly. |
+| `staging` | Shared integration lane for reviewed work | Staging or preview | Protected. Receives reviewed Level 1 PRs only. |
+| `codex/<scope>` | Hardeep + Codex workbench, the lowest controlled lane | No live deploy | PR into `staging`; never deploy directly. |
+| `feature/<scope>` | Normal developer product work | No live deploy | PR into `staging`; never deploy directly. |
 | `fix/<scope>` | Non-emergency defects | No live deploy | PR into `staging`; promote through release gate. |
+| `devops/<scope>` | CI/CD, infrastructure, environment, monitoring, rollback work | No live deploy unless approved | PR into `staging`; DevOps and release-owner review required when environment behavior changes. |
 | `hotfix/<scope>` | Emergency production repair | Emergency candidate | PR into `main`, then immediately back-merge to `staging`. |
-| `release/<date-or-version>` | Frozen release candidate | Optional release preview | Created from `staging` when QA starts. |
-| `codex/<scope>` | Codex-owned exploratory or implementation work | No live deploy | Convert to `feature/`, `fix/`, or close after extraction. |
+| `release/<date-or-version>` | Frozen QA release candidate | Optional release preview | Created from `staging` when QA starts; PR into `main` only after release gate. |
 
 Long-lived branches are limited to `main` and `staging`. `release/*` branches
 exist only for active release hardening and should be deleted after release or
 rollback closure. All other branches should be short-lived and tied to one PR.
+
+## Promotion Ladder
+
+All normal work moves upward through the same gates:
+
+```text
+codex/*, feature/*, fix/*, devops/*
+  -> staging
+  -> release/<date-or-version>
+  -> main
+```
+
+Codex work starts in `codex/*`. Developer work starts in `feature/*` or `fix/*`.
+DevOps work starts in `devops/*`. Multiple people can work in parallel, but every
+branch must enter the product through a reviewed PR into `staging`. `main` only
+receives approved release candidates or approved hotfixes.
+
+See `docs/governance/CODEX_PROMOTION_LADDER.md` for the full working model.
 
 ## Live Freeze Rule
 
